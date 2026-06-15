@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --brand-maroon: #8c1b24;
+  --brand-brown: #8c3807;
+  --brand-orange: #f26a1b;
+  --brand-red: #f21313;
+  --brand-cream: #fff8f2;
+  --brand-line: #ead8cf;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--brand-cream);
+  color: #171717;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+::selection {
+  background: var(--brand-maroon);
+  color: #ffffff;
+}
