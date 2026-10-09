@@ -1,0 +1,29 @@
+<?php
+
+use App\Models\Role;
+use App\Models\User;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\Artisan;
+
+require __DIR__.'/../../vendor/autoload.php';
+$app = require __DIR__.'/../../bootstrap/app.php';
+$app->loadEnvironmentFrom('.env.testing');
+$app->make(Kernel::class)->bootstrap();
+
+if (! $app->environment('testing') || ! str_ends_with(config('database.connections.pgsql.database'), '_test')) {
+    throw new RuntimeException('Browser fixtures require the isolated test database.');
+}
+Artisan::call('migrate', ['--force' => true]);
+Artisan::call('db:seed', ['--force' => true]);
+$run = getenv('BROWSER_RUN');
+$password = getenv('BROWSER_PASSWORD');
+if (! $run || ! $password) {
+    throw new RuntimeException('Missing ephemeral fixture credentials.');
+}
+$ids = [];
+foreach (['admin', 'staff'] as $role) {
+    $user = User::create(['name' => 'Browser '.ucfirst($role), 'email' => $role.'-'.$run.'@example.test', 'password' => $password]);
+    $user->roles()->attach(Role::where('code', $role)->sole());
+    $ids[$role] = $user->id;
+}
+echo json_encode($ids);
