@@ -1,6 +1,6 @@
 # V3 Database Entity Definitions
 
-Specification only, not executable migrations. This document defines physical-design decisions missing from the original logical ERD. The architecture defines business semantics; this document defines storage and enforcement. The draw.io diagram visualizes these entities and FK dependencies.
+This document defines physical-design decisions missing from the original logical ERD. Phases 1–3 are implemented in migrations; the publication, direct-listing, navigation and media sections remain future specifications. See 09-phase-3-package-drafts.md for Phase 3's draft-only differences. The draw.io diagram visualizes entities and FK dependencies.
 
 ## Conventions and constraints
 
@@ -36,11 +36,11 @@ Laravel infrastructure tables (sessions, jobs, failed jobs, cache as selected) a
 |---|---|---|
 | dish_categories | id, code, name, active=true | Unique code; one primary category per dish |
 | dishes | id, code, category_id FK dish_categories, name, description?, active=true | Unique code; canonical identity; names need not be globally unique |
-| product_families | id, code, name, is_addon, active=true | Unique code; seed exactly the five architecture codes; four are add-ons |
+| product_families | id, code, name, description?, sort_order=0, is_addon, active=true | Unique code and normalized case-insensitive display name; seed exactly five stable codes. DB trigger makes code and primary/add-on flag immutable. Display fields and active state are editable with `family.manage` and audit. Four are add-ons; `main_catering` is the required primary for future reservations. |
 | dish_family_eligibilities | dish_id FK dishes, family_id FK product_families, active=true | Composite PK; inactivate retained eligibility instead of deleting referenced pairs |
 | dish_offerings | id, dish_id, family_id, code, name, description?, active=true | Composite FK (dish_id,family_id) to eligibility; UNIQUE(dish_id,family_id,code); multiple preparations allowed |
 | offering_options | id, offering_id FK dish_offerings, option_code, label, unit, quantity, serving_pax?, serving_claim?, active=true | UNIQUE(offering_id,option_code); serving_pax positive integer when present; no price column |
-| family_order_defaults | family_id PK/FK product_families, minimum_quantity, quantity_step, maximum_quantity?, enforce_minimum_floor=false | Exactly one per family; Main Catering starts at minimum 150 and enforce=true |
+| family_order_defaults | family_id PK/FK product_families, minimum_quantity, quantity_step, maximum_quantity?, enforce_minimum_floor=false | Exactly one per family; Main Catering starts at minimum 150 and enforce=true; Food Pack starts at 10 packs from Phase 3 |
 
 No generic business_settings key/value table is required for this scope: the one documented business floor and its enforcement flag live in typed family_order_defaults. Changing them is Admin-only and audited. This removes an untyped competing source of truth.
 
@@ -50,11 +50,11 @@ The availability predicate includes active family and retained eligibility in ad
 
 | Entity | Fields | Keys and behavior |
 |---|---|---|
-| products | id, family_id FK product_families, code, name, description?, active=true | UNIQUE(family_id,code); family immutable once versions/listings reference the product; no redundant product type |
-| product_variants | id, product_id FK products, code, name, active=true, current_version_id? | UNIQUE(product_id,code); current pointer constrained below; Food Tray products cannot own package variants |
+| products | id, family_id FK product_families, code, name, description?, sort_order=0, active=true | UNIQUE(family_id,code); family immutable once versions/listings reference the product; no redundant product type |
+| product_variants | id, product_id FK products, code, name, description?, sort_order=0, active=true, current_version_id? | UNIQUE(product_id,code) and normalized case-insensitive display name per product; no fixed variant count. Current pointer constrained below; Food Tray products cannot own package variants |
 | variant_versions | id, variant_id FK product_variants, version_number, status draft/published, draft_revision=1, cloned_from_id? FK variant_versions, family_id FK product_families, base_price_minor, currency, price_basis, selection_policy uniform/split, minimum_override?, step_override?, maximum_override?, maximum_override_enabled=false, minimum_quantity, quantity_step, maximum_quantity?, subgroup_minimum?, subgroup_step?, subgroup_maximum?, created_by FK users, published_by? FK users, published_at? | UNIQUE(variant_id,version_number), UNIQUE(variant_id,id); effective fields freeze on publication |
 
-Draft effective values are resolved by services and refresh when defaults change. Nullable overrides inherit defaults; maximum_override_enabled=true with a null maximum_override explicitly means unbounded, while false means inherit and requires maximum_override to be null. Publication stores both configured override provenance and effective values. The family floor check still applies.
+Draft effective values are resolved live by services and for display when defaults change; draft materialized effective columns update on draft save and are not authoritative if family defaults change afterward. Nullable overrides inherit defaults; maximum_override_enabled=true with a null maximum_override explicitly means unbounded, while false means inherit and requires maximum_override to be null. Publication must store both configured override provenance and current effective values in one transaction. The family floor check still applies.
 
 Family dictates price_basis: main_catering/per_pax, belly_lechon/per_set, food_pack/per_pack, pica_pica/per_set. Split and non-null subgroup fields are legal only for Food Pack; subgroup fields are all null by default. If restrictions exist, minimum and step are required, maximum optional. Pica-Pica is uniform.
 
@@ -66,7 +66,7 @@ Published metadata must be non-null exactly when status=published. Published ver
 
 | Entity | Fields | Keys and behavior |
 |---|---|---|
-| selection_groups | id, version_id FK variant_versions, group_code, name, mode fixed/select_one/select_many, minimum_count, maximum_count, unique_dishes=true, category_mode free/restricted, inclusion_count, sort_order | UNIQUE(version_id,group_code); inclusion_count is number of selected options per purchased unit, not kilograms/serving size |
+| selection_groups | id, version_id FK variant_versions, group_code, name, mode fixed/select_one/select_many, slot_kind rice/drink/dish/lechon/tray/bundle_item, minimum_count, maximum_count, unique_dishes=true, category_mode free/restricted, inclusion_count, sort_order | UNIQUE(version_id,group_code); inclusion_count is number of selected options per purchased unit, not kilograms/serving size; slot_kind makes family policy explicit |
 | group_options | id, group_id FK selection_groups, offering_option_id FK offering_options, is_default=false, price_adjustment_minor=0, snapshot_dish_id? FK dishes, snapshot_category_id? FK dish_categories, snapshot_offering_name?, snapshot_dish_name?, snapshot_category_name?, snapshot_option_code?, snapshot_option_label?, snapshot_unit?, snapshot_quantity?, snapshot_serving_pax?, snapshot_serving_claim? | UNIQUE(group_id,offering_option_id); all mandatory snapshot fields populated at publication; nullable serving estimates/claims remain optional |
 | group_category_rules | group_id FK selection_groups, category_id FK dish_categories, minimum_count, maximum_count | Composite PK; restricted-mode whitelist/quotas; no rows for free mode |
 | group_dish_rules | group_id FK selection_groups, dish_id FK dishes, effect allow/deny | Composite PK; conflicting allow+deny rows impossible |

@@ -88,7 +88,7 @@ class MasterCatalogTest extends TestCase
         $main = ProductFamily::where('code', 'main_catering')->sole();
         $this->assertSame(150, $main->orderDefault->minimum_quantity);
         $this->assertTrue($main->orderDefault->enforce_minimum_floor);
-        $this->assertSame(1, ProductFamily::where('code', 'food_pack')->sole()->orderDefault->minimum_quantity);
+        $this->assertSame(10, ProductFamily::where('code', 'food_pack')->sole()->orderDefault->minimum_quantity);
         $this->assertDatabaseHas('permissions', ['code' => 'catalog.view']);
         $this->assertDatabaseHas('permissions', ['code' => 'catalog.manage']);
     }

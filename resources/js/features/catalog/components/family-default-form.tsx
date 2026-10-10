@@ -5,6 +5,12 @@ import type { Family } from "../types";
 import { catalogPaths } from "../paths";
 export function FamilyDefaultForm({ family }: { family: Family }) {
     const setting = family.order_default!;
+    const unit =
+        family.code === "main_catering"
+            ? "pax"
+            : family.code === "food_pack"
+              ? "packs"
+              : "sets";
     const form = useForm({
         minimum_quantity: setting.minimum_quantity,
         quantity_step: setting.quantity_step,
@@ -26,7 +32,7 @@ export function FamilyDefaultForm({ family }: { family: Family }) {
             <div className="grid gap-4 sm:grid-cols-3">
                 <Field
                     id={"minimum-" + family.id}
-                    label="Minimum"
+                    label={`Minimum (${unit})`}
                     error={form.errors.minimum_quantity}
                 >
                     <input
@@ -45,7 +51,7 @@ export function FamilyDefaultForm({ family }: { family: Family }) {
                 </Field>
                 <Field
                     id={"step-" + family.id}
-                    label="Increment"
+                    label={`Increment (${unit})`}
                     error={form.errors.quantity_step}
                 >
                     <input
@@ -64,7 +70,7 @@ export function FamilyDefaultForm({ family }: { family: Family }) {
                 </Field>
                 <Field
                     id={"maximum-" + family.id}
-                    label="Maximum (optional)"
+                    label={`Maximum (${unit}, optional)`}
                     error={form.errors.maximum_quantity}
                 >
                     <input
@@ -95,7 +101,8 @@ export function FamilyDefaultForm({ family }: { family: Family }) {
             </label>
             {family.code === "main_catering" && (
                 <p className="text-xs text-amber-800">
-                    Main Catering starts at 150 guests. Changing the floor is an
+                    {family.name} currently has a minimum of{" "}
+                    {setting.minimum_quantity} pax. Changing the floor is an
                     audited Admin action.
                 </p>
             )}

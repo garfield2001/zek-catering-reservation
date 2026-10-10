@@ -4,9 +4,14 @@ use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\Catalog\CategoryController;
 use App\Http\Controllers\Admin\Catalog\DishController;
 use App\Http\Controllers\Admin\Catalog\FamilyOrderDefaultController;
+use App\Http\Controllers\Admin\Catalog\FamilyPresentationController;
 use App\Http\Controllers\Admin\Catalog\OfferingController;
 use App\Http\Controllers\Admin\Catalog\OfferingOptionController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\Package\GroupController as PackageGroupController;
+use App\Http\Controllers\Admin\Package\PreviewController as PackagePreviewController;
+use App\Http\Controllers\Admin\Package\ProductController as PackageProductController;
+use App\Http\Controllers\Admin\Package\VariantController as PackageVariantController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Auth\SessionController;
@@ -41,6 +46,24 @@ Route::middleware('auth')->group(function () {
         Route::get('dishes/{dish}/offerings/{offering}/options/{option}/edit', [OfferingOptionController::class, 'edit'])->name('options.edit');
         Route::put('dishes/{dish}/offerings/{offering}/options/{option}', [OfferingOptionController::class, 'update'])->name('options.update');
         Route::get('families', [FamilyOrderDefaultController::class, 'index'])->name('families.index');
+        Route::put('families/{family}', [FamilyPresentationController::class, 'update'])->name('families.update');
         Route::put('families/{family}/defaults', [FamilyOrderDefaultController::class, 'update'])->name('families.defaults.update');
+    });
+    Route::prefix('admin/packages')->name('packages.')->scopeBindings()->group(function () {
+        Route::resource('products', PackageProductController::class)->except('destroy')
+            ->parameters(['products' => 'product'])
+            ->names(['index' => 'index', 'create' => 'create', 'store' => 'store',
+                'show' => 'show', 'edit' => 'edit', 'update' => 'update']);
+        Route::get('products/{product}/variants/create', [PackageVariantController::class, 'create'])->name('variants.create');
+        Route::post('products/{product}/variants', [PackageVariantController::class, 'store'])->name('variants.store');
+        Route::get('products/{product}/variants/{variant}/versions/{version}', [PackageVariantController::class, 'show'])->name('versions.show');
+        Route::get('products/{product}/variants/{variant}/versions/{version}/edit', [PackageVariantController::class, 'edit'])->name('versions.edit');
+        Route::put('products/{product}/variants/{variant}/versions/{version}', [PackageVariantController::class, 'update'])->name('versions.update');
+        Route::get('products/{product}/variants/{variant}/versions/{version}/groups/create', [PackageGroupController::class, 'create'])->name('groups.create');
+        Route::post('products/{product}/variants/{variant}/versions/{version}/groups', [PackageGroupController::class, 'store'])->name('groups.store');
+        Route::get('products/{product}/variants/{variant}/versions/{version}/groups/{group}/edit', [PackageGroupController::class, 'edit'])->name('groups.edit');
+        Route::put('products/{product}/variants/{variant}/versions/{version}/groups/{group}', [PackageGroupController::class, 'update'])->name('groups.update');
+        Route::delete('products/{product}/variants/{variant}/versions/{version}/groups/{group}', [PackageGroupController::class, 'destroy'])->name('groups.destroy');
+        Route::post('products/{product}/variants/{variant}/versions/{version}/preview', PackagePreviewController::class)->name('versions.preview');
     });
 });

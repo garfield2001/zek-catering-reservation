@@ -14,6 +14,7 @@ class OfferingOption extends Model
         return ['active' => 'boolean', 'quantity' => 'decimal:3', 'serving_pax' => 'integer'];
     }
 
+    /** @return BelongsTo<DishOffering, $this> */
     public function offering(): BelongsTo
     {
         return $this->belongsTo(DishOffering::class);

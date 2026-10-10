@@ -1,5 +1,5 @@
 # Catering Catalog Specification V3
-Updated 2026-10-09 with client-approved clarifications and database design decisions. Phases 1 and 2 are authorized and implemented; later phases remain specifications only. Read:
+Updated 2026-10-09 with client-approved clarifications and database design decisions. Phases 1–3 are implemented; publication and later phases remain specifications only. Read:
 
 1. [Architecture and approved rules](docs/01-architecture.md)
 2. [Acceptance criteria](docs/02-acceptance-cases.md)
@@ -10,7 +10,8 @@ Updated 2026-10-09 with client-approved clarifications and database design decis
 7. [Updated logical ERD](diagrams/catalog_v3.drawio)
 8. [Phase 1 implementation decisions and setup](docs/07-phase-1-foundation.md)
 9. [Phase 2 master catalog implementation decisions](docs/08-phase-2-master-catalog.md)
+10. [Phase 3 package drafts and pricing implementation](docs/09-phase-3-package-drafts.md)
 
 The five families comprise Main Catering plus four independent add-on families: Belly Lechon, Food Pack, Food Tray and Pica-Pica. Customer accounts, reservations, quotations, payments, scheduling, inventory and notifications are deferred. Published package facts freeze; availability stays current; Food Tray pricing uses published listing revisions.
 
-Phases 1 and 2 provide access control and master catalog administration. Package configuration, publication, direct listings, reservations and other transaction workflows remain unimplemented. Commercial configuration values must be approved before production publication; examples remain fixtures. Routine database decisions are documented and do not require repeated approval. Read all specifications before writing migrations.
+Phases 1–3 provide access control, master catalog administration, package draft configuration and administrator-only price previews. Publication, direct listings, reservations and other transaction workflows remain unimplemented. Commercial configuration values must be approved before production publication; examples remain fixtures. Routine database decisions are documented and do not require repeated approval. Read all specifications before writing migrations.

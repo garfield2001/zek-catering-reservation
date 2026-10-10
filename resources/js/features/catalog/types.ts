@@ -11,7 +11,9 @@ export type Family = {
     code: string;
     name: string;
     is_addon: boolean;
-    active?: boolean;
+    description: string | null;
+    sort_order: number;
+    active: boolean;
     pivot?: { active: boolean };
     order_default?: OrderDefault;
 };

@@ -1,5 +1,5 @@
 # Catalog Acceptance Scenarios V3
-Specification only: these are required future tests, not tests already executed. Each scenario needs appropriate backend coverage (unit for calculations, feature for authorization/routes, PostgreSQL integration for database/publication) and an equivalent admin workflow or actionable validation message where user-facing. Price previews are transient and never create quotations, orders or reservations.
+These scenarios are the approved acceptance target; some Phase 1-3 cases have automated coverage, while publication, direct listings, media and reservation cases remain future work. Each scenario needs appropriate backend coverage (unit for calculations, feature for authorization/routes, PostgreSQL integration for database/publication) and an equivalent admin workflow or actionable validation message where user-facing. Price previews are transient and never create quotations, orders or reservations.
 
 | ID | Scenario | Expected |
 |---|---|---|
@@ -68,6 +68,9 @@ Specification only: these are required future tests, not tests already executed.
 | CAT-63 | Delete referenced master data or reparent a published serving option | rejected; archival preserves history and current availability rules |
 | CAT-64 | No selected public publication, withdrawn owner or inactive eligibility/family/dish/option/category | new selection unavailable; authorized historical inspection still possible |
 | CAT-65 | Serving claims from multiple distinct tray components are displayed | no summed guest-capacity claim; kg has no implied pax conversion |
+| CAT-66 | Rename Food Pack Lunch to Packed Meals and Main Catering to Catering Packages | codes, primary/add-on identity, eligibility, quantity units, prices and validations remain unchanged; messages use current display names and configured limits |
+| CAT-67 | Create a fifth Main Catering variant and rename an existing variant | no A-D cap or identity change; each variant retains its own groups, quantity rules and pricing; display names are unique per product without case/space ambiguity |
+| CAT-68 | Staff attempts to edit family presentation without `family.manage`; Admin changes name, order or active state | unauthorized direct requests fail; permitted changes are audited; inactive family cannot enter a new package preview |
 | CAT-66 | Configure inherited maximum versus explicit unbounded override | inherited maximum follows defaults for drafts; explicit null override removes maximum; published effective rule remains frozen |
 | CAT-67 | Query addon/catalog listing pages with many rows | pagination and eager loading prevent per-row query growth; unpublished values and internal audit data absent from public props |
 | CAT-68 | Disable a permission or account during active session | next authorized request uses fresh access version; stale cached grants cannot authorize writes |
@@ -75,3 +78,7 @@ Specification only: these are required future tests, not tests already executed.
 
 ## Test data policy
 ALL prices and serving claims in these scenarios, including 280/300/320/340 main catering, hypothetical 5000 Lechon, +20 Coke and 4500 Pica-Pica, are deterministic test examples until explicitly approved in the production configuration matrix. The Main Catering minimum of 150 is the approved default, not a test-only assumption. Use factories and clearly labeled demo fixtures; do not silently seed example prices as production publications. Mock storage and prohibit external network calls in automated tests. Run DB constraints/triggers/concurrency tests against PostgreSQL, not SQLite. Concurrency tests use independent connections and synchronized transactions.
+
+## Phase 3 acceptance scope and clarifications
+
+Phase 3 implements **draft-only administrator configuration and price previews**. Tests exercise fixed rice, required drinks, distinct dish choices, category quotas, static/dynamic lechon, tray choices, Food Pack uniform/split allocations, Pica-Pica fixed inclusions, current availability, permission denial, centavo overflow and PostgreSQL integrity. The Food Pack family default is 10 packs under the later explicit Phase 3 instruction; examples may use variant overrides. Tests requiring publication, immutable historical snapshots, public availability, direct tray listings, customer selections or reservations remain Phase 4 or later and must not be counted as Phase 3 passes. The actual implementation coverage is recorded in 09-phase-3-package-drafts.md and `tests/Feature/PackageDraftTest.php`.

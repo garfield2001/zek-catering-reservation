@@ -20,6 +20,8 @@ Scope: canonical dishes, eligibility, offerings, five families, package configur
 
 All four add-on families are independent catalog offerings, eventually selectable alongside main catering. Add-ons do NOT mean Food Tray listings alone. Products classify offerings; variants identify package choices; published versions/revisions hold commercial facts.
 
+For the future reservation journey, exactly one valid `main_catering` selection is the required primary product; the other four families are optional additions to it and cannot initiate a catering reservation on their own. Inquiry, quotation, availability confirmation and reservation persistence are outside Phase 3. The stable `code` and immutable `is_addon` identify this rule; customer-facing family names, descriptions and display order can change without changing pricing or eligibility behavior. The five supported family identities are seeded, not freely creatable business engines.
+
 ## Canonical catalog and selection
 
 One canonical dish may be eligible for any subset of the five families. Family-specific preparations are dish offerings with named serving options. Multiple preparations per dish/family are allowed. A composite FK ensures an offering's dish/family pair exists in family eligibility. Dishes have one primary culinary category in this phase. Website navigation uses separate explicit assignments. Stable dish codes and administrative duplicate review preserve canonical identity; names alone are not unique identity.
@@ -82,4 +84,4 @@ Media validates magic bytes/MIME, dimensions and limits; generates safe names; r
 
 Before production publication, approve the complete configuration matrix: actual prices/premiums, named variants, inclusions/counts, allowed upgrades, dish pools and minimum/step/maximum values beyond the approved Main Catering floor. Confirm serving claims and final imagery. Examples are not commercial approval. The four add-on families, split defaults, money representation, frozen publications and default Staff restrictions are settled.
 
-Implementation after Phase 2 remains separately gated. See 05-database-entities.md, 06-implementation-plan.md, 07-phase-1-foundation.md and 08-phase-2-master-catalog.md.
+Implementation after Phase 3 remains separately gated. Phase 3 adds administrator-only package drafts and price previews; publication remains Phase 4. Food Pack now defaults to a 10-pack minimum per the explicit Phase 3 instruction. See 05-database-entities.md, 06-implementation-plan.md and the 07–09 implementation notes.

@@ -16,10 +16,12 @@ class FamilyOrderDefaultController extends Controller
 {
     public function index(): Response
     {
-        Gate::authorize('viewAny', FamilyOrderDefault::class);
+        Gate::authorize('viewAny', ProductFamily::class);
 
         return Inertia::render('admin/catalog/families/index', [
-            'families' => ProductFamily::with('orderDefault')->orderBy('id')->get(),
+            'families' => ProductFamily::with('orderDefault')->orderBy('sort_order')->orderBy('id')->get(),
+            'canManagePresentation' => Gate::allows('manage', ProductFamily::class),
+            'canManageDefaults' => Gate::allows('viewAny', FamilyOrderDefault::class),
         ]);
     }
 
