@@ -42,7 +42,7 @@ export function GroupRuleEditors({
     return (
         <>
             <section className="rounded-xl border border-stone-200 bg-white p-5">
-                <h2 className="font-semibold">Culinary category rules</h2>
+                <h2 className="font-semibold">Food category rules</h2>
                 <p className="text-sm text-stone-600">
                     Free mode permits any allowed dish; restricted mode
                     whitelists the categories below and applies quotas.

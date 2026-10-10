@@ -17,21 +17,30 @@ const kinds: Record<
     string,
     { value: PackageGroup["slot_kind"]; label: string }[]
 > = {
-    main_catering: [
+    main_package: [
+        { value: "item", label: "Included item or choice" },
         { value: "rice", label: "Fixed rice" },
         { value: "drink", label: "Drink choice" },
         { value: "dish", label: "Custom dishes" },
     ],
-    belly_lechon: [
+    package: [
+        { value: "item", label: "Included item or choice" },
         { value: "lechon", label: "Lechon kilograms" },
         { value: "tray", label: "Tray choices" },
+        { value: "rice", label: "Fixed rice" },
+        { value: "drink", label: "Drink choice" },
+        { value: "dish", label: "Custom dishes" },
     ],
-    food_pack: [
+    packed_meal: [
+        { value: "item", label: "Included item or choice" },
         { value: "rice", label: "Fixed rice" },
         { value: "drink", label: "Drink choice" },
         { value: "dish", label: "Meal dishes" },
     ],
-    pica_pica: [{ value: "bundle_item", label: "Fixed bundle item" }],
+    fixed_bundle: [
+        { value: "item", label: "Fixed included item" },
+        { value: "bundle_item", label: "Legacy fixed bundle item" },
+    ],
 };
 
 export function GroupForm({
@@ -51,8 +60,8 @@ export function GroupForm({
     categories: { id: number; name: string }[];
     canPrice: boolean;
 }) {
-    const familyCode = product.family?.code ?? "";
-    const choices = kinds[familyCode] ?? [];
+    const behaviorType = product.family?.behavior_type ?? "";
+    const choices = kinds[behaviorType] ?? [];
     const form = useForm<GroupPayload>({
         group_code: group?.group_code ?? "",
         name: group?.name ?? "",
@@ -128,7 +137,7 @@ export function GroupForm({
                 </Field>
                 <Field
                     id="slot_kind"
-                    label="Family slot type"
+                    label="Inclusion type"
                     error={form.errors.slot_kind}
                 >
                     <select
@@ -164,8 +173,12 @@ export function GroupForm({
                         }
                     >
                         <option value="fixed">Fixed inclusion</option>
-                        <option value="select_one">Choose one</option>
-                        <option value="select_many">Choose several</option>
+                        {behaviorType !== "fixed_bundle" && (
+                            <option value="select_one">Choose one</option>
+                        )}
+                        {behaviorType !== "fixed_bundle" && (
+                            <option value="select_many">Choose several</option>
+                        )}
                     </select>
                 </Field>
                 <Field
@@ -253,7 +266,7 @@ export function GroupForm({
                 selected={form.data.options}
                 group={group}
                 mode={form.data.mode}
-                familyCode={familyCode}
+                behaviorType={behaviorType}
                 canPrice={canPrice}
                 error={form.errors.options}
                 onChange={(options) => form.setData("options", options)}

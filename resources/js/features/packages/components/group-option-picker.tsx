@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { AvailableOption, PackageGroup } from "../types";
 import type { GroupOptionInput } from "./group-form-types";
 
@@ -6,7 +7,7 @@ export function GroupOptionPicker({
     selected,
     group,
     mode,
-    familyCode,
+    behaviorType,
     canPrice,
     error,
     onChange,
@@ -15,11 +16,12 @@ export function GroupOptionPicker({
     selected: GroupOptionInput[];
     group: PackageGroup | null;
     mode: PackageGroup["mode"];
-    familyCode: string;
+    behaviorType: string;
     canPrice: boolean;
     error?: string;
     onChange: (options: GroupOptionInput[]) => void;
 }) {
+    const [search, setSearch] = useState("");
     const toggle = (id: number, checked: boolean) =>
         onChange(
             checked
@@ -49,7 +51,7 @@ export function GroupOptionPicker({
         <section className="rounded-xl border border-stone-200 bg-white p-5">
             <h2 className="font-semibold">Permitted serving options</h2>
             <p className="mt-1 text-sm text-stone-600">
-                Only active, family-eligible options appear. Premiums are
+                Only active, collection-eligible options appear. Premiums are
                 centavos per pax, pack or set—not per kilogram or tray size.
             </p>
             {error && (
@@ -57,65 +59,87 @@ export function GroupOptionPicker({
                     {error}
                 </p>
             )}
+            {available.length > 8 && (
+                <input
+                    type="search"
+                    aria-label="Find serving option"
+                    placeholder="Find food item or serving option"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    className="mt-4 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                />
+            )}
             <div className="mt-4 max-h-80 space-y-2 overflow-y-auto">
-                {available.map((option) => {
-                    const current = selected.find(
-                        (item) => item.offering_option_id === option.id,
-                    );
-                    return (
-                        <div
-                            key={option.id}
-                            className="grid gap-2 rounded-lg border border-stone-200 p-3 sm:grid-cols-[1fr_auto_auto]"
-                        >
-                            <label className="flex items-center gap-2 text-sm">
-                                <input
-                                    type="checkbox"
-                                    checked={!!current}
-                                    onChange={(event) =>
-                                        toggle(option.id, event.target.checked)
-                                    }
-                                />
-                                {option.dish_name} / {option.offering_name} /{" "}
-                                {option.label} ({option.quantity} {option.unit})
-                            </label>
-                            {current && (
+                {available
+                    .filter((option) =>
+                        `${option.dish_name} ${option.offering_name} ${option.label}`
+                            .toLocaleLowerCase()
+                            .includes(search.toLocaleLowerCase()),
+                    )
+                    .map((option) => {
+                        const current = selected.find(
+                            (item) => item.offering_option_id === option.id,
+                        );
+                        return (
+                            <div
+                                key={option.id}
+                                className="grid gap-2 rounded-lg border border-stone-200 p-3 sm:grid-cols-[1fr_auto_auto]"
+                            >
                                 <label className="flex items-center gap-2 text-sm">
                                     <input
                                         type="checkbox"
-                                        checked={current.is_default}
+                                        checked={!!current}
                                         onChange={(event) =>
-                                            change(option.id, {
-                                                is_default:
-                                                    event.target.checked,
-                                            })
+                                            toggle(
+                                                option.id,
+                                                event.target.checked,
+                                            )
                                         }
                                     />
-                                    Default
+                                    {option.dish_name} / {option.offering_name}{" "}
+                                    / {option.label} ({option.quantity}{" "}
+                                    {option.unit})
                                 </label>
-                            )}
-                            {current && (
-                                <label className="text-xs">
-                                    Premium centavos
-                                    <input
-                                        className="mt-1 w-32"
-                                        inputMode="numeric"
-                                        disabled={
-                                            !canPrice ||
-                                            familyCode === "pica_pica"
-                                        }
-                                        value={current.price_adjustment_minor}
-                                        onChange={(event) =>
-                                            change(option.id, {
-                                                price_adjustment_minor:
-                                                    event.target.value,
-                                            })
-                                        }
-                                    />
-                                </label>
-                            )}
-                        </div>
-                    );
-                })}
+                                {current && (
+                                    <label className="flex items-center gap-2 text-sm">
+                                        <input
+                                            type="checkbox"
+                                            checked={current.is_default}
+                                            onChange={(event) =>
+                                                change(option.id, {
+                                                    is_default:
+                                                        event.target.checked,
+                                                })
+                                            }
+                                        />
+                                        Default
+                                    </label>
+                                )}
+                                {current && (
+                                    <label className="text-xs">
+                                        Premium centavos
+                                        <input
+                                            className="mt-1 w-32"
+                                            inputMode="numeric"
+                                            disabled={
+                                                !canPrice ||
+                                                behaviorType === "fixed_bundle"
+                                            }
+                                            value={
+                                                current.price_adjustment_minor
+                                            }
+                                            onChange={(event) =>
+                                                change(option.id, {
+                                                    price_adjustment_minor:
+                                                        event.target.value,
+                                                })
+                                            }
+                                        />
+                                    </label>
+                                )}
+                            </div>
+                        );
+                    })}
             </div>
             {unavailable.map((item) => {
                 const former = group?.options?.find(
@@ -147,8 +171,8 @@ export function GroupOptionPicker({
             })}
             {available.length === 0 && (
                 <p className="mt-4 text-sm text-amber-800">
-                    No active offering options exist for this family. Configure
-                    the master catalog first.
+                    No active serving options exist for this collection.
+                    Configure the master catalog first.
                 </p>
             )}
         </section>

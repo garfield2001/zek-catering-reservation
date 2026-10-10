@@ -54,6 +54,7 @@ class CatalogAvailability
             ->where('dish_family_eligibilities.active', true)
             ->where('dishes.active', true)
             ->where('dish_categories.active', true)
-            ->where('product_families.active', true);
+            ->where('product_families.active', true)
+            ->whereNull('product_families.archived_at');
     }
 }

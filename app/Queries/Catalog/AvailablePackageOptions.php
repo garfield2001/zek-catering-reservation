@@ -16,7 +16,7 @@ class AvailablePackageOptions
             ->join('dish_family_eligibilities as eligibility', function ($join) {
                 $join->on('eligibility.dish_id', '=', 'dish.id')->on('eligibility.family_id', '=', 'family.id');
             })
-            ->where('family.id', $familyId)->where('family.active', true)->where('eligibility.active', true)
+            ->where('family.id', $familyId)->where('family.active', true)->whereNull('family.archived_at')->where('eligibility.active', true)
             ->where('category.active', true)->where('dish.active', true)->where('offering.active', true)
             ->where('option.active', true)
             ->orderBy('category.name')->orderBy('dish.name')->orderBy('option.label')

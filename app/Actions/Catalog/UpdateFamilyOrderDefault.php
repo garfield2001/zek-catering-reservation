@@ -17,6 +17,7 @@ class UpdateFamilyOrderDefault
         return DB::transaction(function () use ($actor, $default, $data) {
             $default = FamilyOrderDefault::lockForUpdate()->findOrFail($default->family_id);
             Gate::forUser($actor->fresh())->authorize('update', $default);
+            abort_if($default->family->archived_at !== null, 404);
             $before = $default->only('minimum_quantity', 'quantity_step', 'maximum_quantity', 'enforce_minimum_floor');
             $default->fill($data);
             $default->save();

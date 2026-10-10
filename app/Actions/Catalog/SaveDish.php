@@ -20,11 +20,11 @@ class SaveDish
         return DB::transaction(function () use ($actor, $data, $dish) {
             $category = DishCategory::lockForUpdate()->findOrFail($data['category_id']);
             if ($data['active'] && ! $category->active) {
-                throw ValidationException::withMessages(['category_id' => 'Activate the category before making this dish available.']);
+                throw ValidationException::withMessages(['category_id' => 'Activate the category before making this food item available.']);
             }
             $families = ProductFamily::whereIn('id', $data['family_ids'])->orderBy('id')->lockForUpdate()->get();
             if ($families->count() !== count($data['family_ids']) || $families->contains('active', false)) {
-                throw ValidationException::withMessages(['family_ids' => 'Select only active product families.']);
+                throw ValidationException::withMessages(['family_ids' => 'Select only active collections.']);
             }
             $dish = $dish ? Dish::lockForUpdate()->findOrFail($dish->id) : new Dish;
             Gate::forUser($actor->fresh())->authorize($dish->exists ? 'update' : 'create', $dish->exists ? $dish : Dish::class);

@@ -19,6 +19,7 @@ class FamilyOrderDefault extends Model
             'maximum_quantity' => 'integer', 'enforce_minimum_floor' => 'boolean'];
     }
 
+    /** @return BelongsTo<ProductFamily, $this> */
     public function family(): BelongsTo
     {
         return $this->belongsTo(ProductFamily::class, 'family_id');

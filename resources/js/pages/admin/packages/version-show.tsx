@@ -26,7 +26,7 @@ export default function VersionShow({
     return (
         <AdminLayout
             title={`${variant.name} — draft`}
-            description={`${product.family?.name} · ${version.price_basis} · never customer-bookable in Phase 3`}
+            description={`${product.family?.name} · ${version.price_basis} · draft-only, never customer-bookable`}
         >
             <div className="mb-5 flex flex-wrap gap-4 text-sm">
                 {canManage && canPrice && (

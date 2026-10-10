@@ -1,10 +1,10 @@
 # V3 Implementation Plan and Decision Register
 
-Status: V3 and phased plan approved; Phases 1–3 implemented. Phases 4–7 remain outside the current implementation scope. See 07-phase-1-foundation.md, 08-phase-2-master-catalog.md and 09-phase-3-package-drafts.md.
+Status: V3 and phased plan approved; Phases 1–3 implemented. Phase 3.5 adds dynamic collections and first-run administration. Phases 4–7 remain outside the current implementation scope. See 07-phase-1-foundation.md through 10-phase-3-5-dynamic-collections.md.
 
 ## Accepted decisions
 
-The four optional add-on families are Belly Lechon, Food Pack, Food Tray and Pica-Pica. Main Catering is the required primary family for a future catering reservation; add-ons alone cannot initiate one. No reservation coupling is introduced now. Family codes and primary/add-on identity are immutable while names, descriptions, order and active state are configurable. Package products and variants have editable descriptions/order; variant count and configuration are not fixed to example A-D names. Food Pack defaults to uniform; split allocations share one version, satisfy selections independently and use total quantity rules by default. Package facts freeze at publication, availability stays current, direct listings have published revisions, all money uses centavos, and Staff publishing/access administration are off by default.
+The former four named add-ons are examples rather than required records. Admin creates one primary catering collection and any number of optional add-on collections using supported behavior types; add-ons alone cannot initiate a future reservation. No reservation coupling is introduced now. Collection codes, roles and behaviors are immutable while names, descriptions, order and active state are configurable. Package products and variants have editable descriptions/order; variant count and configuration are not fixed to example A-D names. Packed meals default to uniform; split allocations share one version, satisfy selections independently and use total quantity rules by default. Package facts freeze at publication, availability stays current, future direct listings use published revisions, all money uses centavos, and Staff publishing/access administration are off by default.
 
 ## Routine design decisions resolved
 

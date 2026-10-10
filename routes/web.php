@@ -2,12 +2,14 @@
 
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\Catalog\CategoryController;
+use App\Http\Controllers\Admin\Catalog\CollectionController;
 use App\Http\Controllers\Admin\Catalog\DishController;
 use App\Http\Controllers\Admin\Catalog\FamilyOrderDefaultController;
 use App\Http\Controllers\Admin\Catalog\FamilyPresentationController;
 use App\Http\Controllers\Admin\Catalog\OfferingController;
 use App\Http\Controllers\Admin\Catalog\OfferingOptionController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\GuideController;
 use App\Http\Controllers\Admin\Package\GroupController as PackageGroupController;
 use App\Http\Controllers\Admin\Package\PreviewController as PackagePreviewController;
 use App\Http\Controllers\Admin\Package\ProductController as PackageProductController;
@@ -25,6 +27,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
     Route::get('/admin', DashboardController::class)->middleware('can:dashboard.view')->name('dashboard');
+    Route::get('/admin/guide', GuideController::class)->middleware('can:dashboard.view')->name('guide');
     Route::get('/admin/staff', [StaffController::class, 'index'])->name('staff.index');
     Route::get('/admin/staff/create', [StaffController::class, 'create']);
     Route::post('/admin/staff', [StaffController::class, 'store']);
@@ -46,6 +49,9 @@ Route::middleware('auth')->group(function () {
         Route::get('dishes/{dish}/offerings/{offering}/options/{option}/edit', [OfferingOptionController::class, 'edit'])->name('options.edit');
         Route::put('dishes/{dish}/offerings/{offering}/options/{option}', [OfferingOptionController::class, 'update'])->name('options.update');
         Route::get('families', [FamilyOrderDefaultController::class, 'index'])->name('families.index');
+        Route::get('families/create', [CollectionController::class, 'create'])->name('families.create');
+        Route::post('families', [CollectionController::class, 'store'])->name('families.store');
+        Route::post('families/{family}/archive', [CollectionController::class, 'archive'])->name('families.archive');
         Route::put('families/{family}', [FamilyPresentationController::class, 'update'])->name('families.update');
         Route::put('families/{family}/defaults', [FamilyOrderDefaultController::class, 'update'])->name('families.defaults.update');
     });

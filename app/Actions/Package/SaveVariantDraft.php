@@ -22,7 +22,8 @@ class SaveVariantDraft
         return DB::transaction(function () use ($actor, $product, $data, $variant, $version) {
             $product = Product::lockForUpdate()->findOrFail($product->id);
             $family = $product->family;
-            if (! $product->active || ! $family->active || $family->code === 'food_tray') {
+            if (! $product->active || ! $family->active || $family->archived_at !== null
+                || ! $family->behavior()->supportsPackageDrafts()) {
                 throw ValidationException::withMessages(['product' => "{$family->name} is unavailable for new package drafts."]);
             }
             $variant = $variant ? ProductVariant::lockForUpdate()->findOrFail($variant->id) : new ProductVariant;
@@ -30,7 +31,7 @@ class SaveVariantDraft
             Gate::forUser($actor->fresh())->authorize($variant->exists ? 'update' : 'create', $variant->exists ? $variant : ProductVariant::class);
             Gate::forUser($actor->fresh())->authorize('price', VariantVersion::class);
             $price = $this->money->parse($data['base_price_minor'], 'base_price_minor');
-            if ($data['selection_policy'] === 'split' && $family->code !== 'food_pack') {
+            if ($data['selection_policy'] === 'split' && ! $family->behavior()->supportsSplit()) {
                 throw ValidationException::withMessages(['selection_policy' => "Split allocations are not supported for {$family->name}; choose uniform selections."]);
             }
             $overrides = array_intersect_key($data, array_flip(['minimum_override', 'step_override', 'maximum_override', 'maximum_override_enabled']));
@@ -62,9 +63,8 @@ class SaveVariantDraft
                 $version->created_by = $actor->id;
             }
             $version->fill([...$overrides, ...$effective, 'base_price_minor' => $price,
-                'selection_policy' => $data['selection_policy'], 'price_basis' => match ($family->code) {
-                    'main_catering' => 'per_pax', 'food_pack' => 'per_pack', default => 'per_set',
-                }, 'currency' => 'PHP']);
+                'selection_policy' => $data['selection_policy'],
+                'price_basis' => $family->behavior()->priceBasis(), 'currency' => 'PHP']);
             $version->save();
             $this->audit->record($before ? 'package.draft_updated' : 'package.draft_created', $actor, $version,
                 $before, [...$version->only('base_price_minor', 'selection_policy', 'minimum_override', 'step_override',

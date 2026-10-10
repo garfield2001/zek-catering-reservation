@@ -17,13 +17,14 @@ class CatalogLookupQuery
 
     public function families(): array
     {
-        return ProductFamily::where('active', true)->orderBy('id')->get(['id', 'code', 'name', 'is_addon'])->toArray();
+        return ProductFamily::where('active', true)->whereNull('archived_at')->orderBy('sort_order')->orderBy('id')
+            ->get(['id', 'code', 'name', 'is_addon', 'behavior_type'])->toArray();
     }
 
     public function eligibleFamilies(Dish $dish): array
     {
         return $dish->eligibleFamilies()->wherePivot('active', true)
-            ->where('product_families.active', true)->orderBy('product_families.id')
+            ->where('product_families.active', true)->whereNull('product_families.archived_at')->orderBy('product_families.id')
             ->get(['product_families.id', 'code', 'name'])->toArray();
     }
 }

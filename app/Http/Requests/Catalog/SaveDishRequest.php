@@ -45,7 +45,7 @@ class SaveDishRequest extends FormRequest
                     $query->where('id', '!=', $dish->id);
                 }
                 if ($query->exists()) {
-                    $fail('This dish name is already in use in the selected category.');
+                    $fail('This food item name is already in use in the selected category.');
                 }
             }],
             'description' => ['nullable', 'string', 'max:5000'],

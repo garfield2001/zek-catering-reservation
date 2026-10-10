@@ -20,10 +20,10 @@ class SaveProduct
             $product = $product ? Product::lockForUpdate()->findOrFail($product->id) : new Product;
             Gate::forUser($actor->fresh())->authorize($product->exists ? 'update' : 'create', $product->exists ? $product : Product::class);
             $family = ProductFamily::findOrFail($data['family_id']);
-            if (! $family->active) {
+            if (! $family->active || $family->archived_at !== null) {
                 throw ValidationException::withMessages(['family_id' => "{$family->name} is disabled for new package drafts."]);
             }
-            if ($family->code === 'food_tray') {
+            if (! $family->behavior()->supportsPackageDrafts()) {
                 throw ValidationException::withMessages(['family_id' => "{$family->name} uses individual direct listings, not package variants."]);
             }
             $before = $product->exists ? $product->only('family_id', 'code', 'name', 'description', 'sort_order', 'active') : null;

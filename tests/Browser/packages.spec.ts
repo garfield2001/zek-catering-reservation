@@ -19,11 +19,11 @@ test("Admin creates a draft package variant without publishing it", async ({
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    await page.getByRole("link", { name: "Package drafts" }).click();
-    await page.getByRole("link", { name: "Create package product" }).click();
     await page
-        .getByLabel("Package family")
-        .selectOption({ label: "Pica-Pica" });
+        .getByRole("link", { name: "Package drafts", exact: true })
+        .click();
+    await page.getByRole("link", { name: "Create package product" }).click();
+    await page.getByLabel("Collection").selectOption({ label: "Pica-Pica" });
     await page.getByLabel("Stable product code").fill(`browser_${run}`);
     await page.getByLabel("Product name").fill(`Browser bundle ${run}`);
     await page.getByRole("button", { name: "Create product" }).click();

@@ -1,4 +1,5 @@
 import { useForm } from "@inertiajs/react";
+import { useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
 import type { Category, Dish, Family } from "../types";
@@ -12,6 +13,7 @@ export function DishForm({
     categories: Category[];
     families: Family[];
 }) {
+    const [collectionSearch, setCollectionSearch] = useState("");
     const form = useForm({
         code: dish?.code ?? "",
         name: dish?.name ?? "",
@@ -39,7 +41,11 @@ export function DishForm({
                 else form.post(catalogPaths.dishes);
             }}
         >
-            <Field id="code" label="Stable dish code" error={form.errors.code}>
+            <Field
+                id="code"
+                label="Stable food item code"
+                error={form.errors.code}
+            >
                 <input
                     id="code"
                     value={form.data.code}
@@ -50,7 +56,7 @@ export function DishForm({
                     onChange={(e) => form.setData("code", e.target.value)}
                 />
             </Field>
-            <Field id="name" label="Dish name" error={form.errors.name}>
+            <Field id="name" label="Food item name" error={form.errors.name}>
                 <input
                     id="name"
                     value={form.data.name}
@@ -61,7 +67,7 @@ export function DishForm({
             </Field>
             <Field
                 id="category_id"
-                label="Culinary category"
+                label="Food category"
                 error={form.errors.category_id}
             >
                 <select
@@ -97,31 +103,52 @@ export function DishForm({
             </Field>
             <fieldset>
                 <legend className="text-sm font-medium">
-                    Eligible product families
+                    Eligible collections
                 </legend>
                 <p className="mt-1 text-sm text-stone-500">
-                    A dish can belong to several families or none. Removing
-                    eligibility retains any existing offerings as unavailable
-                    history.
+                    A food item can belong to several collections or none.
+                    Removing eligibility retains any existing offerings as
+                    unavailable history.
                 </p>
+                {families.length > 8 && (
+                    <input
+                        type="search"
+                        aria-label="Find collection"
+                        placeholder="Find collection"
+                        value={collectionSearch}
+                        onChange={(event) =>
+                            setCollectionSearch(event.target.value)
+                        }
+                        className="mt-3 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                    />
+                )}
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {families.map((family) => (
-                        <label
-                            key={family.id}
-                            className="flex items-center gap-2 rounded-lg border border-stone-200 p-3 text-sm"
-                        >
-                            <input
-                                type="checkbox"
-                                checked={form.data.family_ids.includes(
-                                    family.id,
-                                )}
-                                onChange={(e) =>
-                                    toggleFamily(family.id, e.target.checked)
-                                }
-                            />
-                            {family.name}
-                        </label>
-                    ))}
+                    {families
+                        .filter((family) =>
+                            family.name
+                                .toLocaleLowerCase()
+                                .includes(collectionSearch.toLocaleLowerCase()),
+                        )
+                        .map((family) => (
+                            <label
+                                key={family.id}
+                                className="flex items-center gap-2 rounded-lg border border-stone-200 p-3 text-sm"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={form.data.family_ids.includes(
+                                        family.id,
+                                    )}
+                                    onChange={(e) =>
+                                        toggleFamily(
+                                            family.id,
+                                            e.target.checked,
+                                        )
+                                    }
+                                />
+                                {family.name}
+                            </label>
+                        ))}
                 </div>
                 {form.errors.family_ids && (
                     <p role="alert" className="text-sm text-red-700">
@@ -135,16 +162,16 @@ export function DishForm({
                     checked={form.data.active}
                     onChange={(e) => form.setData("active", e.target.checked)}
                 />
-                Active dish
+                Active food item
             </label>
             {!form.data.active && (
                 <p className="text-sm text-amber-800">
-                    Deactivation preserves the dish and its serving options, but
-                    prevents new catalog selection.
+                    Deactivation preserves the food item and its serving
+                    options, but prevents new catalog selection.
                 </p>
             )}
             <Button disabled={form.processing || categories.length === 0}>
-                {dish ? "Save dish" : "Create dish"}
+                {dish ? "Save food item" : "Create food item"}
             </Button>
         </form>
     );

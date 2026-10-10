@@ -37,10 +37,10 @@ test("Admin can grant Staff audit access through the interface", async ({
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
     await page
-        .getByRole("link", { name: "Audit history", exact: true })
+        .getByRole("link", { name: "Activity History", exact: true })
         .click();
     await expect(
-        page.getByText("access.permissions_updated", { exact: true }).first(),
+        page.getByText("Permissions updated", { exact: true }).first(),
     ).toBeVisible();
     const response = await page.goto("/admin/staff");
     expect(response?.status()).toBe(403);

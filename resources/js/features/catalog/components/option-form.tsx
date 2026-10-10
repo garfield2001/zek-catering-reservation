@@ -140,13 +140,12 @@ export function OptionForm({
                     }
                 />
             </Field>
-            {offering.family?.code === "belly_lechon" &&
-                form.data.unit === "kg" && (
-                    <p className="text-sm text-stone-600">
-                        Kilograms do not imply a guest capacity. Enter one only
-                        if separately verified.
-                    </p>
-                )}
+            {form.data.unit === "kg" && (
+                <p className="text-sm text-stone-600">
+                    Kilograms do not imply a guest capacity. Enter one only if
+                    separately verified.
+                </p>
+            )}
             <label className="flex items-center gap-2 text-sm">
                 <input
                     type="checkbox"

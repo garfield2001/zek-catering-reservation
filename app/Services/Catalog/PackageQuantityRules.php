@@ -38,9 +38,7 @@ class PackageQuantityRules
         if ($quantity < $rules['minimum_quantity']
             || ($quantity - $rules['minimum_quantity']) % $rules['quantity_step'] !== 0
             || ($rules['maximum_quantity'] !== null && $quantity > $rules['maximum_quantity'])) {
-            $unit = match ($version->family->code) {
-                'main_catering' => 'pax', 'food_pack' => 'packs', default => 'sets',
-            };
+            $unit = $version->family->behavior()->quantityUnit();
             $maximum = $rules['maximum_quantity'] === null ? 'no maximum' : "maximum {$rules['maximum_quantity']} {$unit}";
             throw ValidationException::withMessages(['quantity' => "{$version->family->name} requires a minimum of {$rules['minimum_quantity']} {$unit}, increments of {$rules['quantity_step']}, and {$maximum}."]);
         }

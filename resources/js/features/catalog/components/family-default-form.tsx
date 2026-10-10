@@ -6,9 +6,9 @@ import { catalogPaths } from "../paths";
 export function FamilyDefaultForm({ family }: { family: Family }) {
     const setting = family.order_default!;
     const unit =
-        family.code === "main_catering"
+        family.behavior_type === "main_package"
             ? "pax"
-            : family.code === "food_pack"
+            : family.behavior_type === "packed_meal"
               ? "packs"
               : "sets";
     const form = useForm({
@@ -99,7 +99,7 @@ export function FamilyDefaultForm({ family }: { family: Family }) {
                 />
                 Prevent future variants from lowering this family minimum
             </label>
-            {family.code === "main_catering" && (
+            {family.behavior_type === "main_package" && (
                 <p className="text-xs text-amber-800">
                     {family.name} currently has a minimum of{" "}
                     {setting.minimum_quantity} pax. Changing the floor is an

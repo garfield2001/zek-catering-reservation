@@ -17,7 +17,7 @@ export default function DishEdit({
     return (
         <AdminLayout
             title={dish ? "Edit dish" : "Create dish"}
-            description="Assign one culinary category and any number of eligible product families."
+            description="Assign one food category and any number of eligible collections."
         >
             <DishForm dish={dish} categories={categories} families={families} />
         </AdminLayout>

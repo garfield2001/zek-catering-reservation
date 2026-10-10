@@ -2,6 +2,7 @@
 
 namespace App\Actions\Package;
 
+use App\Enums\Catalog\CollectionBehavior;
 use App\Models\OfferingOption;
 use App\Models\SelectionGroup;
 use App\Models\User;
@@ -31,7 +32,7 @@ class SaveSelectionGroup
             foreach ($data['options'] as $row) {
                 $option = OfferingOption::with('offering')->findOrFail($row['offering_option_id']);
                 if ($option->offering->family_id !== $version->family_id || ! $this->availability->optionAvailable($option)) {
-                    throw ValidationException::withMessages(['options' => 'Only currently eligible options from this package family may be used.']);
+                    throw ValidationException::withMessages(['options' => 'Only currently eligible serving options from this collection may be used.']);
                 }
                 if (
                     $data['slot_kind'] === 'lechon' && $option->unit !== 'kg'
@@ -40,7 +41,7 @@ class SaveSelectionGroup
                     throw ValidationException::withMessages(['options' => 'The serving unit does not match this slot type.']);
                 }
                 $amount = $this->money->parse($row['price_adjustment_minor'], 'options');
-                if ($version->family->code === 'pica_pica' && $amount !== 0) {
+                if ($version->family->behavior() === CollectionBehavior::FixedBundle && $amount !== 0) {
                     throw ValidationException::withMessages(['options' => "Fixed inclusions in {$version->family->name} cannot carry premiums."]);
                 }
                 $options[$option->id] = [
@@ -157,16 +158,14 @@ class SaveSelectionGroup
 
     private function validateShape(VariantVersion $version, array $data): void
     {
-        $allowed = match ($version->family->code) {
-            'main_catering', 'food_pack' => ['rice', 'drink', 'dish'],
-            'belly_lechon' => ['lechon', 'tray'],
-            'pica_pica' => ['bundle_item'],
-            default => [],
-        };
+        $fixedBundle = $version->family->behavior() === CollectionBehavior::FixedBundle;
+        $allowed = $fixedBundle ? ['item', 'bundle_item']
+            : ['item', 'rice', 'drink', 'dish', 'lechon', 'tray', 'bundle_item'];
         if (
             ! in_array($data['slot_kind'], $allowed, true)
+            || ($fixedBundle && $data['mode'] !== 'fixed')
             || ($data['slot_kind'] === 'rice' && $data['mode'] !== 'fixed')
-            || ($data['slot_kind'] === 'drink' && ($data['mode'] !== 'select_one' || $data['minimum_count'] !== 1))
+            || ($data['slot_kind'] === 'drink' && $data['mode'] !== 'select_one')
             || ($data['slot_kind'] === 'dish' && $data['mode'] !== 'select_many')
             || ($data['slot_kind'] === 'lechon' && ! in_array($data['mode'], ['fixed', 'select_one'], true))
             || ($data['slot_kind'] === 'tray' && $data['mode'] !== 'select_many')

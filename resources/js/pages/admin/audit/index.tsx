@@ -12,8 +12,8 @@ export default function AuditIndex({
 }) {
     return (
         <AdminLayout
-            title="Audit history"
-            description="An append-only record of account activity and administrative changes. Times shown in Asia/Manila."
+            title="Activity History"
+            description="A readable, append-only record of security and business changes. Times shown in Asia/Manila."
         >
             <AuditList events={events.data} />
             <PaginationControls {...events} />

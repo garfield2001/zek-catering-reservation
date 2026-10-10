@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Catalog\CollectionBehavior;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -10,7 +11,18 @@ class ProductFamily extends Model
 {
     protected function casts(): array
     {
-        return ['is_addon' => 'boolean', 'active' => 'boolean', 'sort_order' => 'integer'];
+        return ['is_addon' => 'boolean', 'active' => 'boolean', 'sort_order' => 'integer',
+            'archived_at' => 'immutable_datetime'];
+    }
+
+    public function behavior(): CollectionBehavior
+    {
+        $value = $this->getAttribute('behavior_type');
+        if (! is_string($value)) {
+            throw new \LogicException('Collection behavior is not configured.');
+        }
+
+        return CollectionBehavior::from($value);
     }
 
     /** @return HasOne<FamilyOrderDefault, $this> */

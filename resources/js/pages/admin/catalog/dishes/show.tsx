@@ -14,10 +14,7 @@ export default function DishShow({
     const activeFamilies =
         dish.eligible_families?.filter((family) => family.pivot?.active) ?? [];
     return (
-        <AdminLayout
-            title={dish.name}
-            description={"Master dish · " + dish.code}
-        >
+        <AdminLayout title={dish.name} description={"Food item · " + dish.code}>
             <div className="mb-6 flex flex-wrap items-center gap-3">
                 <StatusBadge active={dish.active} />
                 <span className="text-sm text-stone-600">
@@ -38,7 +35,7 @@ export default function DishShow({
                 </p>
             )}
             <section className="mb-8 rounded-xl border border-stone-200 bg-white p-5">
-                <h2 className="font-semibold">Eligible families</h2>
+                <h2 className="font-semibold">Eligible collections</h2>
                 <p className="mt-2 text-sm text-stone-600">
                     {activeFamilies.length
                         ? activeFamilies
@@ -61,7 +58,7 @@ export default function DishShow({
             {!dish.offerings?.length ? (
                 <EmptyState
                     title="No offerings yet"
-                    description="Create a family-specific preparation, then define its serving options."
+                    description="Create a collection-specific preparation, then define its serving options."
                 />
             ) : (
                 <div className="grid gap-4 sm:grid-cols-2">

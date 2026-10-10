@@ -1,6 +1,10 @@
 import { Link } from "@inertiajs/react";
+import { Plus } from "lucide-react";
+import { useState } from "react";
 import AdminLayout from "../../../../layouts/admin-layout";
+import { Modal } from "../../../../components/ui/modal";
 import { PaginationControls } from "../../../../components/ui/pagination";
+import { CategoryForm } from "../../../../features/catalog/components/category-form";
 import { EmptyState } from "../../../../features/catalog/components/empty-state";
 import { StatusBadge } from "../../../../features/catalog/components/status-badge";
 import { catalogPaths } from "../../../../features/catalog/paths";
@@ -13,18 +17,20 @@ export default function CategoryIndex({
     categories: Pagination<Category>;
     canManage: boolean;
 }) {
+    const [creating, setCreating] = useState(false);
     return (
         <AdminLayout
-            title="Culinary categories"
-            description="These classify dishes for preparation and future selection rules."
+            title="Food categories"
+            description="Group food items for browsing and package selection rules."
         >
             {canManage && (
-                <Link
-                    className="mb-5 inline-block rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white"
-                    href={catalogPaths.categories + "/create"}
+                <button
+                    type="button"
+                    onClick={() => setCreating(true)}
+                    className="mb-5 inline-flex items-center gap-2 rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white"
                 >
-                    Create category
-                </Link>
+                    <Plus size={17} aria-hidden="true" /> Add category
+                </button>
             )}
             {categories.data.length === 0 ? (
                 <EmptyState
@@ -80,6 +86,13 @@ export default function CategoryIndex({
                 </div>
             )}
             <PaginationControls {...categories} />
+            <Modal
+                open={creating}
+                onClose={() => setCreating(false)}
+                title="Add food category"
+            >
+                <CategoryForm category={null} />
+            </Modal>
         </AdminLayout>
     );
 }

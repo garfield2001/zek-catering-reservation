@@ -31,7 +31,7 @@ export function ProductForm({
         >
             <Field
                 id="family_id"
-                label="Package family"
+                label="Collection"
                 error={form.errors.family_id}
             >
                 {product ? (
@@ -72,7 +72,7 @@ export function ProductForm({
                     onChange={(event) =>
                         form.setData("code", event.target.value)
                     }
-                    placeholder="main_catering"
+                    placeholder="e.g. premium_catering"
                 />
             </Field>
             <Field id="name" label="Product name" error={form.errors.name}>

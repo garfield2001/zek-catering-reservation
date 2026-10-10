@@ -29,12 +29,12 @@ class UpdateFamilyPresentationRequest extends FormRequest
 
         return [
             'name' => ['bail', 'required', 'string', 'max:255', function (string $attribute, mixed $value, \Closure $fail) use ($family): void {
-                $query = DB::table('product_families')->whereRaw('lower(btrim(name)) = lower(btrim(?))', [$value]);
+                $query = DB::table('product_families')->whereNull('archived_at')->whereRaw('lower(btrim(name)) = lower(btrim(?))', [$value]);
                 if ($family instanceof ProductFamily) {
                     $query->where('id', '!=', $family->id);
                 }
                 if ($query->exists()) {
-                    $fail('This product-family display name is already in use.');
+                    $fail('This collection name is already in use.');
                 }
             }],
             'description' => ['nullable', 'string', 'max:5000'],

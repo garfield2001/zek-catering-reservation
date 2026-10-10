@@ -1,6 +1,9 @@
 import { Link } from "@inertiajs/react";
+import { useState } from "react";
 import AdminLayout from "../../../../layouts/admin-layout";
+import { Modal } from "../../../../components/ui/modal";
 import { PaginationControls } from "../../../../components/ui/pagination";
+import { CategoryForm } from "../../../../features/catalog/components/category-form";
 import { EmptyState } from "../../../../features/catalog/components/empty-state";
 import { StatusBadge } from "../../../../features/catalog/components/status-badge";
 import { catalogPaths } from "../../../../features/catalog/paths";
@@ -15,10 +18,11 @@ export default function CategoryShow({
     dishes: Pagination<Dish>;
     canManage: boolean;
 }) {
+    const [editing, setEditing] = useState(false);
     return (
         <AdminLayout
             title={category.name}
-            description={"Culinary category · " + category.code}
+            description={"Food category · " + category.code}
         >
             <div className="mb-6 flex items-center gap-4">
                 <StatusBadge active={category.active} />
@@ -26,19 +30,20 @@ export default function CategoryShow({
                     Display order {category.sort_order}
                 </span>
                 {canManage && (
-                    <Link
+                    <button
+                        type="button"
+                        onClick={() => setEditing(true)}
                         className="text-sm text-emerald-800 underline"
-                        href={catalogPaths.category(category.id) + "/edit"}
                     >
                         Edit category
-                    </Link>
+                    </button>
                 )}
             </div>
-            <h2 className="mb-3 text-lg font-semibold">Dishes</h2>
+            <h2 className="mb-3 text-lg font-semibold">Food items</h2>
             {dishes.data.length === 0 ? (
                 <EmptyState
-                    title="No dishes in this category"
-                    description="Dishes can be added from the master catalog."
+                    title="No food items in this category"
+                    description="Food items can be added from the catalog."
                 />
             ) : (
                 <div className="rounded-xl border border-stone-200 bg-white">
@@ -55,6 +60,13 @@ export default function CategoryShow({
                 </div>
             )}
             <PaginationControls {...dishes} />
+            <Modal
+                open={editing}
+                onClose={() => setEditing(false)}
+                title={`Edit ${category.name}`}
+            >
+                <CategoryForm category={category} />
+            </Modal>
         </AdminLayout>
     );
 }

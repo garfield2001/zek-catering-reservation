@@ -13,7 +13,7 @@ export default function ProductEdit({
     return (
         <AdminLayout
             title={product ? `Edit ${product.name}` : "Create package product"}
-            description="Products group named package variants within one family."
+            description="Package products group named variants within one collection."
         >
             <ProductForm product={product} families={families} />
         </AdminLayout>

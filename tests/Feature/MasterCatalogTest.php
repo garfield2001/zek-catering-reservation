@@ -18,6 +18,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
+use Tests\Support\LegacyCollections;
 use Tests\TestCase;
 
 class MasterCatalogTest extends TestCase
@@ -28,6 +29,7 @@ class MasterCatalogTest extends TestCase
     {
         parent::setUp();
         $this->seed(DatabaseSeeder::class);
+        LegacyCollections::seed();
     }
 
     private function user(string $role = 'admin'): User

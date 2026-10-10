@@ -33,7 +33,8 @@ class ProductController extends Controller
         Gate::authorize('create', Product::class);
 
         return Inertia::render('admin/packages/product-edit', ['product' => null,
-            'families' => ProductFamily::where('active', true)->where('code', '!=', 'food_tray')->orderBy('sort_order')->orderBy('id')->get()]);
+            'families' => ProductFamily::where('active', true)->whereNull('archived_at')
+                ->where('behavior_type', '!=', 'direct_sale')->orderBy('sort_order')->orderBy('id')->get()]);
     }
 
     public function store(SaveProductRequest $request, SaveProduct $action): RedirectResponse

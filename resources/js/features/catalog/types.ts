@@ -11,6 +11,13 @@ export type Family = {
     code: string;
     name: string;
     is_addon: boolean;
+    behavior_type:
+        | "main_package"
+        | "package"
+        | "packed_meal"
+        | "direct_sale"
+        | "fixed_bundle";
+    archived_at: string | null;
     description: string | null;
     sort_order: number;
     active: boolean;

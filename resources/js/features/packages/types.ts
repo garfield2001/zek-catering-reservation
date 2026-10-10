@@ -67,7 +67,8 @@ export type PackageGroup = {
     group_code: string;
     name: string;
     mode: "fixed" | "select_one" | "select_many";
-    slot_kind: "rice" | "drink" | "dish" | "lechon" | "tray" | "bundle_item";
+    slot_kind:
+        "item" | "rice" | "drink" | "dish" | "lechon" | "tray" | "bundle_item";
     minimum_count: number;
     maximum_count: number;
     unique_dishes: boolean;

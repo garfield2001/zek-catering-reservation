@@ -18,25 +18,25 @@ export default function DishIndex({
 }) {
     return (
         <AdminLayout
-            title="Master dishes"
-            description="One canonical record per dish, shared across eligible product families."
+            title="Food items"
+            description="Keep one record for each food or beverage, then choose which collections may use it."
         >
             {canManage && (
                 <Link
                     className="mb-5 inline-block rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white"
                     href={catalogPaths.dishes + "/create"}
                 >
-                    Create dish
+                    Add food item
                 </Link>
             )}
             <DishSearch initial={filters.q} />
             {dishes.data.length === 0 ? (
                 <EmptyState
-                    title="No dishes found"
+                    title="No food items found"
                     description={
                         filters.q
                             ? "Try a different name or code."
-                            : "Add categories first, then create a dish."
+                            : "Add a food category first, then create a food item."
                     }
                 />
             ) : (
@@ -45,7 +45,7 @@ export default function DishIndex({
                         <thead className="bg-stone-100">
                             <tr>
                                 {[
-                                    "Dish",
+                                    "Food item",
                                     "Category",
                                     "Offerings",
                                     "Status",

@@ -4,6 +4,7 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\Artisan;
+use Tests\Support\LegacyCollections;
 
 require __DIR__.'/../../vendor/autoload.php';
 $app = require __DIR__.'/../../bootstrap/app.php';
@@ -13,8 +14,11 @@ $app->make(Kernel::class)->bootstrap();
 if (! $app->environment('testing') || ! str_ends_with(config('database.connections.pgsql.database'), '_test')) {
     throw new RuntimeException('Browser fixtures require the isolated test database.');
 }
-Artisan::call('migrate', ['--force' => true]);
+Artisan::call('migrate:fresh', ['--force' => true]);
 Artisan::call('db:seed', ['--force' => true]);
+if (getenv('BROWSER_LEGACY') !== '0') {
+    LegacyCollections::seed();
+}
 $run = getenv('BROWSER_RUN');
 $password = getenv('BROWSER_PASSWORD');
 if (! $run || ! $password) {

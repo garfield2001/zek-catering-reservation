@@ -21,6 +21,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\LegacyCollections;
 use Tests\TestCase;
 
 class PackageDraftTest extends TestCase
@@ -33,6 +34,7 @@ class PackageDraftTest extends TestCase
     {
         parent::setUp();
         $this->seed(DatabaseSeeder::class);
+        LegacyCollections::seed();
     }
 
     private function actor(string $role = 'admin'): User

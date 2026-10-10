@@ -16,7 +16,7 @@ export default function PackageIndex({
     return (
         <AdminLayout
             title="Package drafts"
-            description="Four package families. Drafts are administrative only and are not customer-bookable."
+            description="Package, meal and bundle drafts across your configured collections. Drafts are administrative only and are not customer-bookable."
         >
             {canManage && (
                 <Link

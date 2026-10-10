@@ -31,9 +31,9 @@ export function VariantForm({
         ...(version ? { draft_revision: version.draft_revision } : {}),
     });
     const basis =
-        product.family?.code === "main_catering"
+        product.family?.behavior_type === "main_package"
             ? "per pax"
-            : product.family?.code === "food_pack"
+            : product.family?.behavior_type === "packed_meal"
               ? "per pack"
               : "per set";
     return (
@@ -134,7 +134,7 @@ export function VariantForm({
                     }
                 >
                     <option value="uniform">Uniform configuration</option>
-                    {product.family?.code === "food_pack" && (
+                    {product.family?.behavior_type === "packed_meal" && (
                         <option value="split">
                             Allow split allocations within this variant
                         </option>

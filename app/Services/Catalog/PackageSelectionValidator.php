@@ -2,6 +2,7 @@
 
 namespace App\Services\Catalog;
 
+use App\Enums\Catalog\CollectionBehavior;
 use App\Models\GroupOption;
 use App\Models\SelectionGroup;
 use App\Models\VariantVersion;
@@ -17,28 +18,13 @@ class PackageSelectionValidator
         if ($version->groups->isEmpty()) {
             throw ValidationException::withMessages(['groups' => "Add inclusion groups to {$version->family->name} before previewing."]);
         }
-        $requiredKinds = match ($version->family->code) {
-            'main_catering', 'food_pack' => ['rice', 'drink', 'dish'],
-            'belly_lechon' => ['lechon', 'tray'],
-            'pica_pica' => ['bundle_item'],
-            default => [],
-        };
-        foreach ($requiredKinds as $kind) {
-            if (! $version->groups->contains('slot_kind', $kind)) {
-                throw ValidationException::withMessages(['groups' => "Add the required {$kind} slot to {$version->family->name} before previewing."]);
-            }
-            if (in_array($kind, ['dish', 'tray'], true)
-                && ! $version->groups->contains(fn (SelectionGroup $group) => $group->slot_kind === $kind && $group->minimum_count > 0)) {
-                throw ValidationException::withMessages(['groups' => "At least one {$kind} slot in {$version->family->name} must require a selection."]);
-            }
-        }
         if ($version->selection_policy === 'uniform' && count($allocations) !== 1) {
             throw ValidationException::withMessages(['groups' => "{$version->family->name} requires one uniform allocation for this variant."]);
         }
         if ($version->selection_policy !== 'split' && $version->selection_policy !== 'uniform') {
             throw ValidationException::withMessages(['groups' => 'Unsupported selection policy.']);
         }
-        if ($version->family->code !== 'food_pack' && $version->selection_policy === 'split') {
+        if (! $version->family->behavior()->supportsSplit() && $version->selection_policy === 'split') {
             throw ValidationException::withMessages(['groups' => "Split allocations are unavailable for {$version->family->name}; use one uniform allocation."]);
         }
         if ($allocations === []) {
@@ -99,7 +85,7 @@ class PackageSelectionValidator
 
     private function validateGroup(VariantVersion $version, SelectionGroup $group, mixed $submitted, string $field): array
     {
-        if ($version->family->code === 'pica_pica' && $group->mode !== 'fixed') {
+        if ($version->family->behavior() === CollectionBehavior::FixedBundle && $group->mode !== 'fixed') {
             throw ValidationException::withMessages([$field => "Inclusions in {$version->family->name} must be fixed."]);
         }
         if ($group->mode === 'fixed') {
