@@ -1,10 +1,10 @@
 import { Link } from "@inertiajs/react";
 import { Archive } from "lucide-react";
-import type { Family } from "../types";
-import { FamilyDefaultForm } from "./family-default-form";
-import { FamilyPresentationForm } from "./family-presentation-form";
+import type { Collection } from "../types";
+import { CollectionOrderingDefaultForm } from "./collection-ordering-default-form";
+import { CollectionPresentationForm } from "./collection-presentation-form";
 
-export const behaviorNames: Record<Family["behavior_type"], string> = {
+export const behaviorNames: Record<Collection["behavior_type"], string> = {
     main_package: "Main catering packages",
     package: "Package-based add-on",
     packed_meal: "Packed meals",
@@ -18,7 +18,7 @@ export function CollectionCard({
     canManageDefaults,
     onArchive,
 }: {
-    family: Family;
+    family: Collection;
     canManage: boolean;
     canManageDefaults: boolean;
     onArchive: () => void;
@@ -48,7 +48,7 @@ export function CollectionCard({
                     )}
                 </div>
                 <div className="flex items-center gap-3">
-                    <FamilyPresentationForm
+                    <CollectionPresentationForm
                         family={family}
                         canManage={canManage}
                     />
@@ -90,7 +90,7 @@ export function CollectionCard({
                         Ordering defaults
                     </summary>
                     <div className="mt-3">
-                        <FamilyDefaultForm family={family} />
+                        <CollectionOrderingDefaultForm family={family} />
                     </div>
                 </details>
             )}

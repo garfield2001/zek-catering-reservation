@@ -1,8 +1,8 @@
 import AdminLayout from "../../../../layouts/admin-layout";
 import { OfferingForm } from "../../../../features/catalog/components/offering-form";
 import type {
-    Dish,
-    Family,
+    FoodItem,
+    Collection,
     Offering,
 } from "../../../../features/catalog/types";
 export default function OfferingEdit({
@@ -10,14 +10,14 @@ export default function OfferingEdit({
     offering,
     families,
 }: {
-    dish: Dish;
+    dish: FoodItem;
     offering: Offering | null;
-    families: Family[];
+    families: Collection[];
 }) {
     return (
         <AdminLayout
             title={offering ? "Edit offering" : "Create offering"}
-            description={"Dish: " + dish.name}
+            description={"Food item: " + dish.name}
         >
             <OfferingForm dish={dish} offering={offering} families={families} />
         </AdminLayout>

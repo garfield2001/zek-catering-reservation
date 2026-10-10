@@ -6,15 +6,16 @@ use App\Actions\Access\SaveUser;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Access\SaveUserRequest;
 use App\Models\User;
-use App\Queries\Access\StaffDirectory;
+use App\Queries\Access\TeamMemberDirectory;
+use App\Services\Access\AdministratorAuthority;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class StaffController extends Controller
+class TeamMemberController extends Controller
 {
-    public function index(StaffDirectory $directory): Response
+    public function index(TeamMemberDirectory $directory): Response
     {
         Gate::authorize('viewAny', User::class);
 
@@ -35,17 +36,19 @@ class StaffController extends Controller
         return redirect('/admin/staff')->with('status', 'Account created.');
     }
 
-    public function edit(User $user): Response
+    public function edit(User $user, AdministratorAuthority $administrators): Response
     {
         Gate::authorize('update', $user);
 
-        return Inertia::render('admin/staff/edit', ['staff' => [...$user->only('id', 'name', 'email', 'active', 'access_version'), 'role' => $user->isAdmin() ? 'admin' : 'staff']]);
+        return Inertia::render('admin/staff/edit', ['staff' => [...$user->only('id', 'name', 'email', 'active', 'access_version'),
+            'role' => $user->isAdmin() ? 'admin' : 'staff',
+            'protectedAdministrator' => $administrators->isLastQualifying($user)]]);
     }
 
     public function update(SaveUserRequest $request, User $user, SaveUser $action): RedirectResponse
     {
         $action->handle($request->user(), $request->validated(), $user);
 
-        return redirect('/admin/staff')->with('status', 'Account updated. Existing sessions were revoked.');
+        return redirect('/admin/home')->with('status', 'Account updated. Existing sessions were revoked.');
     }
 }

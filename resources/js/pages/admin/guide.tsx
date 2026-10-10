@@ -4,7 +4,7 @@ import AdminLayout from "../../layouts/admin-layout";
 
 const sections = [
     {
-        title: "1. Create your Main Catering collection",
+        title: "1. Create your primary catering collection",
         href: "/admin/catalog/families",
         body: "A new installation has no preloaded business offerings. Create one primary collection, choose its display name, then configure the inherited 150-pax minimum if your approved policy changes.",
     },
@@ -21,7 +21,7 @@ const sections = [
     {
         title: "4. Build primary package variants",
         href: "/admin/packages/products",
-        body: "Create a package product in Main Catering, then as many named variants as needed. Each draft has independent base price, quantity overrides, fixed or selectable inclusion groups, eligible serving options and category/dish rules.",
+        body: "Create a package product in your primary catering collection, then as many named variants as needed. Each draft has independent base price, quantity overrides, included items or customer choices, allowed serving options and food category/item rules.",
     },
     {
         title: "5. Create add-on collections",

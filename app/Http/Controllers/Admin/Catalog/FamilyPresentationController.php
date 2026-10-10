@@ -14,6 +14,6 @@ class FamilyPresentationController extends Controller
     {
         $action->handle($request->user(), $family, $request->validated());
 
-        return redirect()->route('catalog.families.index')->with('status', 'Product-family presentation updated.');
+        return redirect()->route('catalog.families.index')->with('status', 'Collection details updated.');
     }
 }

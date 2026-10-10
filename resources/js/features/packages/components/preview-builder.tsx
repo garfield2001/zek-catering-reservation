@@ -2,15 +2,15 @@ import { useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { packagePaths } from "../paths";
 import type {
-    DraftVersion,
-    PackageGroup,
+    VariantVersion,
+    SelectionGroup,
     PackageProduct,
     PackageVariant,
     Preview,
 } from "../types";
 
 type Allocation = { quantity: number; selections: Record<string, number[]> };
-const defaults = (groups: PackageGroup[]): Record<string, number[]> =>
+const defaults = (groups: SelectionGroup[]): Record<string, number[]> =>
     Object.fromEntries(
         groups
             .filter((group) => group.mode !== "fixed")
@@ -33,7 +33,7 @@ export function PreviewBuilder({
 }: {
     product: PackageProduct;
     variant: PackageVariant;
-    version: DraftVersion;
+    version: VariantVersion;
 }) {
     const groups = version.groups ?? [];
     const [quantity, setQuantity] = useState(version.minimum_quantity);

@@ -3,12 +3,12 @@ import AdminLayout from "../../../../layouts/admin-layout";
 import { EmptyState } from "../../../../features/catalog/components/empty-state";
 import { StatusBadge } from "../../../../features/catalog/components/status-badge";
 import { catalogPaths } from "../../../../features/catalog/paths";
-import type { Dish } from "../../../../features/catalog/types";
+import type { FoodItem } from "../../../../features/catalog/types";
 export default function DishShow({
     dish,
     canManage,
 }: {
-    dish: Dish;
+    dish: FoodItem;
     canManage: boolean;
 }) {
     const activeFamilies =
@@ -25,7 +25,7 @@ export default function DishShow({
                         className="text-sm text-emerald-800 underline"
                         href={catalogPaths.dish(dish.id) + "/edit"}
                     >
-                        Edit dish and eligibility
+                        Edit food item and eligibility
                     </Link>
                 )}
             </div>

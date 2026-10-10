@@ -45,7 +45,7 @@ class PackageSelectionValidator
             }
             $unknown = array_diff(array_keys($selections), $version->groups->pluck('group_code')->all());
             if ($unknown !== []) {
-                throw ValidationException::withMessages(["groups.$index.selections" => 'An unknown package slot was submitted.']);
+                throw ValidationException::withMessages(["groups.$index.selections" => 'An unknown selection group was submitted.']);
             }
             $chosen = [];
             $customDishIds = [];
@@ -90,11 +90,11 @@ class PackageSelectionValidator
         }
         if ($group->mode === 'fixed') {
             if ($group->options->count() !== 1) {
-                throw ValidationException::withMessages([$field => "Fixed slot {$group->name} must have exactly one configured option."]);
+                throw ValidationException::withMessages([$field => "Fixed selection group {$group->name} must have exactly one configured serving option."]);
             }
             $ids = [$group->options->first()->offering_option_id];
             if ($submitted !== null && $submitted !== [] && $submitted !== $ids) {
-                throw ValidationException::withMessages([$field => "Fixed slot {$group->name} cannot be changed."]);
+                throw ValidationException::withMessages([$field => "Fixed selection group {$group->name} cannot be changed."]);
             }
         } else {
             $ids = $submitted ?? $group->options->where('is_default', true)->pluck('offering_option_id')->all();
@@ -125,7 +125,7 @@ class PackageSelectionValidator
                 || in_array($dish->id, $denyRules, true)
                 || ($allowRules !== [] && ! in_array($dish->id, $allowRules, true))
                 || ($group->category_mode === 'restricted' && ! $categoryRules->has($dish->category_id))) {
-                throw ValidationException::withMessages([$field => "A selected dish is excluded by {$group->name} rules."]);
+                throw ValidationException::withMessages([$field => "A selected food item is excluded by {$group->name} rules."]);
             }
             $dishIds[] = $dish->id;
             $categoryCounts[$dish->category_id] = ($categoryCounts[$dish->category_id] ?? 0) + 1;
@@ -136,7 +136,7 @@ class PackageSelectionValidator
         }
         if ($group->category_mode === 'restricted') {
             if ($categoryRules->isEmpty()) {
-                throw ValidationException::withMessages([$field => "Restricted slot {$group->name} has no category rules."]);
+                throw ValidationException::withMessages([$field => "Restricted selection group {$group->name} has no category rules."]);
             }
             foreach ($categoryRules as $categoryId => $rule) {
                 $count = $categoryCounts[$categoryId] ?? 0;

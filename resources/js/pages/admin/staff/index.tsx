@@ -2,18 +2,18 @@ import { Link } from "@inertiajs/react";
 import AdminLayout from "../../../layouts/admin-layout";
 import { PaginationControls } from "../../../components/ui/pagination";
 import type { Pagination } from "../../../types";
-import type { StaffRow } from "../../../features/access/types";
-export default function StaffIndex({
+import type { TeamMemberRow } from "../../../features/access/types";
+export default function TeamMemberIndex({
     users,
     canCreate,
 }: {
-    users: Pagination<StaffRow>;
+    users: Pagination<TeamMemberRow>;
     canCreate: boolean;
 }) {
     return (
         <AdminLayout
-            title="Team & access"
-            description="Accounts, roles and individual permissions."
+            title="Team Members"
+            description="Administrator and Staff accounts, roles and assigned permissions."
         >
             {canCreate && (
                 <Link
@@ -51,10 +51,22 @@ export default function StaffIndex({
                                     </div>
                                 </td>
                                 <td className="px-5 py-4 capitalize">
-                                    {user.roles.join(", ")}
+                                    {user.roles
+                                        .map((role) =>
+                                            role === "admin"
+                                                ? "Administrator"
+                                                : "Staff",
+                                        )
+                                        .join(", ")}
                                 </td>
                                 <td className="px-5 py-4">
                                     {user.active ? "Active" : "Inactive"}
+                                    {user.protectedAdministrator && (
+                                        <p className="text-xs text-amber-800">
+                                            Last active Administrator — role and
+                                            active status protected
+                                        </p>
+                                    )}
                                 </td>
                                 <td className="space-x-3 px-5 py-4">
                                     {user.canUpdate && (

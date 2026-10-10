@@ -1,5 +1,7 @@
 # V3 Database Entity Definitions
 
+Current-state/ERD legend: this document and `docs/diagrams/catalog_v3.drawio` retain physical table and FK names, including `product_families` (Collection), `dishes` (Food Item), `dish_categories` (Food Category), `selection_groups` (Selection Group), and `group_options` (Group Allowed Option). Older fixed-five-family and mandatory-slot descriptions are historical; [Phase 3.5](10-phase-3-5-dynamic-collections.md) defines the active dynamic collection constraints, and the [approved vocabulary](domain-terminology-audit.md) defines presentation terms. Future publication/direct-listing/media entities shown in the ERD are specifications, not implemented migrations.
+
 This document defines physical-design decisions missing from the original logical ERD. Phases 1–3 are implemented in migrations; the publication, direct-listing, navigation and media sections remain future specifications. See 09-phase-3-package-drafts.md for Phase 3's draft-only differences. The draw.io diagram visualizes entities and FK dependencies.
 
 ## Conventions and constraints

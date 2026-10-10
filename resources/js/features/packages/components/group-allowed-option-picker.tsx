@@ -1,8 +1,8 @@
 import { useState } from "react";
-import type { AvailableOption, PackageGroup } from "../types";
-import type { GroupOptionInput } from "./group-form-types";
+import type { AvailableServingOption, SelectionGroup } from "../types";
+import type { GroupAllowedOptionInput } from "./selection-group-form-types";
 
-export function GroupOptionPicker({
+export function GroupAllowedOptionPicker({
     available,
     selected,
     group,
@@ -12,14 +12,14 @@ export function GroupOptionPicker({
     error,
     onChange,
 }: {
-    available: AvailableOption[];
-    selected: GroupOptionInput[];
-    group: PackageGroup | null;
-    mode: PackageGroup["mode"];
+    available: AvailableServingOption[];
+    selected: GroupAllowedOptionInput[];
+    group: SelectionGroup | null;
+    mode: SelectionGroup["mode"];
     behaviorType: string;
     canPrice: boolean;
     error?: string;
-    onChange: (options: GroupOptionInput[]) => void;
+    onChange: (options: GroupAllowedOptionInput[]) => void;
 }) {
     const [search, setSearch] = useState("");
     const toggle = (id: number, checked: boolean) =>
@@ -35,7 +35,7 @@ export function GroupOptionPicker({
                   ]
                 : selected.filter((option) => option.offering_option_id !== id),
         );
-    const change = (id: number, changes: Partial<GroupOptionInput>) =>
+    const change = (id: number, changes: Partial<GroupAllowedOptionInput>) =>
         onChange(
             selected.map((option) =>
                 option.offering_option_id === id

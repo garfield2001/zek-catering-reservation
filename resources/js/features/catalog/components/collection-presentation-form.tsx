@@ -4,13 +4,13 @@ import { useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
 import { Modal } from "../../../components/ui/modal";
-import type { Family } from "../types";
+import type { Collection } from "../types";
 
-export function FamilyPresentationForm({
+export function CollectionPresentationForm({
     family,
     canManage,
 }: {
-    family: Family;
+    family: Collection;
     canManage: boolean;
 }) {
     const [open, setOpen] = useState(false);

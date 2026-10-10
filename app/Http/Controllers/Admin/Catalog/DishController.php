@@ -40,7 +40,7 @@ class DishController extends Controller
     {
         $dish = $action->handle($request->user(), $request->validated());
 
-        return redirect()->route('catalog.dishes.show', $dish)->with('status', 'Dish created.');
+        return redirect()->route('catalog.dishes.show', $dish)->with('status', 'Food item created.');
     }
 
     public function show(Dish $dish): Response
@@ -67,6 +67,6 @@ class DishController extends Controller
     {
         $action->handle($request->user(), $request->validated(), $dish);
 
-        return redirect()->route('catalog.dishes.show', $dish)->with('status', 'Dish updated.');
+        return redirect()->route('catalog.dishes.show', $dish)->with('status', 'Food item updated.');
     }
 }

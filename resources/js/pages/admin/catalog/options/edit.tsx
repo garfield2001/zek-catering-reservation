@@ -1,7 +1,7 @@
 import AdminLayout from "../../../../layouts/admin-layout";
 import { OptionForm } from "../../../../features/catalog/components/option-form";
 import type {
-    Dish,
+    FoodItem,
     Offering,
     ServingOption,
 } from "../../../../features/catalog/types";
@@ -10,7 +10,7 @@ export default function OptionEdit({
     offering,
     option,
 }: {
-    dish: Dish;
+    dish: FoodItem;
     offering: Offering;
     option: ServingOption | null;
 }) {

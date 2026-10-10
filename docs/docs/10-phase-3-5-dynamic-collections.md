@@ -18,6 +18,8 @@ An empty collection/catalog state is normal. Admin creates the one primary Main 
 
 ## Terminology map
 
+The later approved [domain vocabulary](domain-terminology-audit.md) refines this historical map: use **Selection Group** internally (`selection_groups`), **Included Items** for fixed groups and **Customer Choices** for selectable groups in business UI, and **Group Allowed Option** for the `group_options` junction. The physical identifiers below remain unchanged.
+
 | Internal name | Admin label | Meaning |
 |---|---|---|
 | `dishes` | Food items | Canonical food or beverage identity |

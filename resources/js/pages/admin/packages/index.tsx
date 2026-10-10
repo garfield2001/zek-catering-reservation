@@ -29,7 +29,7 @@ export default function PackageIndex({
             {products.data.length === 0 ? (
                 <EmptyState
                     title="No package drafts"
-                    description="Create a product, then add a priced variant and selection slots."
+                    description="Create a package product, then add a priced variant and selection groups."
                 />
             ) : (
                 <div className="grid gap-4 sm:grid-cols-2">

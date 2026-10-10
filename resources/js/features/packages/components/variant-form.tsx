@@ -1,9 +1,9 @@
 import { useForm } from "@inertiajs/react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
-import type { OrderDefault } from "../../catalog/types";
+import type { CollectionOrderingDefault } from "../../catalog/types";
 import { packagePaths } from "../paths";
-import type { DraftVersion, PackageProduct, PackageVariant } from "../types";
+import type { VariantVersion, PackageProduct, PackageVariant } from "../types";
 
 export function VariantForm({
     product,
@@ -13,8 +13,8 @@ export function VariantForm({
 }: {
     product: PackageProduct;
     variant: PackageVariant | null;
-    version: DraftVersion | null;
-    defaults: OrderDefault;
+    version: VariantVersion | null;
+    defaults: CollectionOrderingDefault;
 }) {
     const form = useForm({
         code: variant?.code ?? "",
@@ -144,7 +144,7 @@ export function VariantForm({
             <div className="grid gap-4 sm:grid-cols-3">
                 <Field
                     id="minimum_override"
-                    label={`Minimum override (family ${defaults.minimum_quantity})`}
+                    label={`Minimum override (collection default ${defaults.minimum_quantity})`}
                     error={form.errors.minimum_override}
                 >
                     <input
@@ -164,7 +164,7 @@ export function VariantForm({
                 </Field>
                 <Field
                     id="step_override"
-                    label={`Increment override (family ${defaults.quantity_step})`}
+                    label={`Increment override (collection default ${defaults.quantity_step})`}
                     error={form.errors.step_override}
                 >
                     <input

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
-import type { DraftVersion, PackageProduct, PackageVariant } from "../types";
+import type { VariantVersion, PackageProduct, PackageVariant } from "../types";
 import { PreviewBuilder } from "./preview-builder";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -100,7 +100,7 @@ test("sends selections to Laravel and renders only the server-calculated amount"
                 ],
             },
         ],
-    } satisfies DraftVersion;
+    } satisfies VariantVersion;
     render(
         <PreviewBuilder
             product={product}

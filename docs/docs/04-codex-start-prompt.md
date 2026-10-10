@@ -1,4 +1,6 @@
-# Codex kickoff prompt — use with attached V3 folder
+# Historical Codex kickoff prompt — superseded for implementation
+
+This prompt records the original V3 kickoff and is not current implementation authorization. Phase 3.5 replaced fixed named-family seeding with an empty-catalog dynamic collection model. Read `10-phase-3-5-dynamic-collections.md`, `domain-terminology-audit.md`, and later explicit owner decisions for current behavior. Names and prices below are historical examples, not mandatory production records.
 Act as lead engineer for a production Laravel + Inertia.js + React/TypeScript + PostgreSQL modular monolith used by a catering business in General Santos City, Philippines. Read all `docs/*` files and the V3 draw.io ERD before writing code. Access foundation, master catalog and package drafts are the first three implemented slices; no reservations, customers, payments or notifications yet.
 
 Review first: produce an architecture review listing any ERD relationship, pricing, version-publishing, category browsing, or authorization contradiction. Treat accepted business requirements as binding; distinguish missing client decisions from technical constraints and choose conservative configurable defaults. Do not invent client prices.

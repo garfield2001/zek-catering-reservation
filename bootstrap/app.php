@@ -15,7 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->web(append: [RequestContext::class, EnsureActiveSession::class, HandleInertiaRequests::class]);
         $middleware->redirectGuestsTo('/login');
-        $middleware->redirectUsersTo('/admin');
+        $middleware->redirectUsersTo('/admin/home');
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function (HttpException $exception, Request $request) {

@@ -38,7 +38,7 @@ class SaveSelectionGroup
                     $data['slot_kind'] === 'lechon' && $option->unit !== 'kg'
                     || $data['slot_kind'] === 'tray' && $option->unit !== 'tray'
                 ) {
-                    throw ValidationException::withMessages(['options' => 'The serving unit does not match this slot type.']);
+                    throw ValidationException::withMessages(['options' => 'The serving unit does not match this selection group type.']);
                 }
                 $amount = $this->money->parse($row['price_adjustment_minor'], 'options');
                 if ($version->family->behavior() === CollectionBehavior::FixedBundle && $amount !== 0) {
@@ -52,7 +52,7 @@ class SaveSelectionGroup
                 $dishIds[] = $option->offering->dish_id;
             }
             if (count($options) !== count($data['options'])) {
-                throw ValidationException::withMessages(['options' => 'Do not repeat an offering option in the same slot.']);
+                throw ValidationException::withMessages(['options' => 'Do not repeat a serving option in the same selection group.']);
             }
             if ($data['maximum_count'] > count($options)) {
                 throw ValidationException::withMessages(['options' => "{$data['name']} allows at most ".count($options).' currently configured options. Reduce its maximum selection count or add options.']);
@@ -174,13 +174,13 @@ class SaveSelectionGroup
             || ($data['mode'] === 'select_one' && $data['maximum_count'] !== 1)
             || $data['minimum_count'] > $data['maximum_count']
         ) {
-            throw ValidationException::withMessages(['mode' => "The {$data['slot_kind']} slot configuration conflicts with {$version->family->name} rules."]);
+            throw ValidationException::withMessages(['mode' => "The {$data['slot_kind']} selection group configuration conflicts with {$version->family->name} rules."]);
         }
         if (
             $data['category_mode'] === 'free' && $data['category_rules'] !== []
             || $data['category_mode'] === 'restricted' && $data['category_rules'] === []
         ) {
-            throw ValidationException::withMessages(['category_rules' => 'Restricted slots need category rules; free slots must not have them.']);
+            throw ValidationException::withMessages(['category_rules' => 'Restricted selection groups need category rules; free selection groups must not have them.']);
         }
         $minimumSum = 0;
         foreach ($data['category_rules'] as $rule) {
@@ -190,13 +190,13 @@ class SaveSelectionGroup
             $minimumSum += $rule['minimum_count'];
         }
         if ($minimumSum > $data['maximum_count']) {
-            throw ValidationException::withMessages(['category_rules' => 'Category minima exceed the slot maximum.']);
+            throw ValidationException::withMessages(['category_rules' => 'Category minima exceed the selection group maximum.']);
         }
         if (
             count(array_unique(array_column($data['category_rules'], 'category_id'))) !== count($data['category_rules'])
             || count(array_unique(array_column($data['dish_rules'], 'dish_id'))) !== count($data['dish_rules'])
         ) {
-            throw ValidationException::withMessages(['rules' => 'Each dish or category may have only one rule per slot.']);
+            throw ValidationException::withMessages(['rules' => 'Each food item or category may have only one rule per selection group.']);
         }
     }
 }

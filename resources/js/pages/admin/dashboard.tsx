@@ -36,7 +36,7 @@ export default function Dashboard({ setup }: { setup: Setup }) {
         auth?.permissions.includes("package.manage");
     const steps = [
         {
-            label: "Create Main Catering",
+            label: "Create primary catering collection",
             detail: "Name your primary catering collection.",
             done: setup.hasPrimary,
             href: "/admin/catalog/families",

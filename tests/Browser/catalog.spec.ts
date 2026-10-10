@@ -49,7 +49,7 @@ test("Admin can create a category, shared dish, offering and serving option", as
 
     await page.getByRole("link", { name: "Add offering" }).click();
     await page
-        .getByLabel("Product family")
+        .getByLabel("Collection")
         .selectOption({ label: "Food Tray Menu" });
     await page.getByLabel("Offering code").fill("classic");
     await page.getByLabel("Preparation name").fill("Classic tray");

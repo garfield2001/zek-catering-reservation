@@ -8,13 +8,13 @@ import { CategoryForm } from "../../../../features/catalog/components/category-f
 import { EmptyState } from "../../../../features/catalog/components/empty-state";
 import { StatusBadge } from "../../../../features/catalog/components/status-badge";
 import { catalogPaths } from "../../../../features/catalog/paths";
-import type { Category } from "../../../../features/catalog/types";
+import type { FoodCategory } from "../../../../features/catalog/types";
 import type { Pagination } from "../../../../types";
 export default function CategoryIndex({
     categories,
     canManage,
 }: {
-    categories: Pagination<Category>;
+    categories: Pagination<FoodCategory>;
     canManage: boolean;
 }) {
     const [creating, setCreating] = useState(false);
@@ -35,20 +35,23 @@ export default function CategoryIndex({
             {categories.data.length === 0 ? (
                 <EmptyState
                     title="No categories yet"
-                    description="Add a category to organize canonical dishes."
+                    description="Add a category to organize food items."
                 />
             ) : (
                 <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-stone-100">
                             <tr>
-                                {["Category", "Order", "Dishes", "Status"].map(
-                                    (label) => (
-                                        <th className="px-5 py-3" key={label}>
-                                            {label}
-                                        </th>
-                                    ),
-                                )}
+                                {[
+                                    "Category",
+                                    "Order",
+                                    "Food items",
+                                    "Status",
+                                ].map((label) => (
+                                    <th className="px-5 py-3" key={label}>
+                                        {label}
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody>

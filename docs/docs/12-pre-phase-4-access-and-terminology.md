@@ -1,0 +1,27 @@
+# Pre-Phase-4 access and terminology changes
+
+Scope: administrative access safeguards, permission presentation, and approved terminology only. Publication, direct listings, customer transactions and full permission-capability redesign remain deferred.
+
+## 403 diagnosis and recovery
+
+Local authorization logs recorded repeated denials for account ID 2 at `GET /admin` after account ID 1 changed its permissions. Read-only inspection showed account 2 is an active **Staff** account, not an Administrator, with an explicit `dashboard.view = deny` override. `PermissionResolver` correctly gives that override precedence over the Staff role's dashboard grant. The `/admin` dashboard route retains its server-side `can:dashboard.view` check and direct access remains 403. The failure was compounded by login, the root redirect and the site logo targeting `/admin` regardless of effective access.
+
+Sign-in, root navigation and the site logo now use `/admin/home`, which sends an active account to its first permitted section. If nothing is permitted, it shows a no-access page with sign-out. An intended `/admin` request is redirected to that landing page when dashboard access is denied. This does not change permissions or make unauthorized resources accessible. The live Staff override was deliberately **not** silently removed or turned into an Administrator grant. An authorized Administrator can review that Team Member's role and effective permissions and either remove the dashboard Deny (inheriting the role grant) or explicitly choose another authorized assignment.
+
+## Administrator authority invariant
+
+The Admin role remains fully authorized in `PermissionResolver` for active accounts; account-specific overrides apply to Staff and cannot strip an Administrator's essential account/permission management. `SaveUser` serializes ordinary account changes by locking the stable roles rows (`AccessMutation::lock()`), then locks the target user and rechecks authorization and access version. `AdministratorAuthority` rejects removal of active Admin status when that user is the last qualifying Administrator. With another active Administrator present, deactivation or demotion requires explicit confirmation, revokes sessions and records an audit event in the same transaction. No account deletion endpoint is provided; deactivation preserves historical references. `UpdatePermissions` already serializes changes and rejects Admin overrides. First provisioning remains the interactive `app:create-admin` command; no default credentials or public recovery endpoint were added.
+
+The UI identifies the last protected Administrator, explains why role/deactivation is unavailable, and confirms permitted transfers. These controls are advisory; the Action is authoritative. Two ordinary access mutations cannot both pass a last-Administrator check because the same roles-row lock serializes them. `AccessLockConcurrencyTest` uses independent PostgreSQL connections to verify that the second transaction times out on that row lock until the first releases it; access feature tests verify the sequential last-Administrator rejection. Direct SQL against access tables is outside ordinary application operations and requires operational database controls; a database trigger was not added because it would complicate bootstrap and role changes without replacing the application transaction boundary.
+
+## Permission presentation and compatibility
+
+Permission codes and existing role/override rows are unchanged. Migration `2026_10_11_000008_clarify_permission_descriptions.php` changes only legacy descriptions that still equal their old seeded text; customized descriptions are not overwritten. The seeder uses the new business-readable descriptions for clean installs. The permission screen groups predefined capabilities and shows inherited role grant, explicit account override and effective result separately. Administrators cannot create or redefine permission codes through the UI. Staff remains least-privileged; management permissions do not imply viewing unless the corresponding policy grants it. The Team Members screen includes both Administrator and Staff accounts while the established `/admin/staff` URL and `staff.*` permission codes remain compatibility identifiers.
+
+Later business operations may justify separate View/Create/Update/Archive/Delete and specialized capabilities. Publishing must be separate from draft editing; reservation confirmation, payment verification, refunds and fulfillment will need distinct authorization decisions in their future phases. Do not add those permissions before their workflows are defined.
+
+## Compatibility and manual scope
+
+The approved canonical vocabulary appears in `AGENTS.md` and [the terminology audit](domain-terminology-audit.md). The PostgreSQL schema, existing foreign-key columns, collection identity codes, URL paths and named routes, permission identifiers, Inertia wire keys, audit action codes and historical subject locators remain unchanged. New frontend type and component names use Food Item, Collection, Variant Version, Selection Group and Group Allowed Option while wire fields such as `dish_id`, `family_id` and `slot_kind` remain explicit compatibility fields. Applied migrations were not rewritten.
+
+This milestone supports guided Admin/Staff access and catalog/draft configuration testing, not customer acceptance or commercial operation. No package publication, direct-sale listing, customer booking, quotation or payment workflow has been added.

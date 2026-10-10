@@ -1,6 +1,6 @@
 import AdminLayout from "../../../layouts/admin-layout";
 import { ProductForm } from "../../../features/packages/components/product-form";
-import type { Family } from "../../../features/catalog/types";
+import type { Collection } from "../../../features/catalog/types";
 import type { PackageProduct } from "../../../features/packages/types";
 
 export default function ProductEdit({
@@ -8,7 +8,7 @@ export default function ProductEdit({
     families,
 }: {
     product: PackageProduct | null;
-    families: Family[];
+    families: Collection[];
 }) {
     return (
         <AdminLayout

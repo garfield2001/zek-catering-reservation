@@ -8,7 +8,7 @@ import {
     CollectionCard,
     behaviorNames,
 } from "../../../../features/catalog/components/collection-card";
-import type { Family } from "../../../../features/catalog/types";
+import type { Collection } from "../../../../features/catalog/types";
 import AdminLayout from "../../../../layouts/admin-layout";
 import type { Pagination } from "../../../../types";
 
@@ -19,14 +19,14 @@ export default function CollectionIndex({
     hasPrimary,
     filters,
 }: {
-    families: Pagination<Family>;
+    families: Pagination<Collection>;
     canManagePresentation: boolean;
     canManageDefaults: boolean;
     hasPrimary: boolean;
     filters: { q: string; status: string; sort: string };
 }) {
     const [creating, setCreating] = useState(false);
-    const [archive, setArchive] = useState<Family | null>(null);
+    const [archive, setArchive] = useState<Collection | null>(null);
     const current = families.data.filter((family) => !family.archived_at);
     const archived = families.data.filter((family) => family.archived_at);
     return (
@@ -107,7 +107,7 @@ export default function CollectionIndex({
                     />
                     <div>
                         <h2 className="font-semibold text-emerald-950">
-                            Set up Main Catering
+                            Set up primary catering
                         </h2>
                         <p className="mt-1 text-sm text-emerald-900">
                             Create your primary collection, then add food items,

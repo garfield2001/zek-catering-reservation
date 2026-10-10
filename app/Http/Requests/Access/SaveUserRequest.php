@@ -28,6 +28,7 @@ class SaveUserRequest extends FormRequest
             'active' => ['required', 'boolean'],
             'role' => ['required', Rule::in($this->user()->isAdmin() ? ['admin', 'staff'] : ['staff'])],
             'access_version' => [$this->route('user') ? 'required' : 'nullable', 'integer', 'min:1'],
+            'confirm_access_change' => ['sometimes', 'boolean'],
         ];
     }
 }

@@ -69,7 +69,9 @@ export function CollectionCreateForm({
                     }}
                 >
                     {!hasPrimary && (
-                        <option value="primary">Main Catering — primary</option>
+                        <option value="primary">
+                            Primary catering collection
+                        </option>
                     )}
                     <option value="addon">Optional add-on</option>
                 </select>
@@ -97,7 +99,7 @@ export function CollectionCreateForm({
             )}
             {form.data.kind === "primary" && (
                 <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
-                    Main Catering is the one primary collection. Add any number
+                    One primary catering collection is allowed. Add any number
                     of independently configured package variants after setup.
                 </p>
             )}

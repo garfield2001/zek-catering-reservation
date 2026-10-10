@@ -1,16 +1,16 @@
 import { useForm } from "@inertiajs/react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
-import type { Dish, Family, Offering } from "../types";
+import type { FoodItem, Collection, Offering } from "../types";
 import { catalogPaths } from "../paths";
 export function OfferingForm({
     dish,
     offering,
     families,
 }: {
-    dish: Dish;
+    dish: FoodItem;
     offering: Offering | null;
-    families: Family[];
+    families: Collection[];
 }) {
     const form = useForm({
         family_id: offering?.family_id ?? families[0]?.id ?? 0,
@@ -31,7 +31,7 @@ export function OfferingForm({
         >
             <Field
                 id="family_id"
-                label="Product family"
+                label="Collection"
                 error={form.errors.family_id}
             >
                 {offering ? (

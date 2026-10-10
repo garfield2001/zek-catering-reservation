@@ -44,7 +44,7 @@ export default function ProductShow({
             {!product.variants?.length ? (
                 <EmptyState
                     title="No variants yet"
-                    description="Create a draft variant to configure pricing and inclusion slots."
+                    description="Create a draft variant to configure pricing and selection groups."
                 />
             ) : (
                 <div className="grid gap-3 sm:grid-cols-2">

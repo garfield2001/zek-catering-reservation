@@ -1,8 +1,8 @@
 import AdminLayout from "../../../layouts/admin-layout";
 import { VariantForm } from "../../../features/packages/components/variant-form";
-import type { OrderDefault } from "../../../features/catalog/types";
+import type { CollectionOrderingDefault } from "../../../features/catalog/types";
 import type {
-    DraftVersion,
+    VariantVersion,
     PackageProduct,
     PackageVariant,
 } from "../../../features/packages/types";
@@ -15,8 +15,8 @@ export default function VariantEdit({
 }: {
     product: PackageProduct;
     variant: PackageVariant | null;
-    version: DraftVersion | null;
-    defaults: OrderDefault;
+    version: VariantVersion | null;
+    defaults: CollectionOrderingDefault;
 }) {
     return (
         <AdminLayout

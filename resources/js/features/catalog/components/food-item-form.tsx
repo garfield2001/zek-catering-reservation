@@ -2,16 +2,16 @@ import { useForm } from "@inertiajs/react";
 import { useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
-import type { Category, Dish, Family } from "../types";
+import type { FoodCategory, FoodItem, Collection } from "../types";
 import { catalogPaths } from "../paths";
-export function DishForm({
+export function FoodItemForm({
     dish,
     categories,
     families,
 }: {
-    dish: Dish | null;
-    categories: Category[];
-    families: Family[];
+    dish: FoodItem | null;
+    categories: FoodCategory[];
+    families: Collection[];
 }) {
     const [collectionSearch, setCollectionSearch] = useState("");
     const form = useForm({

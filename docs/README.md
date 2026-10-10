@@ -4,7 +4,7 @@ Updated 2026-10-10 with the approved dynamic-collection Phase 3.5 architecture. 
 1. [Architecture and approved rules](docs/01-architecture.md)
 2. [Acceptance criteria](docs/02-acceptance-cases.md)
 3. [Code organization](docs/03-code-organization.md)
-4. [Implementation-agent instructions](docs/04-codex-start-prompt.md)
+4. [Historical implementation-agent kickoff (superseded)](docs/04-codex-start-prompt.md)
 5. [Database entities and constraints](docs/05-database-entities.md)
 6. [Implementation plan and remaining decisions](docs/06-implementation-plan.md)
 7. [Updated logical ERD](diagrams/catalog_v3.drawio)
@@ -13,6 +13,8 @@ Updated 2026-10-10 with the approved dynamic-collection Phase 3.5 architecture. 
 10. [Phase 3 package drafts and pricing implementation](docs/09-phase-3-package-drafts.md)
 11. [Phase 3.5 dynamic collections and migration](docs/10-phase-3-5-dynamic-collections.md)
 12. [Admin and Staff guide](docs/11-admin-staff-guide.md)
+13. [Approved domain terminology and compatibility audit](docs/domain-terminology-audit.md)
+14. [Pre-Phase-4 access safeguards and terminology implementation](docs/12-pre-phase-4-access-and-terminology.md)
 
 The former five family names are examples, not seeded or required business records. One primary collection and unlimited add-on collections can be created by Admin using controlled behavior types. Customer accounts, reservations, quotations, payments, scheduling, inventory and notifications are deferred. Future published package facts freeze; availability stays current; direct-sale pricing will use published listing revisions.
 

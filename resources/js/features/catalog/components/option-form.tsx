@@ -1,7 +1,7 @@
 import { useForm } from "@inertiajs/react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
-import type { Dish, Offering, ServingOption } from "../types";
+import type { FoodItem, Offering, ServingOption } from "../types";
 import { catalogPaths } from "../paths";
 const units = [
     { value: "kg", label: "Kilograms" },
@@ -16,7 +16,7 @@ export function OptionForm({
     offering,
     option,
 }: {
-    dish: Dish;
+    dish: FoodItem;
     offering: Offering;
     option: ServingOption | null;
 }) {

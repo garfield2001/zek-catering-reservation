@@ -31,7 +31,7 @@ class GroupController extends Controller
     {
         $action->handle($request->user(), $version, $request->validated());
 
-        return redirect()->route('packages.versions.show', [$product, $variant, $version])->with('status', 'Selection slot added.');
+        return redirect()->route('packages.versions.show', [$product, $variant, $version])->with('status', 'Selection group added.');
     }
 
     public function edit(Product $product, ProductVariant $variant, VariantVersion $version, SelectionGroup $group, AvailablePackageOptions $options): Response
@@ -45,7 +45,7 @@ class GroupController extends Controller
     {
         $action->handle($request->user(), $version, $request->validated(), $group);
 
-        return redirect()->route('packages.versions.show', [$product, $variant, $version])->with('status', 'Selection slot updated.');
+        return redirect()->route('packages.versions.show', [$product, $variant, $version])->with('status', 'Selection group updated.');
     }
 
     public function destroy(Request $request, Product $product, ProductVariant $variant, VariantVersion $version, SelectionGroup $group, DeleteSelectionGroup $action): RedirectResponse
@@ -53,7 +53,7 @@ class GroupController extends Controller
         Gate::authorize('update', $group);
         $action->handle($request->user(), $group);
 
-        return redirect()->route('packages.versions.show', [$product, $variant, $version])->with('status', 'Selection slot removed from the draft.');
+        return redirect()->route('packages.versions.show', [$product, $variant, $version])->with('status', 'Selection group removed from the draft.');
     }
 
     private function editor(Product $product, ProductVariant $variant, VariantVersion $version, ?SelectionGroup $group, AvailablePackageOptions $options): Response

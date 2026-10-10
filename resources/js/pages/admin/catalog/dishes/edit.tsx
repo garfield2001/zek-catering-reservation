@@ -1,25 +1,29 @@
 import AdminLayout from "../../../../layouts/admin-layout";
-import { DishForm } from "../../../../features/catalog/components/dish-form";
+import { FoodItemForm } from "../../../../features/catalog/components/food-item-form";
 import type {
-    Category,
-    Dish,
-    Family,
+    FoodCategory,
+    FoodItem,
+    Collection,
 } from "../../../../features/catalog/types";
 export default function DishEdit({
     dish,
     categories,
     families,
 }: {
-    dish: Dish | null;
-    categories: Category[];
-    families: Family[];
+    dish: FoodItem | null;
+    categories: FoodCategory[];
+    families: Collection[];
 }) {
     return (
         <AdminLayout
-            title={dish ? "Edit dish" : "Create dish"}
+            title={dish ? "Edit food item" : "Create food item"}
             description="Assign one food category and any number of eligible collections."
         >
-            <DishForm dish={dish} categories={categories} families={families} />
+            <FoodItemForm
+                dish={dish}
+                categories={categories}
+                families={families}
+            />
         </AdminLayout>
     );
 }

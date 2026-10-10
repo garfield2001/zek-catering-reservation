@@ -30,7 +30,7 @@ class CreateCollection
                 throw ValidationException::withMessages(['behavior_type' => 'Choose a supported configuration type for this collection role.']);
             }
             if (! $isAddon && ProductFamily::where('is_addon', false)->whereNull('archived_at')->exists()) {
-                throw ValidationException::withMessages(['kind' => 'A current Main Catering collection already exists. Add package variants there.']);
+                throw ValidationException::withMessages(['kind' => 'A current primary catering collection already exists. Add package variants there.']);
             }
             if (ProductFamily::whereNull('archived_at')->whereRaw('lower(btrim(name)) = lower(btrim(?))', [$data['name']])->exists()) {
                 throw ValidationException::withMessages(['name' => 'This collection name is already in use.']);

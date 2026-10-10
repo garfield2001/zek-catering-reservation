@@ -26,12 +26,18 @@ export default function Permissions({
     return (
         <AdminLayout
             title={"Permissions · " + staff.name}
-            description="Explicit denials take precedence over role grants. Changes revoke existing sessions."
+            description="Permissions are predefined by the application. Role grants are inherited; account overrides can allow or deny them. Changes revoke existing sessions."
         >
             <form
                 className="max-w-2xl rounded-xl border border-stone-200 bg-white p-6"
                 onSubmit={(e) => {
                     e.preventDefault();
+                    if (
+                        !window.confirm(
+                            "Apply these permission changes? Existing sessions for this team member will be revoked.",
+                        )
+                    )
+                        return;
                     form.put("/admin/staff/" + staff.id + "/permissions");
                 }}
             >

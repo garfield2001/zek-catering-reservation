@@ -2,8 +2,8 @@ import { useForm, usePage } from "@inertiajs/react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
 import type { SharedProps } from "../../../types";
-import type { StaffAccount } from "../types";
-export function StaffForm({ staff }: { staff: StaffAccount | null }) {
+import type { UserAccount } from "../types";
+export function TeamMemberForm({ staff }: { staff: UserAccount | null }) {
     const { auth } = usePage<SharedProps>().props;
     const form = useForm({
         name: staff?.name ?? "",
@@ -13,6 +13,7 @@ export function StaffForm({ staff }: { staff: StaffAccount | null }) {
         active: staff?.active ?? true,
         role: staff?.role ?? "staff",
         access_version: staff?.access_version ?? 1,
+        confirm_access_change: false,
     });
     return (
         <form
@@ -23,8 +24,23 @@ export function StaffForm({ staff }: { staff: StaffAccount | null }) {
                     onFinish: () =>
                         form.reset("password", "password_confirmation"),
                 };
-                if (staff) form.put("/admin/staff/" + staff.id, options);
-                else form.post("/admin/staff", options);
+                if (staff) {
+                    const losingAdmin =
+                        staff.role === "admin" &&
+                        (form.data.role !== "admin" || !form.data.active);
+                    if (
+                        losingAdmin &&
+                        !window.confirm(
+                            "This removes Administrator access and revokes existing sessions. Continue only if another active Administrator can manage accounts and permissions.",
+                        )
+                    )
+                        return;
+                    form.transform((data) => ({
+                        ...data,
+                        confirm_access_change: losingAdmin,
+                    }));
+                    form.put("/admin/staff/" + staff.id, options);
+                } else form.post("/admin/staff", options);
             }}
         >
             <Field id="name" label="Full name" error={form.errors.name}>
@@ -55,9 +71,16 @@ export function StaffForm({ staff }: { staff: StaffAccount | null }) {
                         )
                     }
                 >
-                    <option value="staff">Staff</option>
+                    <option
+                        value="staff"
+                        disabled={staff?.protectedAdministrator}
+                    >
+                        Staff
+                    </option>
                     {auth?.isAdmin && (
-                        <option value="admin">Admin — full access</option>
+                        <option value="admin">
+                            Administrator — full access
+                        </option>
                     )}
                 </select>
             </Field>
@@ -98,6 +121,7 @@ export function StaffForm({ staff }: { staff: StaffAccount | null }) {
                 <input
                     type="checkbox"
                     checked={form.data.active}
+                    disabled={staff?.protectedAdministrator}
                     onChange={(e) => form.setData("active", e.target.checked)}
                 />
                 Account is active
@@ -105,6 +129,18 @@ export function StaffForm({ staff }: { staff: StaffAccount | null }) {
             {form.errors.active && (
                 <p role="alert" className="text-sm text-red-700">
                     {form.errors.active}
+                </p>
+            )}
+            {staff?.protectedAdministrator && (
+                <p className="text-sm text-amber-800">
+                    This is the last active Administrator. Create or activate
+                    another Administrator before deactivating or changing this
+                    role.
+                </p>
+            )}
+            {form.errors.confirm_access_change && (
+                <p role="alert" className="text-sm text-red-700">
+                    {form.errors.confirm_access_change}
                 </p>
             )}
             <Button disabled={form.processing}>

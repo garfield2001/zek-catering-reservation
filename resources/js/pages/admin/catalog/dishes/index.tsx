@@ -1,18 +1,18 @@
 import { Link } from "@inertiajs/react";
 import AdminLayout from "../../../../layouts/admin-layout";
 import { PaginationControls } from "../../../../components/ui/pagination";
-import { DishSearch } from "../../../../features/catalog/components/dish-search";
+import { FoodItemSearch } from "../../../../features/catalog/components/food-item-search";
 import { EmptyState } from "../../../../features/catalog/components/empty-state";
 import { StatusBadge } from "../../../../features/catalog/components/status-badge";
 import { catalogPaths } from "../../../../features/catalog/paths";
-import type { Dish } from "../../../../features/catalog/types";
+import type { FoodItem } from "../../../../features/catalog/types";
 import type { Pagination } from "../../../../types";
 export default function DishIndex({
     dishes,
     filters,
     canManage,
 }: {
-    dishes: Pagination<Dish>;
+    dishes: Pagination<FoodItem>;
     filters: { q: string };
     canManage: boolean;
 }) {
@@ -29,7 +29,7 @@ export default function DishIndex({
                     Add food item
                 </Link>
             )}
-            <DishSearch initial={filters.q} />
+            <FoodItemSearch initial={filters.q} />
             {dishes.data.length === 0 ? (
                 <EmptyState
                     title="No food items found"

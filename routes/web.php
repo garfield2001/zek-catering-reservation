@@ -10,29 +10,31 @@ use App\Http\Controllers\Admin\Catalog\OfferingController;
 use App\Http\Controllers\Admin\Catalog\OfferingOptionController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\GuideController;
+use App\Http\Controllers\Admin\LandingController;
 use App\Http\Controllers\Admin\Package\GroupController as PackageGroupController;
 use App\Http\Controllers\Admin\Package\PreviewController as PackagePreviewController;
 use App\Http\Controllers\Admin\Package\ProductController as PackageProductController;
 use App\Http\Controllers\Admin\Package\VariantController as PackageVariantController;
 use App\Http\Controllers\Admin\PermissionController;
-use App\Http\Controllers\Admin\StaffController;
+use App\Http\Controllers\Admin\TeamMemberController;
 use App\Http\Controllers\Auth\SessionController;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/admin');
+Route::redirect('/', '/admin/home');
 Route::middleware('guest')->group(function () {
     Route::get('/login', [SessionController::class, 'create'])->name('login');
     Route::post('/login', [SessionController::class, 'store'])->middleware('throttle:30,1');
 });
 Route::middleware('auth')->group(function () {
+    Route::get('/admin/home', LandingController::class)->name('admin.home');
     Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
     Route::get('/admin', DashboardController::class)->middleware('can:dashboard.view')->name('dashboard');
     Route::get('/admin/guide', GuideController::class)->middleware('can:dashboard.view')->name('guide');
-    Route::get('/admin/staff', [StaffController::class, 'index'])->name('staff.index');
-    Route::get('/admin/staff/create', [StaffController::class, 'create']);
-    Route::post('/admin/staff', [StaffController::class, 'store']);
-    Route::get('/admin/staff/{user}/edit', [StaffController::class, 'edit']);
-    Route::put('/admin/staff/{user}', [StaffController::class, 'update']);
+    Route::get('/admin/staff', [TeamMemberController::class, 'index'])->name('staff.index');
+    Route::get('/admin/staff/create', [TeamMemberController::class, 'create']);
+    Route::post('/admin/staff', [TeamMemberController::class, 'store']);
+    Route::get('/admin/staff/{user}/edit', [TeamMemberController::class, 'edit']);
+    Route::put('/admin/staff/{user}', [TeamMemberController::class, 'update']);
     Route::get('/admin/staff/{user}/permissions', [PermissionController::class, 'edit']);
     Route::put('/admin/staff/{user}/permissions', [PermissionController::class, 'update']);
     Route::get('/admin/audit', AuditController::class)->name('audit.index');

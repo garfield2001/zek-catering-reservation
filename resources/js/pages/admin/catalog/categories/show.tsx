@@ -7,15 +7,18 @@ import { CategoryForm } from "../../../../features/catalog/components/category-f
 import { EmptyState } from "../../../../features/catalog/components/empty-state";
 import { StatusBadge } from "../../../../features/catalog/components/status-badge";
 import { catalogPaths } from "../../../../features/catalog/paths";
-import type { Category, Dish } from "../../../../features/catalog/types";
+import type {
+    FoodCategory,
+    FoodItem,
+} from "../../../../features/catalog/types";
 import type { Pagination } from "../../../../types";
 export default function CategoryShow({
     category,
     dishes,
     canManage,
 }: {
-    category: Category;
-    dishes: Pagination<Dish>;
+    category: FoodCategory;
+    dishes: Pagination<FoodItem>;
     canManage: boolean;
 }) {
     const [editing, setEditing] = useState(false);

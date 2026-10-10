@@ -1,5 +1,7 @@
 # Catering Catalog Architecture V3 — Approved Clarifications
 
+Current-state note: the original five named family examples and fixed package examples below are historical V3 scenarios, not required records or seeded commercial data. Phase 3.5's dynamic collections, empty-catalog first run, behavior-driven configuration, and the approved [domain vocabulary](domain-terminology-audit.md) supersede conflicting prose. Physical ERD names such as `product_families` and `dishes` remain compatibility identifiers.
+
 Status: V3 approved; Phases 1 and 2 (access foundation and master catalog) are implemented. Later phases remain unimplemented. Updated 2026-10-09 after client review. Read with the entity definitions and acceptance criteria. Approved business rules take precedence over examples. No production prices are inferred from fixtures.
 
 ## Scope and architecture

@@ -1,4 +1,4 @@
-export type Category = {
+export type FoodCategory = {
     id: number;
     code: string;
     name: string;
@@ -6,7 +6,7 @@ export type Category = {
     active: boolean;
     dishes_count?: number;
 };
-export type Family = {
+export type Collection = {
     id: number;
     code: string;
     name: string;
@@ -22,9 +22,9 @@ export type Family = {
     sort_order: number;
     active: boolean;
     pivot?: { active: boolean };
-    order_default?: OrderDefault;
+    order_default?: CollectionOrderingDefault;
 };
-export type OrderDefault = {
+export type CollectionOrderingDefault = {
     family_id: number;
     minimum_quantity: number;
     quantity_step: number;
@@ -50,18 +50,18 @@ export type Offering = {
     name: string;
     description: string | null;
     active: boolean;
-    family?: Family;
+    family?: Collection;
     options?: ServingOption[];
 };
-export type Dish = {
+export type FoodItem = {
     id: number;
     code: string;
     name: string;
     description: string | null;
     category_id: number;
     active: boolean;
-    category?: Category;
-    eligible_families?: Family[];
+    category?: FoodCategory;
+    eligible_families?: Collection[];
     offerings?: Offering[];
     offerings_count?: number;
 };

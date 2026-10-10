@@ -1,7 +1,7 @@
 import { useForm } from "@inertiajs/react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
-import type { Family } from "../../catalog/types";
+import type { Collection } from "../../catalog/types";
 import { packagePaths } from "../paths";
 import type { PackageProduct } from "../types";
 
@@ -10,7 +10,7 @@ export function ProductForm({
     families,
 }: {
     product: PackageProduct | null;
-    families: Family[];
+    families: Collection[];
 }) {
     const form = useForm({
         family_id: product?.family_id ?? families[0]?.id ?? 0,

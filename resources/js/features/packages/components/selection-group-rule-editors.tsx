@@ -1,11 +1,11 @@
 import type {
-    AvailableOption,
+    AvailableServingOption,
     CategoryRule,
-    DishRule,
-    PackageGroup,
+    FoodItemRule,
+    SelectionGroup,
 } from "../types";
 
-export function GroupRuleEditors({
+export function SelectionGroupRuleEditors({
     categoryMode,
     categoryRules,
     dishRules,
@@ -17,16 +17,16 @@ export function GroupRuleEditors({
     onCategories,
     onDishes,
 }: {
-    categoryMode: PackageGroup["category_mode"];
+    categoryMode: SelectionGroup["category_mode"];
     categoryRules: CategoryRule[];
-    dishRules: DishRule[];
+    dishRules: FoodItemRule[];
     categories: { id: number; name: string }[];
-    options: AvailableOption[];
+    options: AvailableServingOption[];
     maximumCount: number;
     error?: string;
-    onMode: (mode: PackageGroup["category_mode"]) => void;
+    onMode: (mode: SelectionGroup["category_mode"]) => void;
     onCategories: (rules: CategoryRule[]) => void;
-    onDishes: (rules: DishRule[]) => void;
+    onDishes: (rules: FoodItemRule[]) => void;
 }) {
     const dishes = [
         ...new Map(
@@ -44,7 +44,7 @@ export function GroupRuleEditors({
             <section className="rounded-xl border border-stone-200 bg-white p-5">
                 <h2 className="font-semibold">Food category rules</h2>
                 <p className="text-sm text-stone-600">
-                    Free mode permits any allowed dish; restricted mode
+                    Free mode permits any allowed food item; restricted mode
                     whitelists the categories below and applies quotas.
                 </p>
                 <select
@@ -52,7 +52,7 @@ export function GroupRuleEditors({
                     value={categoryMode}
                     onChange={(event) => {
                         const mode = event.target
-                            .value as PackageGroup["category_mode"];
+                            .value as SelectionGroup["category_mode"];
                         onMode(mode);
                     }}
                 >
@@ -159,7 +159,9 @@ export function GroupRuleEditors({
                 )}
             </section>
             <section className="rounded-xl border border-stone-200 bg-white p-5">
-                <h2 className="font-semibold">Dish allow/deny exceptions</h2>
+                <h2 className="font-semibold">
+                    Food item allow/deny exceptions
+                </h2>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     {dishes.map(([id, name]) => (
                         <label key={id} className="text-sm">

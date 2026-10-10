@@ -1,9 +1,9 @@
 import { useForm } from "@inertiajs/react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
-import type { Category } from "../types";
+import type { FoodCategory } from "../types";
 import { catalogPaths } from "../paths";
-export function CategoryForm({ category }: { category: Category | null }) {
+export function CategoryForm({ category }: { category: FoodCategory | null }) {
     const form = useForm({
         code: category?.code ?? "",
         name: category?.name ?? "",

@@ -3,25 +3,25 @@ import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
 import { packagePaths } from "../paths";
 import type {
-    AvailableOption,
-    DraftVersion,
-    PackageGroup,
+    AvailableServingOption,
+    VariantVersion,
+    SelectionGroup,
     PackageProduct,
     PackageVariant,
 } from "../types";
-import type { GroupPayload } from "./group-form-types";
-import { GroupOptionPicker } from "./group-option-picker";
-import { GroupRuleEditors } from "./group-rule-editors";
+import type { SelectionGroupPayload } from "./selection-group-form-types";
+import { GroupAllowedOptionPicker } from "./group-allowed-option-picker";
+import { SelectionGroupRuleEditors } from "./selection-group-rule-editors";
 
 const kinds: Record<
     string,
-    { value: PackageGroup["slot_kind"]; label: string }[]
+    { value: SelectionGroup["slot_kind"]; label: string }[]
 > = {
     main_package: [
         { value: "item", label: "Included item or choice" },
         { value: "rice", label: "Fixed rice" },
         { value: "drink", label: "Drink choice" },
-        { value: "dish", label: "Custom dishes" },
+        { value: "dish", label: "Customer food item choices" },
     ],
     package: [
         { value: "item", label: "Included item or choice" },
@@ -29,13 +29,13 @@ const kinds: Record<
         { value: "tray", label: "Tray choices" },
         { value: "rice", label: "Fixed rice" },
         { value: "drink", label: "Drink choice" },
-        { value: "dish", label: "Custom dishes" },
+        { value: "dish", label: "Customer food item choices" },
     ],
     packed_meal: [
         { value: "item", label: "Included item or choice" },
         { value: "rice", label: "Fixed rice" },
         { value: "drink", label: "Drink choice" },
-        { value: "dish", label: "Meal dishes" },
+        { value: "dish", label: "Meal food items" },
     ],
     fixed_bundle: [
         { value: "item", label: "Fixed included item" },
@@ -43,7 +43,7 @@ const kinds: Record<
     ],
 };
 
-export function GroupForm({
+export function SelectionGroupForm({
     product,
     variant,
     version,
@@ -54,15 +54,15 @@ export function GroupForm({
 }: {
     product: PackageProduct;
     variant: PackageVariant;
-    version: DraftVersion;
-    group: PackageGroup | null;
-    availableOptions: AvailableOption[];
+    version: VariantVersion;
+    group: SelectionGroup | null;
+    availableOptions: AvailableServingOption[];
     categories: { id: number; name: string }[];
     canPrice: boolean;
 }) {
     const behaviorType = product.family?.behavior_type ?? "";
     const choices = kinds[behaviorType] ?? [];
-    const form = useForm<GroupPayload>({
+    const form = useForm<SelectionGroupPayload>({
         group_code: group?.group_code ?? "",
         name: group?.name ?? "",
         mode: group?.mode ?? "fixed",
@@ -107,7 +107,7 @@ export function GroupForm({
             <div className="grid gap-4 rounded-xl border border-stone-200 bg-white p-5 sm:grid-cols-2">
                 <Field
                     id="group_code"
-                    label="Stable slot code"
+                    label="Stable selection group code"
                     error={form.errors.group_code}
                 >
                     <input
@@ -118,12 +118,12 @@ export function GroupForm({
                         onChange={(event) =>
                             form.setData("group_code", event.target.value)
                         }
-                        placeholder="custom_dishes"
+                        placeholder="customer_choices"
                     />
                 </Field>
                 <Field
                     id="group_name"
-                    label="Slot name"
+                    label="Selection group name"
                     error={form.errors.name}
                 >
                     <input
@@ -146,7 +146,8 @@ export function GroupForm({
                         onChange={(event) =>
                             form.setData(
                                 "slot_kind",
-                                event.target.value as PackageGroup["slot_kind"],
+                                event.target
+                                    .value as SelectionGroup["slot_kind"],
                             )
                         }
                     >
@@ -168,7 +169,8 @@ export function GroupForm({
                         onChange={(event) =>
                             form.setData(
                                 "mode",
-                                event.target.value as GroupPayload["mode"],
+                                event.target
+                                    .value as SelectionGroupPayload["mode"],
                             )
                         }
                     >
@@ -258,10 +260,10 @@ export function GroupForm({
                             form.setData("unique_dishes", event.target.checked)
                         }
                     />
-                    Require distinct canonical dishes
+                    Require distinct food items
                 </label>
             </div>
-            <GroupOptionPicker
+            <GroupAllowedOptionPicker
                 available={visibleOptions}
                 selected={form.data.options}
                 group={group}
@@ -271,7 +273,7 @@ export function GroupForm({
                 error={form.errors.options}
                 onChange={(options) => form.setData("options", options)}
             />
-            <GroupRuleEditors
+            <SelectionGroupRuleEditors
                 categoryMode={form.data.category_mode}
                 categoryRules={form.data.category_rules}
                 dishRules={form.data.dish_rules}
@@ -292,11 +294,11 @@ export function GroupForm({
             />
             {Object.keys(form.errors).length > 0 && (
                 <p role="alert" className="text-sm text-red-700">
-                    Review the slot configuration and permitted options.
+                    Review the selection group and its allowed serving options.
                 </p>
             )}
             <Button disabled={form.processing || visibleOptions.length === 0}>
-                {group ? "Save slot" : "Add slot"}
+                {group ? "Save selection group" : "Add selection group"}
             </Button>
         </form>
     );

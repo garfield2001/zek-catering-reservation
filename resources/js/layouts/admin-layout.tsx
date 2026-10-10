@@ -52,10 +52,10 @@ const navigation = [
         icon: ClipboardList,
     },
     {
-        label: "Team & access",
+        label: "Team Members",
         href: "/admin/staff",
         permission: "staff.view",
-        extraPermission: "staff.manage",
+        extraPermission: "staff.view",
         icon: Users,
     },
     {
@@ -107,7 +107,7 @@ export default function AdminLayout({
                 <aside className="border-b border-slate-200 bg-white lg:min-h-screen lg:border-b-0 lg:border-r">
                     <div className="flex items-center justify-between px-6 py-5 lg:py-7">
                         <Link
-                            href="/admin"
+                            href="/admin/home"
                             className="flex items-center gap-3 text-emerald-950"
                         >
                             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-900 text-white">
@@ -123,7 +123,7 @@ export default function AdminLayout({
                             </span>
                         </Link>
                         <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 lg:hidden">
-                            {auth?.isAdmin ? "Admin" : "Staff"}
+                            {auth?.isAdmin ? "Administrator" : "Staff"}
                         </span>
                     </div>
                     <nav
@@ -162,13 +162,15 @@ export default function AdminLayout({
                             })}
                     </nav>
                     <div className="hidden px-4 py-6 lg:block">
-                        <Link
-                            href="/admin/guide"
-                            className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-3 text-sm font-medium text-slate-600 hover:border-emerald-300 hover:text-emerald-900"
-                        >
-                            <BookOpen size={17} aria-hidden="true" /> Admin
-                            guide
-                        </Link>
+                        {auth?.permissions.includes("dashboard.view") && (
+                            <Link
+                                href="/admin/guide"
+                                className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-3 text-sm font-medium text-slate-600 hover:border-emerald-300 hover:text-emerald-900"
+                            >
+                                <BookOpen size={17} aria-hidden="true" /> Admin
+                                guide
+                            </Link>
+                        )}
                     </div>
                 </aside>
                 <div className="min-w-0">

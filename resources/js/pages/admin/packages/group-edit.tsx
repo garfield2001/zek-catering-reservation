@@ -1,9 +1,9 @@
 import AdminLayout from "../../../layouts/admin-layout";
-import { GroupForm } from "../../../features/packages/components/group-form";
+import { SelectionGroupForm } from "../../../features/packages/components/selection-group-form";
 import type {
-    AvailableOption,
-    DraftVersion,
-    PackageGroup,
+    AvailableServingOption,
+    VariantVersion,
+    SelectionGroup,
     PackageProduct,
     PackageVariant,
 } from "../../../features/packages/types";
@@ -19,18 +19,18 @@ export default function GroupEdit({
 }: {
     product: PackageProduct;
     variant: PackageVariant;
-    version: DraftVersion;
-    group: PackageGroup | null;
-    availableOptions: AvailableOption[];
+    version: VariantVersion;
+    group: SelectionGroup | null;
+    availableOptions: AvailableServingOption[];
     categories: { id: number; name: string }[];
     canPrice: boolean;
 }) {
     return (
         <AdminLayout
-            title={group ? `Edit ${group.name}` : "Add selection slot"}
-            description="Choose allowed options, defaults, counts and optional category or dish restrictions."
+            title={group ? `Edit ${group.name}` : "Add selection group"}
+            description="Configure included items or customer choices, allowed serving options, counts and optional food category or item rules."
         >
-            <GroupForm
+            <SelectionGroupForm
                 product={product}
                 variant={variant}
                 version={version}

@@ -1,9 +1,13 @@
 import { useForm } from "@inertiajs/react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
-import type { Family } from "../types";
+import type { Collection } from "../types";
 import { catalogPaths } from "../paths";
-export function FamilyDefaultForm({ family }: { family: Family }) {
+export function CollectionOrderingDefaultForm({
+    family,
+}: {
+    family: Collection;
+}) {
     const setting = family.order_default!;
     const unit =
         family.behavior_type === "main_package"
@@ -97,7 +101,7 @@ export function FamilyDefaultForm({ family }: { family: Family }) {
                         form.setData("enforce_minimum_floor", e.target.checked)
                     }
                 />
-                Prevent future variants from lowering this family minimum
+                Prevent future variants from lowering this collection minimum
             </label>
             {family.behavior_type === "main_package" && (
                 <p className="text-xs text-amber-800">

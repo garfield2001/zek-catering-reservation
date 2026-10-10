@@ -18,16 +18,15 @@ test("Admin can grant Staff audit access through the interface", async ({
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
-    await page
-        .getByRole("link", { name: "Team & access", exact: true })
-        .click();
+    await page.getByRole("link", { name: "Team Members", exact: true }).click();
     const row = page
         .getByRole("row")
         .filter({ hasText: "staff-" + run + "@example.test" });
     await row.getByRole("link", { name: "Permissions" }).click();
     await page
-        .getByLabel("View audit history", { exact: false })
+        .getByLabel("View Activity History", { exact: false })
         .selectOption("allow");
+    page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Save permissions" }).click();
     await expect(page.getByRole("status")).toContainText("Permissions updated");
     await page.getByRole("button", { name: "Sign out" }).click();

@@ -66,7 +66,7 @@ class AccessFoundationTest extends TestCase
         $user = $this->user();
         $this->withSession(['marker' => true]);
         $old = session()->getId();
-        $this->post('/login', ['email' => strtoupper($user->email), 'password' => 'test-password-only'])->assertRedirect('/admin');
+        $this->post('/login', ['email' => strtoupper($user->email), 'password' => 'test-password-only'])->assertRedirect('/admin/home');
         $this->assertAuthenticatedAs($user);
         $this->assertNotSame($old, session()->getId());
         $this->assertSame($user->access_version, session('access_version'));
@@ -124,6 +124,29 @@ class AccessFoundationTest extends TestCase
         $this->assertFalse($resolver->allows($admin, 'audit.view'));
     }
 
+    public function test_staff_denied_dashboard_is_sent_to_an_authorized_section_after_login(): void
+    {
+        $staff = $this->user();
+        $this->grant($staff, 'dashboard.view', 'deny');
+        $this->grant($staff, 'catalog.view');
+
+        $this->get('/admin')->assertRedirect('/login');
+        $this->post('/login', ['email' => $staff->email, 'password' => 'test-password-only'])
+            ->assertRedirect('/admin/home');
+        $this->get('/admin/home')->assertRedirect('/admin/catalog/dishes');
+        $this->get('/admin')->assertForbidden();
+        $this->get('/admin/staff')->assertForbidden();
+    }
+
+    public function test_active_staff_without_a_workspace_permission_gets_a_safe_landing_page(): void
+    {
+        $staff = $this->user();
+        $this->grant($staff, 'dashboard.view', 'deny');
+
+        $this->signIn($staff)->get('/admin/home')->assertOk();
+        $this->get('/admin')->assertForbidden();
+    }
+
     public function test_admin_can_create_staff_with_hashed_password_and_safe_audit(): void
     {
         $admin = $this->user('admin');
@@ -166,6 +189,52 @@ class AccessFoundationTest extends TestCase
         $this->put('/admin/staff/'.$admin->id, $this->payload($admin, ['role' => 'staff']))->assertSessionHasErrors('active');
         $this->assertTrue($admin->fresh()->active);
         $this->assertDatabaseMissing('audit_events', ['action' => 'access.user_updated']);
+    }
+
+    public function test_administrator_transfer_requires_another_active_admin_and_explicit_confirmation(): void
+    {
+        $first = $this->user('admin');
+        $second = $this->user('admin');
+        $this->signIn($second)->put('/admin/staff/'.$first->id,
+            $this->payload($first, ['active' => false]))->assertSessionHasErrors('confirm_access_change');
+        $this->assertTrue($first->fresh()->active);
+
+        $this->put('/admin/staff/'.$first->id,
+            $this->payload($first, ['active' => false, 'confirm_access_change' => true]))->assertRedirect('/admin/home');
+        $this->assertFalse($first->fresh()->active);
+        $this->assertDatabaseHas('audit_events', ['action' => 'access.user_updated', 'subject_id' => $first->id]);
+
+        $this->put('/admin/staff/'.$second->id,
+            $this->payload($second, ['role' => 'staff', 'confirm_access_change' => true]))->assertSessionHasErrors('active');
+        $this->assertTrue($second->fresh()->isAdmin());
+    }
+
+    public function test_admin_overrides_cannot_revoke_full_administrative_access(): void
+    {
+        $admin = $this->user('admin');
+        $this->grant($admin, 'access.manage', 'deny');
+        $this->grant($admin, 'staff.manage', 'deny');
+        $this->assertTrue(app(PermissionResolver::class)->allows($admin, 'access.manage'));
+        $this->assertTrue(app(PermissionResolver::class)->allows($admin, 'staff.manage'));
+        $this->signIn($admin)->get('/admin/staff')->assertOk();
+        $this->get('/admin/staff/'.$admin->id.'/permissions')->assertUnprocessable();
+        $this->put('/admin/staff/'.$admin->id.'/permissions', [
+            'access_version' => $admin->access_version,
+            'overrides' => [['code' => 'access.manage', 'effect' => 'deny']],
+        ])->assertUnprocessable();
+        $this->assertDatabaseMissing('audit_events', ['action' => 'access.permissions_updated', 'subject_id' => $admin->id]);
+    }
+
+    public function test_administrator_can_transfer_role_to_another_active_administrator(): void
+    {
+        $first = $this->user('admin');
+        $second = $this->user('admin');
+
+        $this->signIn($second)->put('/admin/staff/'.$first->id,
+            $this->payload($first, ['role' => 'staff', 'confirm_access_change' => true]))->assertRedirect('/admin/home');
+        $this->assertFalse($first->fresh()->isAdmin());
+        $this->assertTrue($second->fresh()->isAdmin());
+        $this->assertDatabaseHas('audit_events', ['action' => 'access.user_updated', 'subject_id' => $first->id]);
     }
 
     public function test_stale_edit_and_duplicate_email_are_rejected(): void
@@ -256,6 +325,8 @@ class AccessFoundationTest extends TestCase
             ->assertSuccessful();
         $user = User::where('email', 'initial@example.test')->sole();
         $this->assertTrue($user->isAdmin());
+        $this->assertTrue(app(PermissionResolver::class)->allows($user, 'staff.manage'));
+        $this->assertTrue(app(PermissionResolver::class)->allows($user, 'access.manage'));
         $this->assertDatabaseHas('audit_events', ['action' => 'access.admin_bootstrapped', 'subject_id' => $user->id]);
     }
 

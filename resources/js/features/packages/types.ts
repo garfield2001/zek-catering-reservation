@@ -1,4 +1,4 @@
-import type { Family } from "../catalog/types";
+import type { Collection } from "../catalog/types";
 
 export type PackageProduct = {
     id: number;
@@ -8,7 +8,7 @@ export type PackageProduct = {
     description: string | null;
     sort_order: number;
     active: boolean;
-    family?: Family;
+    family?: Collection;
     variants?: PackageVariant[];
     variants_count?: number;
 };
@@ -20,9 +20,9 @@ export type PackageVariant = {
     description: string | null;
     sort_order: number;
     active: boolean;
-    versions?: DraftVersion[];
+    versions?: VariantVersion[];
 };
-export type DraftVersion = {
+export type VariantVersion = {
     id: number;
     variant_id: number;
     family_id: number;
@@ -39,9 +39,9 @@ export type DraftVersion = {
     minimum_quantity: number;
     quantity_step: number;
     maximum_quantity: number | null;
-    groups?: PackageGroup[];
+    groups?: SelectionGroup[];
 };
-export type PackageOption = {
+export type GroupAllowedOption = {
     id: number;
     group_id: number;
     offering_option_id: number;
@@ -60,8 +60,8 @@ export type CategoryRule = {
     minimum_count: number;
     maximum_count: number;
 };
-export type DishRule = { dish_id: number; effect: "allow" | "deny" };
-export type PackageGroup = {
+export type FoodItemRule = { dish_id: number; effect: "allow" | "deny" };
+export type SelectionGroup = {
     id: number;
     version_id: number;
     group_code: string;
@@ -75,11 +75,11 @@ export type PackageGroup = {
     category_mode: "free" | "restricted";
     inclusion_count: string;
     sort_order: number;
-    options?: PackageOption[];
+    options?: GroupAllowedOption[];
     category_rules?: CategoryRule[];
-    dish_rules?: DishRule[];
+    dish_rules?: FoodItemRule[];
 };
-export type AvailableOption = {
+export type AvailableServingOption = {
     id: number;
     label: string;
     unit: string;

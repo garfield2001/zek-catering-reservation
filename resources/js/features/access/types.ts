@@ -1,12 +1,13 @@
-export type StaffAccount = {
+export type UserAccount = {
     id: number;
     name: string;
     email: string;
     active: boolean;
     access_version: number;
     role: "admin" | "staff";
+    protectedAdministrator: boolean;
 };
-export type StaffRow = Omit<StaffAccount, "role"> & {
+export type TeamMemberRow = Omit<UserAccount, "role"> & {
     roles: string[];
     canUpdate: boolean;
     canManagePermissions: boolean;

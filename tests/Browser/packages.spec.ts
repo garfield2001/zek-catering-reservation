@@ -39,5 +39,5 @@ test("Admin creates a draft package variant without publishing it", async ({
     await expect(
         page.getByText("This is an editable draft.", { exact: false }),
     ).toBeVisible();
-    await expect(page.getByText("No selection slots")).toBeVisible();
+    await expect(page.getByText("No selection groups")).toBeVisible();
 });

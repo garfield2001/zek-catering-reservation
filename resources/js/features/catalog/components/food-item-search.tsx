@@ -2,7 +2,7 @@ import { router } from "@inertiajs/react";
 import { useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { catalogPaths } from "../paths";
-export function DishSearch({ initial }: { initial: string }) {
+export function FoodItemSearch({ initial }: { initial: string }) {
     const [query, setQuery] = useState(initial);
     return (
         <form

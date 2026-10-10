@@ -4,7 +4,7 @@ import { EmptyState } from "../../../features/catalog/components/empty-state";
 import { PreviewBuilder } from "../../../features/packages/components/preview-builder";
 import { packagePaths } from "../../../features/packages/paths";
 import type {
-    DraftVersion,
+    VariantVersion,
     PackageProduct,
     PackageVariant,
 } from "../../../features/packages/types";
@@ -18,7 +18,7 @@ export default function VersionShow({
 }: {
     product: PackageProduct;
     variant: PackageVariant;
-    version: DraftVersion;
+    version: VariantVersion;
     canManage: boolean;
     canPrice: boolean;
 }) {
@@ -48,7 +48,7 @@ export default function VersionShow({
                         }
                         className="text-emerald-800 underline"
                     >
-                        Add selection slot
+                        Add selection group
                     </Link>
                 )}
             </div>
@@ -63,8 +63,8 @@ export default function VersionShow({
             )}
             {!version.groups?.length ? (
                 <EmptyState
-                    title="No selection slots"
-                    description="Add fixed inclusions and selectable slots before a valid preview is possible."
+                    title="No selection groups"
+                    description="Add included items and customer choices before a valid draft price preview is possible."
                 />
             ) : (
                 <div className="mb-7 space-y-3">
@@ -79,11 +79,14 @@ export default function VersionShow({
                                         {group.name}
                                     </h2>
                                     <p className="text-xs text-stone-600">
-                                        {group.slot_kind} · {group.mode} ·
-                                        choose {group.minimum_count}–
+                                        {group.mode === "fixed"
+                                            ? "Included Items"
+                                            : "Customer Choices"}{" "}
+                                        ·{group.slot_kind.replaceAll("_", " ")}{" "}
+                                        · choose {group.minimum_count}–
                                         {group.maximum_count} ·{" "}
                                         {group.options?.length ?? 0} allowed
-                                        options
+                                        serving options
                                     </p>
                                 </div>
                                 {canManage && (

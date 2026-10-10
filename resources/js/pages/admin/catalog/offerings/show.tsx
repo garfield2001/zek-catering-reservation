@@ -3,13 +3,13 @@ import AdminLayout from "../../../../layouts/admin-layout";
 import { OptionList } from "../../../../features/catalog/components/option-list";
 import { StatusBadge } from "../../../../features/catalog/components/status-badge";
 import { catalogPaths } from "../../../../features/catalog/paths";
-import type { Dish, Offering } from "../../../../features/catalog/types";
+import type { FoodItem, Offering } from "../../../../features/catalog/types";
 export default function OfferingShow({
     dish,
     offering,
     canManage,
 }: {
-    dish: Dish;
+    dish: FoodItem;
     offering: Offering;
     canManage: boolean;
 }) {
