@@ -36,7 +36,7 @@ class CreateCollectionRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:5000'],
             'kind' => ['required', Rule::in(['primary', 'addon'])],
             'behavior_type' => ['required', Rule::in(array_map(fn (CollectionBehavior $behavior) => $behavior->value, CollectionBehavior::cases()))],
-            'sort_order' => ['required', 'integer', 'between:-2147483648,2147483647'],
+            'sort_order' => ['sometimes', 'integer', 'between:-2147483648,2147483647'],
             'active' => ['required', 'boolean'],
         ];
     }
@@ -47,10 +47,10 @@ class CreateCollectionRequest extends FormRequest
             $kind = $this->input('kind');
             $behavior = $this->input('behavior_type');
             if ($kind === 'primary' && $behavior !== CollectionBehavior::MainPackage->value) {
-                $validator->errors()->add('behavior_type', 'The primary collection must use the main catering behavior.');
+                $validator->errors()->add('behavior_type', 'The primary Collection must use the configured primary catering behavior.');
             }
             if ($kind === 'addon' && $behavior === CollectionBehavior::MainPackage->value) {
-                $validator->errors()->add('behavior_type', 'Main catering cannot be created as an add-on.');
+                $validator->errors()->add('behavior_type', 'The primary catering behavior cannot be used for an add-on Collection.');
             }
         }];
     }

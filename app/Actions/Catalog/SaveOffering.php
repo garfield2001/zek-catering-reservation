@@ -10,6 +10,7 @@ use App\Services\Audit\AuditLogger;
 use App\Services\Catalog\CatalogEligibility;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 
 class SaveOffering
 {
@@ -28,9 +29,10 @@ class SaveOffering
                 $this->eligibility->ensureOfferingCanActivate($dish, $family);
             }
             $before = $offering->exists ? $offering->only('dish_id', 'family_id', 'code', 'name', 'description', 'active') : null;
-            $offering->fill($data);
+            $offering->fill(collect($data)->except('code')->all());
             if (! $offering->exists) {
                 $offering->dish_id = $dish->id;
+                $offering->code = $data['code'] ?? 'offering_'.strtolower((string) Str::ulid());
             }
             $offering->save();
             $this->audit->record($before ? 'catalog.offering_updated' : 'catalog.offering_created', $actor,

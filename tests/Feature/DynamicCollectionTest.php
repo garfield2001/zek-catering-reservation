@@ -109,6 +109,28 @@ class DynamicCollectionTest extends TestCase
         $this->assertNotEquals($main->id, $replacement->id);
     }
 
+    public function test_package_index_is_collection_scoped_and_creation_cannot_move_an_existing_product(): void
+    {
+        $this->signIn($this->actor());
+        $main = $this->createCollection('Main Service', 'primary', 'main_package');
+        $addon = $this->createCollection('Dessert Service', 'addon', 'package');
+        $mainProduct = Product::create(['family_id' => $main->id, 'code' => 'main_a', 'name' => 'Package A', 'active' => true, 'sort_order' => 1]);
+        $addonProduct = Product::create(['family_id' => $addon->id, 'code' => 'dessert_a', 'name' => 'Dessert A', 'active' => true, 'sort_order' => 1]);
+
+        $this->get(route('packages.index', ['family_id' => $main->id]))
+            ->assertInertia(fn ($page) => $page->where('context.familyId', $main->id)
+                ->where('context.label', 'Main Service')
+                ->where('products.data.0.id', $mainProduct->id)
+                ->where('products.data', fn ($data) => collect($data)->pluck('id')->doesntContain($addonProduct->id)));
+
+        $this->put(route('packages.update', $mainProduct), [
+            'family_id' => $addon->id, 'name' => 'Package A', 'description' => null,
+            'active' => true,
+        ])->assertSessionHasErrors('family_id');
+
+        $this->assertSame($main->id, $mainProduct->fresh()->family_id);
+    }
+
     public function test_role_behavior_and_single_primary_rules_hold_in_postgresql(): void
     {
         $this->signIn($this->actor());

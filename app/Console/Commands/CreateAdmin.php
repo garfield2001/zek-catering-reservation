@@ -38,7 +38,12 @@ class CreateAdmin extends Command
 
                 return self::FAILURE;
             }
-            $role = Role::where('code', 'admin')->sole();
+            $role = Role::where('code', 'admin')->first();
+            if (! $role) {
+                $this->error('The Administrator role is missing. Run php artisan db:seed --class=DatabaseSeeder, then retry.');
+
+                return self::FAILURE;
+            }
             $user = User::create($data);
             $user->roles()->attach($role);
             $audit->record('access.admin_bootstrapped', null, $user, null, $access->snapshot($user));

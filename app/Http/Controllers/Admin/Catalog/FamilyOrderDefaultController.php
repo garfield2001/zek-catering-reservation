@@ -6,6 +6,7 @@ use App\Actions\Catalog\UpdateFamilyOrderDefault;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Catalog\UpdateFamilyOrderDefaultRequest;
 use App\Models\FamilyOrderDefault;
+use App\Models\Product;
 use App\Models\ProductFamily;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
@@ -22,7 +23,7 @@ class FamilyOrderDefaultController extends Controller
         $status = request()->query('status');
         $status = in_array($status, ['current', 'archived', 'all'], true) ? $status : 'current';
         $sort = request()->query('sort') === 'name' ? 'name' : 'display';
-        $families = ProductFamily::with('orderDefault')
+        $families = ProductFamily::with('orderDefault')->withCount('products')
             ->when($status === 'current', fn ($query) => $query->whereNull('archived_at'))
             ->when($status === 'archived', fn ($query) => $query->whereNotNull('archived_at'))
             ->when($search !== '', fn ($query) => $query->where('name', 'ilike', '%'.addcslashes($search, '%_\\').'%'))
@@ -35,6 +36,7 @@ class FamilyOrderDefaultController extends Controller
             'filters' => ['q' => $search, 'status' => $status, 'sort' => $sort],
             'canManagePresentation' => Gate::allows('manage', ProductFamily::class),
             'canManageDefaults' => Gate::allows('viewAny', FamilyOrderDefault::class),
+            'canArchivePackages' => Gate::allows('lifecycle', Product::class),
             'hasPrimary' => ProductFamily::where('is_addon', false)->whereNull('archived_at')->exists(),
         ]);
     }

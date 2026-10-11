@@ -16,12 +16,14 @@ export default function CollectionIndex({
     families,
     canManagePresentation,
     canManageDefaults,
+    canArchivePackages,
     hasPrimary,
     filters,
 }: {
     families: Pagination<Collection>;
     canManagePresentation: boolean;
     canManageDefaults: boolean;
+    canArchivePackages: boolean;
     hasPrimary: boolean;
     filters: { q: string; status: string; sort: string };
 }) {
@@ -151,6 +153,11 @@ export default function CollectionIndex({
                             family={family}
                             canManage={canManagePresentation}
                             canManageDefaults={canManageDefaults}
+                            canArchive={
+                                canManagePresentation &&
+                                ((family.products_count ?? 0) === 0 ||
+                                    canArchivePackages)
+                            }
                             onArchive={() => setArchive(family)}
                         />
                     ))}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { packagePaths } from "../paths";
+import { formatPesos } from "../money";
 import type {
     VariantVersion,
     SelectionGroup,
@@ -21,10 +22,6 @@ const defaults = (groups: SelectionGroup[]): Record<string, number[]> =>
                     .map((option) => option.offering_option_id) ?? [],
             ]),
     );
-const formatMinor = (minor: string) => {
-    const amount = BigInt(minor);
-    return `₱${(amount / 100n).toLocaleString()}.${(amount % 100n).toString().padStart(2, "0")}`;
-};
 
 export function PreviewBuilder({
     product,
@@ -281,7 +278,7 @@ export function PreviewBuilder({
                     className="space-y-2 rounded-lg bg-white p-4 text-sm"
                 >
                     <p className="font-semibold">
-                        Draft preview: {formatMinor(preview.total_minor)} total
+                        Draft preview: {formatPesos(preview.total_minor)} total
                     </p>
                     <p>
                         Quantity rule: minimum{" "}
@@ -299,21 +296,21 @@ export function PreviewBuilder({
                         >
                             <p>
                                 {line.quantity} × base{" "}
-                                {formatMinor(line.unit_base_minor)} ={" "}
-                                {formatMinor(line.base_subtotal_minor)}
+                                {formatPesos(line.unit_base_minor)} ={" "}
+                                {formatPesos(line.base_subtotal_minor)}
                             </p>
                             {line.adjustments.map((adjustment, offset) => (
                                 <p key={offset}>
                                     Premium {adjustment.group_code}:{" "}
-                                    {formatMinor(adjustment.unit_amount_minor)}{" "}
+                                    {formatPesos(adjustment.unit_amount_minor)}{" "}
                                     per unit,{" "}
-                                    {formatMinor(adjustment.line_amount_minor)}{" "}
+                                    {formatPesos(adjustment.line_amount_minor)}{" "}
                                     line
                                 </p>
                             ))}
                             <p className="font-medium">
                                 Group total:{" "}
-                                {formatMinor(line.line_total_minor)}
+                                {formatPesos(line.line_total_minor)}
                             </p>
                         </div>
                     ))}

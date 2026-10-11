@@ -15,7 +15,6 @@ export function FoodItemForm({
 }) {
     const [collectionSearch, setCollectionSearch] = useState("");
     const form = useForm({
-        code: dish?.code ?? "",
         name: dish?.name ?? "",
         description: dish?.description ?? "",
         category_id: dish?.category_id ?? categories[0]?.id ?? 0,
@@ -41,21 +40,6 @@ export function FoodItemForm({
                 else form.post(catalogPaths.dishes);
             }}
         >
-            <Field
-                id="code"
-                label="Stable food item code"
-                error={form.errors.code}
-            >
-                <input
-                    id="code"
-                    value={form.data.code}
-                    readOnly={!!dish}
-                    required
-                    maxLength={80}
-                    placeholder="chicken_adobo"
-                    onChange={(e) => form.setData("code", e.target.value)}
-                />
-            </Field>
             <Field id="name" label="Food item name" error={form.errors.name}>
                 <input
                     id="name"

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class SaveDish
@@ -29,7 +30,10 @@ class SaveDish
             $dish = $dish ? Dish::lockForUpdate()->findOrFail($dish->id) : new Dish;
             Gate::forUser($actor->fresh())->authorize($dish->exists ? 'update' : 'create', $dish->exists ? $dish : Dish::class);
             $before = $dish->exists ? $this->snapshot($dish) : null;
-            $dish->fill(collect($data)->except('family_ids')->all());
+            $dish->fill(collect($data)->except(['family_ids', 'code'])->all());
+            if (! $dish->exists) {
+                $dish->code = $data['code'] ?? 'item_'.strtolower((string) Str::ulid());
+            }
             $dish->save();
             $this->syncEligibility($dish, $data['family_ids']);
             $dish->unsetRelation('eligibleFamilies');

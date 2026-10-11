@@ -1,6 +1,6 @@
-# Zek Catering — Access and Master Catalog
+# Zek Catering — Catalog and Package Administration
 
-Laravel 12 + Inertia 2 + React 19/TypeScript + PostgreSQL + Tailwind 4. Phases 1–2 provide staff authentication, Admin/Staff permissions, account administration, append-only audit history, a dashboard and master catalog administration. Packages, published listings, pricing, reservations and other later-phase workflows are not implemented.
+Laravel 12 + Inertia 2 + React 19/TypeScript + PostgreSQL + Tailwind 4. Phases 1–4 provide authentication, permission-based Admin/Staff administration, append-only audit history, master catalog administration, package drafts, price previews and package publication with immutable version snapshots. Direct-sale listings, customer reservations, quotations, payments and notifications are not implemented.
 
 ## Prerequisites
 
@@ -27,24 +27,15 @@ npm run dev
 
 Open http://localhost:8000. On Windows PowerShell with script execution restricted, use `npm.cmd` and `npx.cmd`. Alternatively run `npm run build` and serve Laravel without a Vite development server.
 
-This workspace already has ignored local environment files and an isolated development PostgreSQL cluster configured at 127.0.0.1:55432. Development migrations/seeds have run, but no production Admin credentials were invented. Run the interactive bootstrap command to sign in.
-
-For this session's local PostgreSQL cluster on Windows:
-
-```powershell
-& 'C:/Program Files/PostgreSQL/18/bin/pg_ctl.exe' -D .local/postgres -l .local/postgres.log -o '-h 127.0.0.1 -p 55432' start
-& 'C:/Program Files/PostgreSQL/18/bin/pg_ctl.exe' -D .local/postgres stop
-```
-
-Run only the needed start/stop command. This loopback-only disposable cluster uses trust authentication; normal installations should use their own credential-protected database.
+The owner's installed PostgreSQL uses port 5432. The development database and the dedicated `zek_catering_test` database must remain separate. Configure credentials locally in ignored environment files; no credentials are committed. Run the interactive bootstrap command if the first Administrator has not yet been provisioned.
 
 ## Access rules
 
 Active Admins have full permission access, while immutable audit and last-active-Admin rules remain enforced. Staff inherits only dashboard.view initially. Assign individual Allow/Deny/Inherit overrides through **Team & access → Permissions**.
 
-Permissions: dashboard.view, staff.view, staff.manage, access.manage, audit.view, catalog.view, catalog.manage. Explicit Staff deny wins over role grants. Catalog read and write access must be granted separately; changes to family ordering defaults remain Admin-only. Permission administration is off by default; publishing does not exist yet. Delegated Staff cannot grant powers they lack or manage more privileged users. Account or permission changes revoke existing sessions. Existing users are deactivated instead of deleted.
+Permissions include dashboard, staff, access, audit, catalog and package capabilities. Package publishing, history and lifecycle permissions are separate from draft management and pricing, and are disabled for Staff by default. Explicit Staff deny wins over role grants. Delegated Staff cannot grant powers they lack or manage more privileged users. Account or permission changes revoke existing sessions. Existing users are deactivated instead of deleted.
 
-The catalog manages culinary categories, one canonical record per dish, per-family eligibility, family-specific offerings and serving-size options. Inactive eligibility is retained for history; offerings and options have no price. Family defaults other than the approved Main Catering floor of 150 are neutral technical values, not approved commercial rules.
+The catalog manages Food Categories, one canonical Food Item per dish, Collection eligibility, Offerings and Serving Options. Inactive eligibility is retained for history; Offerings and Serving Options have no direct-sale price. See [Phase 4 publication](docs/docs/13-phase-4-package-publication.md) for the draft/version lifecycle, published snapshots and effective availability rules.
 
 ## Checks
 
@@ -63,6 +54,8 @@ npm run build
 npx playwright install chromium
 npm run e2e
 ```
+
+Browser fixtures run `migrate:fresh` only after confirming that the configured database name ends in `_test`; they erase data in that dedicated test database. On this Windows installation, the Playwright-managed PHP server can hang during teardown. A tested workaround is to run a separate testing-only server on port 8011, set `PLAYWRIGHT_REUSE_SERVER=1`, and use `PLAYWRIGHT_CHANNEL=chrome` with locally installed Chrome. Stop that server after the tests.
 
 For an installed Edge browser on Windows, use `$env:PLAYWRIGHT_CHANNEL='msedge'` before `npm.cmd run e2e`; no Chromium download is then needed. Browser tests use port 8011, seed random credentials into the test database and verify real CSRF enforcement. Run backend and browser database tests sequentially. If Playwright's managed Laravel server lingers during shutdown on Windows, start `php artisan serve --env=testing --host=127.0.0.1 --port=8011` in a separate terminal, set `$env:PLAYWRIGHT_REUSE_SERVER='1'`, run `npm.cmd run e2e`, then stop that server.
 

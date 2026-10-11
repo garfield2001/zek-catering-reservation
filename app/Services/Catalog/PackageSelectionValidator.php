@@ -52,7 +52,7 @@ class PackageSelectionValidator
             foreach ($version->groups as $group) {
                 $chosen[$group->group_code] = $this->validateGroup($version, $group,
                     $selections[$group->group_code] ?? null, "groups.$index.selections.{$group->group_code}");
-                if ($group->mode !== 'fixed' && $group->unique_dishes) {
+                if ($group->mode !== 'fixed') {
                     foreach ($chosen[$group->group_code] as $choice) {
                         $dishId = $choice->offeringOption->offering->dish_id;
                         if (in_array($dishId, $customDishIds, true)) {

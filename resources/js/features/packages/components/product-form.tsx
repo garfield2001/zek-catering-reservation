@@ -8,17 +8,19 @@ import type { PackageProduct } from "../types";
 export function ProductForm({
     product,
     families,
+    selectedFamilyId,
 }: {
     product: PackageProduct | null;
     families: Collection[];
+    selectedFamilyId?: number | null;
 }) {
     const form = useForm({
-        family_id: product?.family_id ?? families[0]?.id ?? 0,
-        code: product?.code ?? "",
+        family_id:
+            product?.family_id ?? selectedFamilyId ?? families[0]?.id ?? 0,
         name: product?.name ?? "",
         description: product?.description ?? "",
-        sort_order: product?.sort_order ?? 0,
         active: product?.active ?? true,
+        ...(!product ? { creation_token: crypto.randomUUID() } : {}),
     });
     return (
         <form
@@ -59,22 +61,6 @@ export function ProductForm({
                     </select>
                 )}
             </Field>
-            <Field
-                id="code"
-                label="Stable product code"
-                error={form.errors.code}
-            >
-                <input
-                    id="code"
-                    required
-                    readOnly={!!product}
-                    value={form.data.code}
-                    onChange={(event) =>
-                        form.setData("code", event.target.value)
-                    }
-                    placeholder="e.g. premium_catering"
-                />
-            </Field>
             <Field id="name" label="Product name" error={form.errors.name}>
                 <input
                     id="name"
@@ -98,30 +84,6 @@ export function ProductForm({
                     }
                 />
             </Field>
-            <Field
-                id="sort_order"
-                label="Display order"
-                error={form.errors.sort_order}
-            >
-                <input
-                    id="sort_order"
-                    type="number"
-                    value={form.data.sort_order}
-                    onChange={(event) =>
-                        form.setData("sort_order", Number(event.target.value))
-                    }
-                />
-            </Field>
-            <label className="flex items-center gap-2 text-sm">
-                <input
-                    type="checkbox"
-                    checked={form.data.active}
-                    onChange={(event) =>
-                        form.setData("active", event.target.checked)
-                    }
-                />
-                Active product
-            </label>
             <Button
                 disabled={
                     form.processing || (!product && families.length === 0)

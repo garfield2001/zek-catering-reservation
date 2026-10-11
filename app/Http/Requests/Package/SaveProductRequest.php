@@ -31,11 +31,12 @@ class SaveProductRequest extends FormRequest
 
         return [
             'family_id' => $product ? ['required', 'integer', Rule::in([$product->family_id])] : ['required', 'integer', Rule::exists('product_families', 'id')->where('active', true)],
-            'code' => $product ? ['required', 'string', Rule::in([$product->code])] : ['required', 'string', 'max:80', 'regex:/^[a-z0-9]+(?:_[a-z0-9]+)*$/', Rule::unique('products', 'code')->where('family_id', $this->input('family_id'))],
+            'code' => $product ? ['sometimes', 'string', Rule::in([$product->code])] : ['sometimes', 'string', 'max:80'],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
             'sort_order' => ['sometimes', 'integer', 'between:-2147483648,2147483647'],
             'active' => ['required', 'boolean'],
+            'creation_token' => $product ? ['prohibited'] : ['required', 'uuid'],
         ];
     }
 }

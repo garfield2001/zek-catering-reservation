@@ -8,6 +8,7 @@ export type PackageProduct = {
     description: string | null;
     sort_order: number;
     active: boolean;
+    archived_at?: string | null;
     family?: Collection;
     variants?: PackageVariant[];
     variants_count?: number;
@@ -20,6 +21,8 @@ export type PackageVariant = {
     description: string | null;
     sort_order: number;
     active: boolean;
+    archived_at?: string | null;
+    current_version_id?: number | null;
     versions?: VariantVersion[];
 };
 export type VariantVersion = {
@@ -27,7 +30,7 @@ export type VariantVersion = {
     variant_id: number;
     family_id: number;
     version_number: number;
-    status: "draft";
+    status: "draft" | "published" | "abandoned";
     draft_revision: number;
     base_price_minor: string;
     price_basis: "per_pax" | "per_pack" | "per_set";
@@ -40,6 +43,54 @@ export type VariantVersion = {
     quantity_step: number;
     maximum_quantity: number | null;
     groups?: SelectionGroup[];
+    published_snapshot?: PublishedPackageSnapshot | null;
+};
+export type PublishedPackageSnapshot = {
+    schema: number;
+    collection: {
+        name: string;
+        description: string | null;
+        behavior_type: string;
+    };
+    product: { name: string; description: string | null };
+    variant: { name: string; description: string | null };
+    version: {
+        number: number;
+        base_price_minor: string;
+        price_basis: string;
+        minimum_quantity: number;
+        quantity_step: number;
+        maximum_quantity: number | null;
+        selection_policy: string;
+    };
+    groups: {
+        group_code: string;
+        name: string;
+        mode: string;
+        minimum_count: number;
+        maximum_count: number;
+        inclusion_count: string;
+        options: {
+            offering_option_id: number;
+            is_default: boolean;
+            price_adjustment_minor: string;
+            food_item: { name: string; description: string | null };
+            food_category: { name: string };
+            serving_option: {
+                label: string;
+                unit: string;
+                quantity: string;
+                serving_pax?: number | null;
+                serving_claim?: string | null;
+            };
+        }[];
+        category_rules: {
+            category_name: string;
+            minimum_count: number;
+            maximum_count: number;
+        }[];
+        food_item_rules: { food_item_name: string; effect: string }[];
+    }[];
 };
 export type GroupAllowedOption = {
     id: number;

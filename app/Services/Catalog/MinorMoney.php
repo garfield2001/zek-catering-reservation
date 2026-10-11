@@ -6,6 +6,16 @@ use Illuminate\Validation\ValidationException;
 
 class MinorMoney
 {
+    public function fromPesos(mixed $value, string $field = 'amount'): int
+    {
+        if (! is_string($value) || ! preg_match('/^(0|[1-9][0-9]*)(?:\.([0-9]{1,2}))?$/D', $value, $matches)) {
+            throw ValidationException::withMessages([$field => 'Enter a nonnegative peso amount with at most two decimal places.']);
+        }
+        $centavos = ltrim($matches[1].str_pad($matches[2] ?? '', 2, '0'), '0');
+
+        return $this->parse($centavos === '' ? '0' : $centavos, $field);
+    }
+
     public function parse(mixed $value, string $field = 'amount'): int
     {
         if (! is_int($value) && ! is_string($value)) {

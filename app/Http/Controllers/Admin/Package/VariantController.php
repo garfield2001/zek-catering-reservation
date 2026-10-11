@@ -27,7 +27,8 @@ class VariantController extends Controller
 
     public function store(SaveVariantRequest $request, Product $product, SaveVariantDraft $action): RedirectResponse
     {
-        $version = $action->handle($request->user(), $product, $request->validated());
+        $version = $action->handle($request->user(), $product,
+            collect($request->validated())->except(['code', 'sort_order'])->all());
 
         return redirect()->route('packages.versions.show', [$product, $version->variant, $version])
             ->with('status', 'Variant draft created. It is not published or bookable.');
@@ -36,16 +37,23 @@ class VariantController extends Controller
     public function show(Product $product, ProductVariant $variant, VariantVersion $version, PackageQuantityRules $quantities): Response
     {
         Gate::authorize('view', $version);
-        $effective = $quantities->resolve($product->family, $version->only(
-            'minimum_override', 'step_override', 'maximum_override', 'maximum_override_enabled'
-        ));
-        $version->forceFill($effective);
+        if ($version->status !== 'draft') {
+            Gate::authorize('history', VariantVersion::class);
+        } else {
+            $effective = $quantities->resolve($product->family, $version->only(
+                'minimum_override', 'step_override', 'maximum_override', 'maximum_override_enabled'
+            ));
+            $version->forceFill($effective);
+        }
 
         return Inertia::render('admin/packages/version-show', [
             'product' => $product->load('family'), 'variant' => $variant,
             'version' => $version->load(['groups.options.offeringOption.offering.dish', 'groups.categoryRules.category', 'groups.dishRules.dish']),
-            'canManage' => Gate::allows('update', $version),
+            'canManage' => $version->status === 'draft' && Gate::allows('update', $version),
             'canPrice' => Gate::allows('price', VariantVersion::class),
+            'canPublish' => $version->status === 'draft' && Gate::allows('publish', VariantVersion::class),
+            'canRevise' => $version->status === 'published' && Gate::allows('update', $version)
+                && Gate::allows('history', VariantVersion::class),
         ]);
     }
 
@@ -53,6 +61,7 @@ class VariantController extends Controller
     {
         Gate::authorize('update', $version);
         Gate::authorize('price', VariantVersion::class);
+        abort_if($version->status !== 'draft', 404);
 
         return Inertia::render('admin/packages/variant-edit', ['product' => $product->load('family'),
             'variant' => $variant, 'version' => $version, 'defaults' => $product->family->orderDefault]);

@@ -35,6 +35,21 @@ class CatalogAvailability
             ->exists();
     }
 
+    /** @param array<int, int> $ids
+     * @return array<int, bool>
+     */
+    public function availableOptionIds(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        return $this->availableOfferings()
+            ->join('offering_options', 'offering_options.offering_id', '=', 'dish_offerings.id')
+            ->whereIn('offering_options.id', $ids)->where('offering_options.active', true)
+            ->pluck('offering_options.id')->mapWithKeys(fn ($id) => [(int) $id => true])->all();
+    }
+
     private function availableOfferings(): Builder
     {
         return $this->eligiblePairs()

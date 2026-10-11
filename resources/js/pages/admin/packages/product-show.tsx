@@ -1,4 +1,4 @@
-import { Link } from "@inertiajs/react";
+import { Link, router } from "@inertiajs/react";
 import AdminLayout from "../../../layouts/admin-layout";
 import { EmptyState } from "../../../features/catalog/components/empty-state";
 import { packagePaths } from "../../../features/packages/paths";
@@ -8,18 +8,33 @@ export default function ProductShow({
     product,
     canManage,
     canPrice,
+    canLifecycle,
+    availabilityByVariant,
 }: {
     product: PackageProduct;
     canManage: boolean;
     canPrice: boolean;
+    canLifecycle: boolean;
+    availabilityByVariant: Record<
+        number,
+        { available: boolean; reasons: string[] }
+    >;
 }) {
     return (
         <AdminLayout
             title={product.name}
-            description={`${product.family?.name} · Administrative draft product`}
+            description={`${product.family?.name} · Package Product`}
         >
             <div className="mb-5 flex flex-wrap gap-4 text-sm">
-                {canManage && (
+                <Link
+                    href={packagePaths.indexFor({
+                        familyId: product.family_id,
+                    })}
+                    className="text-emerald-800 underline"
+                >
+                    Back to {product.family?.name} packages
+                </Link>
+                {canManage && !product.archived_at && (
                     <Link
                         href={packagePaths.product(product.id) + "/edit"}
                         className="text-emerald-800 underline"
@@ -27,13 +42,53 @@ export default function ProductShow({
                         Edit product
                     </Link>
                 )}
-                {canManage && canPrice && (
+                {canManage && canPrice && !product.archived_at && (
                     <Link
                         href={packagePaths.variantCreate(product.id)}
                         className="text-emerald-800 underline"
                     >
-                        Add variant draft
+                        Add another variant
                     </Link>
+                )}
+                {canLifecycle && !product.archived_at && (
+                    <>
+                        <Link
+                            as="button"
+                            method="post"
+                            href={
+                                packagePaths.product(product.id) +
+                                "/availability"
+                            }
+                            data={{
+                                operation: product.active
+                                    ? "disable"
+                                    : "enable",
+                                confirm: true,
+                            }}
+                            className="text-amber-800 underline"
+                        >
+                            {product.active
+                                ? "Temporarily disable product"
+                                : "Enable product"}
+                        </Link>
+                        <Link
+                            as="button"
+                            method="post"
+                            href={
+                                packagePaths.product(product.id) +
+                                "/availability"
+                            }
+                            data={{ operation: "archive", confirm: true }}
+                            onBefore={() =>
+                                window.confirm(
+                                    "Permanently archive this product? Active drafts will be abandoned.",
+                                )
+                            }
+                            className="text-red-700 underline"
+                        >
+                            Archive product
+                        </Link>
+                    </>
                 )}
             </div>
             {product.description && (
@@ -60,11 +115,87 @@ export default function ProductShow({
                                 </p>
                             )}
                             <p className="text-sm text-stone-600">
-                                {variant.code} ·{" "}
-                                {variant.active
-                                    ? "Active owner"
-                                    : "Inactive owner"}
+                                {variant.active ? "Enabled" : "Disabled"}
                             </p>
+                            {canManage && !variant.archived_at && (
+                                <div className="mt-2 flex gap-3 text-xs">
+                                    <button
+                                        type="button"
+                                        className="text-emerald-800 underline"
+                                        aria-label={`Move ${variant.name} up`}
+                                        onClick={() =>
+                                            router.post(
+                                                `${packagePaths.variants(product.id)}/${variant.id}/move`,
+                                                { direction: "up" },
+                                            )
+                                        }
+                                    >
+                                        Move Up
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="text-emerald-800 underline"
+                                        aria-label={`Move ${variant.name} down`}
+                                        onClick={() =>
+                                            router.post(
+                                                `${packagePaths.variants(product.id)}/${variant.id}/move`,
+                                                { direction: "down" },
+                                            )
+                                        }
+                                    >
+                                        Move Down
+                                    </button>
+                                </div>
+                            )}
+                            <p
+                                className={
+                                    availabilityByVariant[variant.id]?.available
+                                        ? "text-sm text-emerald-800"
+                                        : "text-sm text-amber-800"
+                                }
+                            >
+                                {availabilityByVariant[variant.id]?.available
+                                    ? "Currently available"
+                                    : (availabilityByVariant[
+                                          variant.id
+                                      ]?.reasons.join(" ") ?? "Not available")}
+                            </p>
+                            {canLifecycle && !variant.archived_at && (
+                                <div className="mt-2 flex flex-wrap gap-3 text-sm">
+                                    <Link
+                                        as="button"
+                                        method="post"
+                                        href={`${packagePaths.variants(product.id)}/${variant.id}/availability`}
+                                        data={{
+                                            operation: variant.active
+                                                ? "disable"
+                                                : "enable",
+                                        }}
+                                        className="text-amber-800 underline"
+                                    >
+                                        {variant.active
+                                            ? "Disable variant"
+                                            : "Enable variant"}
+                                    </Link>
+                                    <Link
+                                        as="button"
+                                        method="post"
+                                        href={`${packagePaths.variants(product.id)}/${variant.id}/availability`}
+                                        data={{
+                                            operation: "archive",
+                                            confirm: true,
+                                        }}
+                                        onBefore={() =>
+                                            window.confirm(
+                                                "Permanently archive this variant? Its active draft will be abandoned.",
+                                            )
+                                        }
+                                        className="text-red-700 underline"
+                                    >
+                                        Archive variant
+                                    </Link>
+                                </div>
+                            )}
                             {variant.versions?.map((version) => (
                                 <Link
                                     key={version.id}
@@ -75,7 +206,10 @@ export default function ProductShow({
                                     )}
                                     className="mt-3 block text-sm text-emerald-800 underline"
                                 >
-                                    Open draft version {version.version_number}
+                                    {version.status === "draft"
+                                        ? "Configure draft"
+                                        : `View ${version.status} version`}{" "}
+                                    {version.version_number}
                                 </Link>
                             ))}
                         </div>

@@ -29,7 +29,8 @@ class GroupController extends Controller
 
     public function store(SaveGroupRequest $request, Product $product, ProductVariant $variant, VariantVersion $version, SaveSelectionGroup $action): RedirectResponse
     {
-        $action->handle($request->user(), $version, $request->validated());
+        $action->handle($request->user(), $version,
+            collect($request->validated())->except(['group_code', 'sort_order'])->all());
 
         return redirect()->route('packages.versions.show', [$product, $variant, $version])->with('status', 'Selection group added.');
     }
@@ -51,13 +52,16 @@ class GroupController extends Controller
     public function destroy(Request $request, Product $product, ProductVariant $variant, VariantVersion $version, SelectionGroup $group, DeleteSelectionGroup $action): RedirectResponse
     {
         Gate::authorize('update', $group);
-        $action->handle($request->user(), $group);
+        $data = $request->validate(['draft_revision' => ['required', 'integer', 'min:1']]);
+        $action->handle($request->user(), $group, (int) $data['draft_revision']);
 
         return redirect()->route('packages.versions.show', [$product, $variant, $version])->with('status', 'Selection group removed from the draft.');
     }
 
     private function editor(Product $product, ProductVariant $variant, VariantVersion $version, ?SelectionGroup $group, AvailablePackageOptions $options): Response
     {
+        abort_if($version->status !== 'draft', 404);
+
         return Inertia::render('admin/packages/group-edit', [
             'product' => $product->load('family'), 'variant' => $variant, 'version' => $version,
             'group' => $group?->load(['options.offeringOption', 'categoryRules', 'dishRules']),

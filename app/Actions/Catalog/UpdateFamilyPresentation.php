@@ -19,7 +19,7 @@ class UpdateFamilyPresentation
             Gate::forUser($actor->fresh())->authorize('manage', ProductFamily::class);
             abort_if($family->archived_at !== null, 404);
             $before = $family->only('name', 'description', 'sort_order', 'active');
-            $family->forceFill(collect($data)->only('name', 'description', 'sort_order', 'active')->all())->save();
+            $family->forceFill(collect($data)->only('name', 'description', 'active')->all())->save();
             $this->audit->record('catalog.family_presentation_updated', $actor, $family, $before,
                 $family->only('name', 'description', 'sort_order', 'active'));
 

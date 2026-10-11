@@ -11,6 +11,7 @@ use App\Services\Catalog\MinorMoney;
 use App\Services\Catalog\PackageQuantityRules;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class SaveVariantDraft
@@ -22,15 +23,20 @@ class SaveVariantDraft
         return DB::transaction(function () use ($actor, $product, $data, $variant, $version) {
             $product = Product::lockForUpdate()->findOrFail($product->id);
             $family = $product->family;
-            if (! $product->active || ! $family->active || $family->archived_at !== null
+            if ($product->archived_at !== null || $family->archived_at !== null
                 || ! $family->behavior()->supportsPackageDrafts()) {
                 throw ValidationException::withMessages(['product' => "{$family->name} is unavailable for new package drafts."]);
             }
             $variant = $variant ? ProductVariant::lockForUpdate()->findOrFail($variant->id) : new ProductVariant;
             abort_if($variant->exists && $variant->product_id !== $product->id, 404);
             Gate::forUser($actor->fresh())->authorize($variant->exists ? 'update' : 'create', $variant->exists ? $variant : ProductVariant::class);
+            if ($variant->exists && (bool) $data['active'] !== $variant->active) {
+                Gate::forUser($actor->fresh())->authorize('lifecycle', $variant);
+            }
             Gate::forUser($actor->fresh())->authorize('price', VariantVersion::class);
-            $price = $this->money->parse($data['base_price_minor'], 'base_price_minor');
+            $price = array_key_exists('base_price_pesos', $data)
+                ? $this->money->fromPesos($data['base_price_pesos'], 'base_price_pesos')
+                : $this->money->parse($data['base_price_minor'], 'base_price_minor');
             if ($data['selection_policy'] === 'split' && ! $family->behavior()->supportsSplit()) {
                 throw ValidationException::withMessages(['selection_policy' => "Split allocations are not supported for {$family->name}; choose uniform selections."]);
             }
@@ -39,11 +45,13 @@ class SaveVariantDraft
             $before = $version ? [...$version->only('base_price_minor', 'selection_policy', 'minimum_override', 'step_override',
                 'maximum_override_enabled', 'maximum_override', 'draft_revision'),
                 'variant' => $variant->only('code', 'name', 'description', 'sort_order', 'active')] : null;
-            $variant->fill(['code' => $data['code'], 'name' => $data['name'],
+            $variant->fill(['name' => $data['name'],
                 'description' => array_key_exists('description', $data) ? $data['description'] : $variant->description,
-                'sort_order' => $data['sort_order'] ?? ($variant->sort_order ?? 0), 'active' => $data['active']]);
+                'active' => $data['active']]);
             if (! $variant->exists) {
                 $variant->product_id = $product->id;
+                $variant->code = $data['code'] ?? 'variant_'.strtolower((string) Str::ulid());
+                $variant->sort_order = (int) ProductVariant::where('product_id', $product->id)->max('sort_order') + 1;
             }
             $variant->save();
             if ($version) {

@@ -26,7 +26,7 @@ class OfferingController extends Controller
 
     public function store(SaveOfferingRequest $request, Dish $dish, SaveOffering $action): RedirectResponse
     {
-        $offering = $action->handle($request->user(), $dish, $request->validated());
+        $offering = $action->handle($request->user(), $dish, collect($request->validated())->except('code')->all());
 
         return redirect()->route('catalog.offerings.show', [$dish, $offering])->with('status', 'Offering created.');
     }

@@ -32,8 +32,7 @@ class SaveOfferingRequest extends FormRequest
 
         return [
             'family_id' => $offering ? ['required', Rule::in([$offering->family_id])] : ['required', 'integer', Rule::exists('product_families', 'id')->where('active', true)],
-            'code' => $offering ? ['required', Rule::in([$offering->code])] : ['required', 'string', 'max:80', 'regex:/^[a-z0-9]+(?:_[a-z0-9]+)*$/',
-                Rule::unique('dish_offerings', 'code')->where('dish_id', $this->route('dish')?->id)->where('family_id', $this->input('family_id'))],
+            'code' => $offering ? ['sometimes', Rule::in([$offering->code])] : ['sometimes', 'string', 'max:80'],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
             'active' => ['required', 'boolean'],

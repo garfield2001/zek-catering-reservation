@@ -239,23 +239,25 @@ class PackageDraftTest extends TestCase
         $family = $this->family('main_catering');
         $this->signIn($staff)->post(route('packages.store'), [
             'family_id' => $family->id, 'code' => 'basic', 'name' => 'Basic', 'description' => null, 'active' => true,
+            'creation_token' => '64d203ad-889a-42b7-8f50-b31838999b4c',
         ])->assertForbidden();
         $this->grant($staff, 'package.manage');
         $this->post(route('packages.store'), [
             'family_id' => $family->id, 'code' => 'basic', 'name' => 'Basic', 'description' => null, 'active' => true,
+            'creation_token' => '64d203ad-889a-42b7-8f50-b31838999b4c',
         ])->assertRedirect();
-        $product = Product::where('code', 'basic')->sole();
-        $payload = ['code' => 'standard', 'name' => 'Standard', 'active' => true,
+        $product = Product::where('name', 'Basic')->sole();
+        $payload = ['code' => 'premium', 'name' => 'Premium', 'active' => true,
             'base_price_minor' => '10000', 'selection_policy' => 'uniform',
             'minimum_override' => null, 'step_override' => null,
             'maximum_override_enabled' => false, 'maximum_override' => null];
         $this->post(route('packages.variants.store', $product), $payload)->assertForbidden();
         $this->grant($staff, 'package.pricing.manage');
         $this->post(route('packages.variants.store', $product), $payload)->assertRedirect();
-        $this->assertSame(1, VariantVersion::count());
+        $this->assertSame(2, VariantVersion::count());
         $staff->update(['active' => false]);
         $this->post(route('packages.variants.store', $product), $payload)->assertRedirect(route('login'));
-        $this->assertSame(1, VariantVersion::count());
+        $this->assertSame(2, VariantVersion::count());
         $this->signIn($admin)->get(route('packages.index'))->assertOk();
     }
 
@@ -470,7 +472,7 @@ class PackageDraftTest extends TestCase
         $path = route('packages.groups.destroy', [$product, $version->variant, $version, $group]);
         $this->signIn($staff)->delete($path)->assertForbidden();
         $this->assertDatabaseHas('selection_groups', ['id' => $group->id]);
-        $this->signIn($admin)->delete($path)->assertRedirect();
+        $this->signIn($admin)->delete($path, ['draft_revision' => $version->fresh()->draft_revision])->assertRedirect();
         $this->assertDatabaseMissing('selection_groups', ['id' => $group->id]);
         $this->assertDatabaseMissing('group_options', ['group_id' => $group->id]);
         $this->assertDatabaseHas('audit_events', ['action' => 'package.group_deleted',
@@ -566,7 +568,8 @@ class PackageDraftTest extends TestCase
             'options' => [['offering_option_id' => $option->id, 'is_default' => true, 'price_adjustment_minor' => '0']],
         ]);
         $group = $version->fresh()->groups()->sole();
-        $payload = ['group_code' => $group->group_code, 'name' => $group->name, 'mode' => 'select_one',
+        $payload = ['draft_revision' => $version->fresh()->draft_revision,
+            'group_code' => $group->group_code, 'name' => $group->name, 'mode' => 'select_one',
             'slot_kind' => 'drink', 'minimum_count' => 1, 'maximum_count' => 1,
             'unique_dishes' => true, 'category_mode' => 'free', 'inclusion_count' => '1.000',
             'sort_order' => 0, 'options' => [['offering_option_id' => $option->id,
@@ -699,7 +702,7 @@ class PackageDraftTest extends TestCase
             'sort_order' => 99, 'active' => true, 'base_price_minor' => '12000',
             'selection_policy' => 'uniform', 'minimum_override' => null,
             'step_override' => null, 'maximum_override_enabled' => false, 'maximum_override' => null,
-            'draft_revision' => $version->draft_revision,
+            'draft_revision' => $version->fresh()->draft_revision,
         ], $version->variant, $version);
         $this->assertSame($version->id, $renamed->id);
         $this->assertSame('premium', $renamed->variant->code);

@@ -23,6 +23,7 @@ export type Collection = {
     active: boolean;
     pivot?: { active: boolean };
     order_default?: CollectionOrderingDefault;
+    products_count?: number;
 };
 export type CollectionOrderingDefault = {
     family_id: number;

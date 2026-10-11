@@ -34,7 +34,7 @@ class SaveDishRequest extends FormRequest
         $dish = $this->route('dish');
 
         return [
-            'code' => $dish ? ['required', Rule::in([$dish->code])] : ['required', 'string', 'max:80', 'regex:/^[a-z0-9]+(?:_[a-z0-9]+)*$/', Rule::unique('dishes', 'code')],
+            'code' => $dish ? ['sometimes', Rule::in([$dish->code])] : ['sometimes', 'string', 'max:80'],
             'name' => ['bail', 'required', 'string', 'max:255', function (string $attribute, mixed $value, \Closure $fail) use ($dish): void {
                 if (! is_scalar($this->input('category_id'))) {
                     return;

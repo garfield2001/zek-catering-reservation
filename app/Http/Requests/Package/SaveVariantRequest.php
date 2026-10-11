@@ -34,7 +34,7 @@ class SaveVariantRequest extends FormRequest
         $variant = $this->route('variant');
 
         return [
-            'code' => $variant ? ['required', 'string', Rule::in([$variant->code])] : ['required', 'string', 'max:80', 'regex:/^[a-z0-9]+(?:_[a-z0-9]+)*$/', Rule::unique('product_variants', 'code')->where('product_id', $this->route('product')?->id)],
+            'code' => $variant ? ['sometimes', 'string', Rule::in([$variant->code])] : ['sometimes', 'string', 'max:80'],
             'name' => ['bail', 'required', 'string', 'max:255', function (string $attribute, mixed $value, \Closure $fail) use ($variant): void {
                 $product = $this->route('product');
                 if (! $product instanceof Product) {
@@ -52,7 +52,8 @@ class SaveVariantRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:5000'],
             'sort_order' => ['sometimes', 'integer', 'between:-2147483648,2147483647'],
             'active' => ['required', 'boolean'],
-            'base_price_minor' => ['required', 'regex:/^(0|[1-9][0-9]*)$/', 'max:19'],
+            'base_price_minor' => ['required_without:base_price_pesos', 'prohibits:base_price_pesos', 'regex:/^(0|[1-9][0-9]*)$/', 'max:19'],
+            'base_price_pesos' => ['required_without:base_price_minor', 'prohibits:base_price_minor', 'string', 'regex:/^(0|[1-9][0-9]*)(?:\.[0-9]{1,2})?$/', 'max:20'],
             'selection_policy' => ['required', Rule::in(['uniform', 'split'])],
             'minimum_override' => ['nullable', 'integer', 'between:1,2147483647'],
             'step_override' => ['nullable', 'integer', 'between:1,2147483647'],

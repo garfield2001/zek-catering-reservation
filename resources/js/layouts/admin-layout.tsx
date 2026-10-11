@@ -6,16 +6,30 @@ import {
     ClipboardList,
     History,
     LayoutDashboard,
-    Layers3,
-    ListTree,
     LogOut,
     Users,
     X,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 import type { SharedProps } from "../types";
 
-const navigation = [
+type NavigationChild = {
+    label: string;
+    href: string;
+    permission: string;
+    extraPermission: string;
+};
+type NavigationItem = {
+    label: string;
+    icon: LucideIcon;
+    href?: string;
+    permission?: string;
+    extraPermission?: string;
+    children?: NavigationChild[];
+};
+
+const navigation: NavigationItem[] = [
     {
         label: "Overview",
         href: "/admin",
@@ -24,35 +38,49 @@ const navigation = [
         icon: LayoutDashboard,
     },
     {
-        label: "Collections",
-        href: "/admin/catalog/families",
-        permission: "family.view",
-        extraPermission: "family.manage",
-        icon: Layers3,
-    },
-    {
-        label: "Food categories",
-        href: "/admin/catalog/categories",
-        permission: "catalog.view",
-        extraPermission: "catalog.manage",
-        icon: ListTree,
-    },
-    {
-        label: "Food items",
-        href: "/admin/catalog/dishes",
-        permission: "catalog.view",
-        extraPermission: "catalog.manage",
+        label: "Food Catalog",
         icon: ChefHat,
+        children: [
+            {
+                label: "Food Items",
+                href: "/admin/catalog/dishes",
+                permission: "catalog.view",
+                extraPermission: "catalog.manage",
+            },
+            {
+                label: "Food Categories",
+                href: "/admin/catalog/categories",
+                permission: "catalog.view",
+                extraPermission: "catalog.manage",
+            },
+            {
+                label: "Collections & availability",
+                href: "/admin/catalog/families",
+                permission: "family.view",
+                extraPermission: "family.manage",
+            },
+        ],
     },
     {
-        label: "Package drafts",
-        href: "/admin/packages/products",
-        permission: "package.view",
-        extraPermission: "package.manage",
+        label: "Catering Services",
         icon: ClipboardList,
+        children: [
+            {
+                label: "Main Catering Packages",
+                href: "/admin/packages/products?scope=primary",
+                permission: "package.view",
+                extraPermission: "package.manage",
+            },
+            {
+                label: "Add-on Services",
+                href: "/admin/packages/products?scope=addon",
+                permission: "package.view",
+                extraPermission: "package.manage",
+            },
+        ],
     },
     {
-        label: "Team Members",
+        label: "Team & Access",
         href: "/admin/staff",
         permission: "staff.view",
         extraPermission: "staff.view",
@@ -130,36 +158,75 @@ export default function AdminLayout({
                         aria-label="Administration"
                         className="flex gap-1 overflow-x-auto px-4 pb-4 lg:block lg:space-y-1 lg:px-3 lg:pt-6"
                     >
-                        {navigation
-                            .filter(
-                                (item) =>
-                                    auth?.permissions.includes(
-                                        item.permission,
-                                    ) ||
-                                    auth?.permissions.includes(
-                                        item.extraPermission,
-                                    ),
-                            )
-                            .map((item) => {
-                                const active =
-                                    item.href === "/admin"
-                                        ? url === "/admin"
-                                        : url.startsWith(item.href);
+                        {navigation.map((item) => {
+                            if (item.children) {
+                                const children = item.children.filter(
+                                    (child) =>
+                                        auth?.permissions.includes(
+                                            child.permission,
+                                        ) ||
+                                        auth?.permissions.includes(
+                                            child.extraPermission,
+                                        ),
+                                );
+                                if (!children.length) return null;
                                 const Icon = item.icon;
                                 return (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        aria-current={
-                                            active ? "page" : undefined
-                                        }
-                                        className={`flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${active ? "bg-emerald-100 text-emerald-950" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}
+                                    <details
+                                        key={item.label}
+                                        open
+                                        className="group"
                                     >
-                                        <Icon size={18} aria-hidden="true" />
-                                        {item.label}
-                                    </Link>
+                                        <summary className="flex cursor-pointer list-none items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100">
+                                            <Icon
+                                                size={18}
+                                                aria-hidden="true"
+                                            />
+                                            {item.label}
+                                        </summary>
+                                        <div className="ml-5 mt-1 space-y-1 border-l border-slate-200 pl-3">
+                                            {children.map((child) => (
+                                                <Link
+                                                    key={child.href}
+                                                    href={child.href}
+                                                    className={`block rounded-lg px-3 py-2 text-sm ${url.startsWith(child.href.split("?")[0]) ? "bg-emerald-100 font-semibold text-emerald-950" : "text-slate-600 hover:bg-slate-100"}`}
+                                                >
+                                                    {child.label}
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    </details>
                                 );
-                            })}
+                            }
+                            if (
+                                !item.href ||
+                                !(
+                                    auth?.permissions.includes(
+                                        item.permission ?? "",
+                                    ) ||
+                                    auth?.permissions.includes(
+                                        item.extraPermission ?? "",
+                                    )
+                                )
+                            )
+                                return null;
+                            const active =
+                                item.href === "/admin"
+                                    ? url === "/admin"
+                                    : url.startsWith(item.href);
+                            const Icon = item.icon;
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    aria-current={active ? "page" : undefined}
+                                    className={`flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${active ? "bg-emerald-100 text-emerald-950" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}
+                                >
+                                    <Icon size={18} aria-hidden="true" />
+                                    {item.label}
+                                </Link>
+                            );
+                        })}
                     </nav>
                     <div className="hidden px-4 py-6 lg:block">
                         {auth?.permissions.includes("dashboard.view") && (

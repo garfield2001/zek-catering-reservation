@@ -39,7 +39,6 @@ export function CollectionCreateForm({
         behavior_type: hasPrimary ? "package" : "main_package",
         name: "",
         description: "",
-        sort_order: 0,
         active: true,
     });
     return (
@@ -130,20 +129,6 @@ export function CollectionCreateForm({
                     value={form.data.description}
                     onChange={(event) =>
                         form.setData("description", event.target.value)
-                    }
-                />
-            </Field>
-            <Field
-                id="collection-sort"
-                label="Display order"
-                error={form.errors.sort_order}
-            >
-                <input
-                    id="collection-sort"
-                    type="number"
-                    value={form.data.sort_order}
-                    onChange={(event) =>
-                        form.setData("sort_order", Number(event.target.value))
                     }
                 />
             </Field>

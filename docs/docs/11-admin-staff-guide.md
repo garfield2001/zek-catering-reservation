@@ -1,10 +1,18 @@
-# Admin and Staff guide (Phase 3.5)
+# Admin and Staff guide (Phase 4)
+
+## Phase 4 package workflow amendment
+
+Create a Package Product in an eligible Collection. The system automatically creates its initial Standard Variant and Version 1 Draft, then opens the builder. Add optional variants only when distinct commercial tiers are needed. Technical codes and initial display order are generated; use Move Up/Move Down to reorder presentation. Configure Included Items and Customer Choices from active, eligible Serving Options. Admin enters Base Price and Price Adjustments in Philippine pesos. The server stores exact centavos and remains authoritative for Draft Price Previews.
+
+Save the Draft repeatedly, review its complete configuration, and use **Review and publish** with explicit confirmation. A stale Draft must be reloaded; a blocking selection or catalog error cannot be overridden. A successful publication freezes terms. Later revisions clone a published Version into a new Draft; abandoning a Draft does not alter the current publication. Product/Variant disabling is reversible when its parent permits; archiving is permanent and preserves history. Activity History records lifecycle changes. Published package availability may change with live catalog eligibility and active status without rewriting its frozen terms. Staff needs separately assigned publication, history and lifecycle capabilities. Direct-sale listings, customer inquiries, reservations and payments remain unavailable.
+
+The older draft-only walkthrough below is historical for Phase 3/3.5 and should not be used as the current publication workflow. The operator should not test package publication against a development catalog until the Phase 4 PostgreSQL migration and regression checks pass.
 
 ## First run
 
 Run migrations, seed system roles/permissions, and create the first Admin with the existing interactive provisioning command (see [Phase 1 setup](07-phase-1-foundation.md)). A blank commercial catalog is expected. Sign in and follow the Dashboard setup checklist. No food items, collections, packages or prices are preloaded. Staff accounts have no catalog privileges until Admin assigns them.
 
-## Collections and food catalog
+## Catering & Add-ons and food catalog
 
 Open **Collections** and create the one primary catering collection. Choose its customer-facing name; the primary behavior is fixed. You may add unlimited optional collections and choose a supported configuration type for each: package-based, packed meal, fixed bundle or direct-sale. Two collections may use the same type while retaining independent food eligibility and products. Names may be edited without changing behavior. Disable a collection to pause new selection; archive it to retire it permanently while preserving references. An archived name can be reused by a replacement. The system currently supports one *current* primary, not a limit of one package variant.
 
@@ -12,9 +20,9 @@ Create **Food Categories**, then **Food Items**. A food item is one canonical re
 
 ## Package, meal and bundle drafts
 
-Open **Package drafts**. Create a Package Product in an eligible Collection, then add as many Package Variants as needed. Each Variant Version is an independently configured revision; the current implementation supports its editable Draft state only. Configure the draft base price in integer centavos, quantity minimum/step/maximum, and uniform or permitted split policy. Add Selection Groups using the collection's eligible Serving Options. A fixed group is **Included Items** and a selectable group is **Customer Choices** in business-facing language. Each permitted option in a group is a Group Allowed Option, distinct from the catalog Serving Option. A package-based add-on can use fixed items and optional customer choices; configure a kilogram group only if relevant. A packed-meal collection uses per-pack pricing and can define fixed inclusions, required choices, upgrades and split allocations. Split groups must independently satisfy selections and their quantities must total the purchase; total quantity rules apply by default. A fixed bundle uses fixed groups only; its customers cannot substitute items and option premiums are disallowed. Use the Draft Price Preview to verify authoritative server-side calculations and configured constraints. The preview does **not** publish or offer anything for customer purchase.
+Open **Catering Packages**. Create a Package Product in an eligible Collection; the system opens its automatically created Standard Variant and Version 1 Draft. Configure **Included Items** and **Customer Choices** from recognizable Food Items and Serving Options. If no eligible option exists, the builder explains the prerequisite beside the disabled action. A fixed group is an Included Item and a selectable group is a Customer Choice; rice, drinks and culinary categories are not universally required. Configure the draft base price in Philippine pesos, quantity minimum/step/maximum, and the supported selection policy. A package-based add-on can use fixed items and optional customer choices; configure a kilogram group only if relevant. A packed-meal collection uses per-pack pricing and can define fixed inclusions, required choices, upgrades and split allocations. Split groups must independently satisfy selections and their quantities must total the purchase; total quantity rules apply by default. A fixed bundle uses fixed groups only; its customers cannot substitute items and option premiums are disallowed. Use the Draft Price Preview to verify authoritative server-side calculations and configured constraints. Review and publish after confirmation; publication freezes the commercial snapshot and later changes require a new revision.
 
-Direct-sale collections provide catalog identity and collection-specific food eligibility now. Their independent listing revisions, published prices and storefront will be implemented in a later phase; do not represent their items as package variants. Publishing all package drafts is also a later phase. No reservation or checkout workflow exists.
+Direct-sale collections provide catalog identity and collection-specific food eligibility now. Their independent listing revisions, published prices and storefront will be implemented in a later phase; do not represent their items as package variants. No reservation or checkout workflow exists.
 
 ## Staff and Activity History
 
@@ -25,3 +33,10 @@ Current permission identifiers are developer-defined and cannot be edited throug
 ## Practical cautions
 
 An inactive collection, food item, category, eligibility, offering or serving option cannot be chosen for a new preview. Existing references stay intact for history. Keep draft prices and quantities current before the future publication step. Never use a display name as an internal pricing selector. The [architecture amendment](10-phase-3-5-dynamic-collections.md) explains the stable behavior codes and the migration of historical five-family installations.
+# Administrative navigation and setup guidance
+
+Use **Food Catalog** for Food Items, Food Categories, and Collection availability. Use **Catering Services** for Main Catering Packages and Admin-created Add-on Services. Direct-sale Collections remain visible as catalog context but are not sent to the package builder until their dedicated listing workflow is implemented.
+
+From a Collection card, choose **Manage package products** to retain that Collection as the package workspace filter. A package created from that context is preselected to the Collection and the server still verifies ownership; changing an existing Package Product to another Collection is rejected.
+
+To prepare a Food Item, open its detail page and complete the readiness steps: assign a Food Category, configure Collection Eligibility, add a Collection-specific Offering, and add at least one active Serving Option. These are separate underlying records and may also be managed through their advanced catalog pages. No Food Item, rice, drink, or culinary category is globally mandatory.

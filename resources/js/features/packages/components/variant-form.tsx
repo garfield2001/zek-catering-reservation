@@ -1,9 +1,11 @@
 import { useForm } from "@inertiajs/react";
+import { useEffect } from "react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
 import type { CollectionOrderingDefault } from "../../catalog/types";
 import { packagePaths } from "../paths";
 import type { VariantVersion, PackageProduct, PackageVariant } from "../types";
+import { minorToPesoInput } from "../money";
 
 export function VariantForm({
     product,
@@ -17,12 +19,10 @@ export function VariantForm({
     defaults: CollectionOrderingDefault;
 }) {
     const form = useForm({
-        code: variant?.code ?? "",
         name: variant?.name ?? "",
         description: variant?.description ?? "",
-        sort_order: variant?.sort_order ?? 0,
         active: variant?.active ?? true,
-        base_price_minor: version?.base_price_minor ?? "0",
+        base_price_pesos: minorToPesoInput(version?.base_price_minor ?? "0"),
         selection_policy: version?.selection_policy ?? "uniform",
         minimum_override: version?.minimum_override ?? (null as number | null),
         step_override: version?.step_override ?? (null as number | null),
@@ -36,6 +36,15 @@ export function VariantForm({
             : product.family?.behavior_type === "packed_meal"
               ? "per pack"
               : "per set";
+    useEffect(() => {
+        if (!form.isDirty) return;
+        const warn = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+            event.returnValue = "";
+        };
+        window.addEventListener("beforeunload", warn);
+        return () => window.removeEventListener("beforeunload", warn);
+    }, [form.isDirty]);
     return (
         <form
             className="max-w-2xl space-y-5 rounded-xl border border-stone-200 bg-white p-6"
@@ -53,19 +62,8 @@ export function VariantForm({
             }}
         >
             <p className="text-sm text-stone-600">
-                Draft only. No customer can book or price this package until a
-                later publication phase.
+                Draft configuration. Save and review it before publication.
             </p>
-            <Field id="code" label="Variant code" error={form.errors.code}>
-                <input
-                    id="code"
-                    required
-                    readOnly={!!variant}
-                    value={form.data.code}
-                    onChange={(e) => form.setData("code", e.target.value)}
-                    placeholder="variant_code"
-                />
-            </Field>
             <Field id="name" label="Variant name" error={form.errors.name}>
                 <input
                     id="name"
@@ -89,58 +87,44 @@ export function VariantForm({
                 />
             </Field>
             <Field
-                id="sort_order"
-                label="Display order"
-                error={form.errors.sort_order}
+                id="base_price_pesos"
+                label={`Base Price (PHP, ${basis})`}
+                error={form.errors.base_price_pesos}
             >
                 <input
-                    id="sort_order"
-                    type="number"
-                    value={form.data.sort_order}
-                    onChange={(event) =>
-                        form.setData("sort_order", Number(event.target.value))
-                    }
-                />
-            </Field>
-            <Field
-                id="base_price_minor"
-                label={`Base price in centavos (${basis})`}
-                error={form.errors.base_price_minor}
-            >
-                <input
-                    id="base_price_minor"
+                    id="base_price_pesos"
                     required
-                    inputMode="numeric"
-                    pattern="[0-9]+"
-                    value={form.data.base_price_minor}
+                    inputMode="decimal"
+                    pattern="[0-9]+(\.[0-9]{1,2})?"
+                    value={form.data.base_price_pesos}
                     onChange={(e) =>
-                        form.setData("base_price_minor", e.target.value)
+                        form.setData("base_price_pesos", e.target.value)
                     }
                 />
             </Field>
-            <Field
-                id="selection_policy"
-                label="Selection policy"
-                error={form.errors.selection_policy}
-            >
-                <select
+            {product.family?.behavior_type === "packed_meal" && (
+                <Field
                     id="selection_policy"
-                    value={form.data.selection_policy}
-                    onChange={(e) =>
-                        form.setData(
-                            "selection_policy",
-                            e.target.value as "uniform" | "split",
-                        )
-                    }
+                    label="Meal selection arrangement"
+                    error={form.errors.selection_policy}
                 >
-                    <option value="uniform">Uniform configuration</option>
-                    {product.family?.behavior_type === "packed_meal" && (
+                    <select
+                        id="selection_policy"
+                        value={form.data.selection_policy}
+                        onChange={(e) =>
+                            form.setData(
+                                "selection_policy",
+                                e.target.value as "uniform" | "split",
+                            )
+                        }
+                    >
+                        <option value="uniform">Uniform configuration</option>
                         <option value="split">
                             Allow split allocations within this variant
                         </option>
-                    )}
-                </select>
-            </Field>
+                    </select>
+                </Field>
+            )}
             <div className="grid gap-4 sm:grid-cols-3">
                 <Field
                     id="minimum_override"
@@ -182,52 +166,95 @@ export function VariantForm({
                         }
                     />
                 </Field>
-                <Field
-                    id="maximum_override"
-                    label="Maximum override"
-                    error={form.errors.maximum_override}
-                >
+            </div>
+            <fieldset className="space-y-2 rounded-lg border border-stone-200 p-4 text-sm">
+                <legend className="font-medium">
+                    Maximum purchase quantity
+                </legend>
+                <label className="flex gap-2">
                     <input
-                        id="maximum_override"
-                        type="number"
-                        min="1"
-                        disabled={!form.data.maximum_override_enabled}
-                        value={form.data.maximum_override ?? ""}
-                        onChange={(e) =>
-                            form.setData(
-                                "maximum_override",
-                                e.target.value === ""
-                                    ? null
-                                    : Number(e.target.value),
-                            )
+                        type="radio"
+                        name="maximum-mode"
+                        checked={!form.data.maximum_override_enabled}
+                        onChange={() =>
+                            form.setData({
+                                ...form.data,
+                                maximum_override_enabled: false,
+                                maximum_override: null,
+                            })
                         }
                     />
-                </Field>
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-                <input
-                    type="checkbox"
-                    checked={form.data.maximum_override_enabled}
-                    onChange={(e) =>
-                        form.setData({
-                            ...form.data,
-                            maximum_override_enabled: e.target.checked,
-                            maximum_override: e.target.checked
-                                ? form.data.maximum_override
-                                : null,
-                        })
-                    }
-                />
-                Override inherited maximum (leave blank for unbounded)
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-                <input
-                    type="checkbox"
-                    checked={form.data.active}
-                    onChange={(e) => form.setData("active", e.target.checked)}
-                />
-                Active draft owner
-            </label>
+                    Use Collection Default{" "}
+                    {defaults.maximum_quantity === null
+                        ? "(no configured maximum)"
+                        : `(${defaults.maximum_quantity})`}
+                </label>
+                <label className="flex gap-2">
+                    <input
+                        type="radio"
+                        name="maximum-mode"
+                        checked={
+                            form.data.maximum_override_enabled &&
+                            form.data.maximum_override === null
+                        }
+                        onChange={() =>
+                            form.setData({
+                                ...form.data,
+                                maximum_override_enabled: true,
+                                maximum_override: null,
+                            })
+                        }
+                    />
+                    No package-specific maximum
+                </label>
+                <label className="flex gap-2">
+                    <input
+                        type="radio"
+                        name="maximum-mode"
+                        checked={
+                            form.data.maximum_override_enabled &&
+                            form.data.maximum_override !== null
+                        }
+                        onChange={() =>
+                            form.setData({
+                                ...form.data,
+                                maximum_override_enabled: true,
+                                maximum_override:
+                                    form.data.maximum_override ??
+                                    defaults.minimum_quantity,
+                            })
+                        }
+                    />
+                    Set Custom Maximum
+                </label>
+                {form.data.maximum_override_enabled &&
+                    form.data.maximum_override !== null && (
+                        <Field
+                            id="maximum_override"
+                            label="Custom maximum"
+                            error={form.errors.maximum_override}
+                        >
+                            <input
+                                id="maximum_override"
+                                type="number"
+                                min="1"
+                                value={form.data.maximum_override}
+                                onChange={(e) =>
+                                    form.setData(
+                                        "maximum_override",
+                                        e.target.value === ""
+                                            ? null
+                                            : Number(e.target.value),
+                                    )
+                                }
+                            />
+                        </Field>
+                    )}
+                <p className="text-xs text-stone-600">
+                    No configured maximum is not a guarantee of event-date
+                    capacity.
+                </p>
+            </fieldset>
             {Object.keys(form.errors).length > 0 && (
                 <p role="alert" className="text-sm text-red-700">
                     Check the highlighted fields before saving.

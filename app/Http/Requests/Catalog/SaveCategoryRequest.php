@@ -31,7 +31,7 @@ class SaveCategoryRequest extends FormRequest
         $category = $this->route('category');
 
         return [
-            'code' => $category ? ['required', Rule::in([$category->code])] : ['required', 'string', 'max:80', 'regex:/^[a-z0-9]+(?:_[a-z0-9]+)*$/', Rule::unique('dish_categories', 'code')],
+            'code' => $category ? ['sometimes', Rule::in([$category->code])] : ['sometimes', 'string', 'max:80'],
             'name' => ['bail', 'required', 'string', 'max:255', function (string $attribute, mixed $value, \Closure $fail) use ($category): void {
                 $query = DB::table('dish_categories')->whereRaw('name_key = lower(btrim(?))', [$value]);
                 if ($category instanceof DishCategory) {
@@ -41,7 +41,7 @@ class SaveCategoryRequest extends FormRequest
                     $fail('This category name is already in use.');
                 }
             }],
-            'sort_order' => ['required', 'integer', 'between:-2147483648,2147483647'],
+            'sort_order' => ['sometimes', 'integer', 'between:-2147483648,2147483647'],
             'active' => ['required', 'boolean'],
         ];
     }

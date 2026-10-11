@@ -20,19 +20,17 @@ test("Admin can create a category, shared dish, offering and serving option", as
     await page.getByRole("button", { name: "Sign in" }).click();
 
     await page
-        .getByRole("link", { name: "Food categories", exact: true })
+        .getByRole("link", { name: "Food Categories", exact: true })
         .click();
     await page.getByRole("button", { name: "Add category" }).click();
-    await page.getByLabel("Stable code").fill(`test_${run}`);
     await page.getByLabel("Category name").fill(`Test category ${run}`);
     await page.getByRole("button", { name: "Create category" }).click();
     await expect(
         page.getByRole("heading", { name: `Test category ${run}` }),
     ).toBeVisible();
 
-    await page.getByRole("link", { name: "Food items", exact: true }).click();
+    await page.getByRole("link", { name: "Food Items", exact: true }).click();
     await page.getByRole("link", { name: "Add food item" }).click();
-    await page.getByLabel("Stable food item code").fill(`dish_${run}`);
     await page.getByLabel("Food item name").fill(`Test dish ${run}`);
     await page
         .getByLabel("Food category")
@@ -44,14 +42,13 @@ test("Admin can create a category, shared dish, offering and serving option", as
         page.getByRole("heading", { name: `Test dish ${run}` }),
     ).toBeVisible();
     await expect(
-        page.getByText("Main Catering Packages · Food Tray Menu"),
+        page.getByText(/Main Catering Packages.*Food Tray Menu/),
     ).toBeVisible();
 
     await page.getByRole("link", { name: "Add offering" }).click();
     await page
         .getByLabel("Collection")
         .selectOption({ label: "Food Tray Menu" });
-    await page.getByLabel("Offering code").fill("classic");
     await page.getByLabel("Preparation name").fill("Classic tray");
     await page.getByRole("button", { name: "Create offering" }).click();
     await expect(
@@ -59,7 +56,6 @@ test("Admin can create a category, shared dish, offering and serving option", as
     ).toBeVisible();
 
     await page.getByRole("link", { name: "Add serving option" }).click();
-    await page.getByLabel("Stable option code").fill("regular");
     await page.getByLabel("Serving label").fill("Regular tray");
     await page.getByLabel("Size per option").fill("1.500");
     await page.getByRole("button", { name: "Create serving option" }).click();
@@ -73,7 +69,9 @@ test("Admin can create a dynamic add-on collection from the modal", async ({
     await page.getByLabel("Email address").fill(`admin-${run}@example.test`);
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.getByRole("link", { name: "Collections", exact: true }).click();
+    await page
+        .getByRole("link", { name: "Collections & availability", exact: true })
+        .click();
     await page.getByRole("button", { name: "Create collection" }).click();
     const dialog = page.getByRole("dialog", { name: "Create collection" });
     await dialog.getByLabel("Configuration type").selectOption("packed_meal");

@@ -25,6 +25,9 @@ class DatabaseSeeder extends Seeder
                 'package.view' => 'View package drafts and price previews',
                 'package.manage' => 'Manage package products, variants and selection groups',
                 'package.pricing.manage' => 'Manage draft prices and price adjustments',
+                'package.publish' => 'Publish package variant versions',
+                'package.history.view' => 'View published and abandoned package history',
+                'package.lifecycle.manage' => 'Disable and archive package offerings',
             ] as $code => $description) {
                 Permission::firstOrCreate(['code' => $code], ['description' => $description]);
             }

@@ -39,7 +39,7 @@ class CreateCollection
             $family->forceFill([
                 'code' => 'collection_'.strtolower((string) Str::ulid()),
                 'name' => $data['name'], 'description' => $data['description'] ?? null,
-                'sort_order' => $data['sort_order'], 'active' => $data['active'],
+                'sort_order' => (int) ProductFamily::max('sort_order') + 1, 'active' => $data['active'],
                 'is_addon' => $isAddon, 'behavior_type' => $behavior->value,
             ])->save();
             $default = new FamilyOrderDefault;

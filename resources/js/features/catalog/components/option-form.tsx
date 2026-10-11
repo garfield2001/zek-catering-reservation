@@ -21,7 +21,6 @@ export function OptionForm({
     option: ServingOption | null;
 }) {
     const form = useForm({
-        option_code: option?.option_code ?? "",
         label: option?.label ?? "",
         unit: option?.unit ?? "tray",
         quantity: option?.quantity ?? "1",
@@ -45,23 +44,6 @@ export function OptionForm({
                     );
             }}
         >
-            <Field
-                id="option_code"
-                label="Stable option code"
-                error={form.errors.option_code}
-            >
-                <input
-                    id="option_code"
-                    value={form.data.option_code}
-                    readOnly={!!option}
-                    required
-                    maxLength={80}
-                    placeholder="regular"
-                    onChange={(e) =>
-                        form.setData("option_code", e.target.value)
-                    }
-                />
-            </Field>
             <Field id="label" label="Serving label" error={form.errors.label}>
                 <input
                     id="label"

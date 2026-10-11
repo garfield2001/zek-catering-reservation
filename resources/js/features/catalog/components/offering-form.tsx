@@ -14,7 +14,6 @@ export function OfferingForm({
 }) {
     const form = useForm({
         family_id: offering?.family_id ?? families[0]?.id ?? 0,
-        code: offering?.code ?? "",
         name: offering?.name ?? "",
         description: offering?.description ?? "",
         active: offering?.active ?? true,
@@ -58,17 +57,6 @@ export function OfferingForm({
                         ))}
                     </select>
                 )}
-            </Field>
-            <Field id="code" label="Offering code" error={form.errors.code}>
-                <input
-                    id="code"
-                    value={form.data.code}
-                    readOnly={!!offering}
-                    required
-                    maxLength={80}
-                    placeholder="regular_tray"
-                    onChange={(e) => form.setData("code", e.target.value)}
-                />
             </Field>
             <Field id="name" label="Preparation name" error={form.errors.name}>
                 <input

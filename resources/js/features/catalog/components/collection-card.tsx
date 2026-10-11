@@ -1,4 +1,4 @@
-import { Link } from "@inertiajs/react";
+import { Link, router } from "@inertiajs/react";
 import { Archive } from "lucide-react";
 import type { Collection } from "../types";
 import { CollectionOrderingDefaultForm } from "./collection-ordering-default-form";
@@ -16,11 +16,13 @@ export function CollectionCard({
     family,
     canManage,
     canManageDefaults,
+    canArchive,
     onArchive,
 }: {
     family: Collection;
     canManage: boolean;
     canManageDefaults: boolean;
+    canArchive: boolean;
     onArchive: () => void;
 }) {
     return (
@@ -48,6 +50,36 @@ export function CollectionCard({
                     )}
                 </div>
                 <div className="flex items-center gap-3">
+                    {canArchive && (
+                        <div className="flex gap-2 text-xs">
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    router.post(
+                                        `/admin/catalog/families/${family.id}/move`,
+                                        { direction: "up" },
+                                    )
+                                }
+                                className="text-emerald-800 underline"
+                                aria-label={`Move ${family.name} up`}
+                            >
+                                Move Up
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    router.post(
+                                        `/admin/catalog/families/${family.id}/move`,
+                                        { direction: "down" },
+                                    )
+                                }
+                                className="text-emerald-800 underline"
+                                aria-label={`Move ${family.name} down`}
+                            >
+                                Move Down
+                            </button>
+                        </div>
+                    )}
                     <CollectionPresentationForm
                         family={family}
                         canManage={canManage}
@@ -66,7 +98,7 @@ export function CollectionCard({
             <div className="mt-4 flex flex-wrap gap-4 border-t border-slate-100 pt-4 text-sm">
                 {family.behavior_type !== "direct_sale" ? (
                     <Link
-                        href="/admin/packages/products"
+                        href={`/admin/packages/products?family_id=${family.id}`}
                         className="font-semibold text-emerald-800 hover:underline"
                     >
                         Manage package drafts →

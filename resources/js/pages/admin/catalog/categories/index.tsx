@@ -1,4 +1,4 @@
-import { Link } from "@inertiajs/react";
+import { Link, router } from "@inertiajs/react";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import AdminLayout from "../../../../layouts/admin-layout";
@@ -69,12 +69,43 @@ export default function CategoryIndex({
                                         >
                                             {category.name}
                                         </Link>
-                                        <div className="text-xs text-stone-500">
-                                            {category.code}
-                                        </div>
                                     </td>
                                     <td className="px-5 py-4">
-                                        {category.sort_order}
+                                        {canManage ? (
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        router.post(
+                                                            `${catalogPaths.category(category.id)}/move`,
+                                                            { direction: "up" },
+                                                        )
+                                                    }
+                                                    className="text-emerald-800 underline"
+                                                    aria-label={`Move ${category.name} up`}
+                                                >
+                                                    Up
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        router.post(
+                                                            `${catalogPaths.category(category.id)}/move`,
+                                                            {
+                                                                direction:
+                                                                    "down",
+                                                            },
+                                                        )
+                                                    }
+                                                    className="text-emerald-800 underline"
+                                                    aria-label={`Move ${category.name} down`}
+                                                >
+                                                    Down
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            category.sort_order
+                                        )}
                                     </td>
                                     <td className="px-5 py-4">
                                         {category.dishes_count}

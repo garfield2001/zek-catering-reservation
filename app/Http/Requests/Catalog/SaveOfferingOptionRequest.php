@@ -31,8 +31,7 @@ class SaveOfferingOptionRequest extends FormRequest
         $option = $this->route('option');
 
         return [
-            'option_code' => $option ? ['required', Rule::in([$option->option_code])] : ['required', 'string', 'max:80', 'regex:/^[a-z0-9]+(?:_[a-z0-9]+)*$/',
-                Rule::unique('offering_options', 'option_code')->where('offering_id', $this->route('offering')?->id)],
+            'option_code' => $option ? ['sometimes', Rule::in([$option->option_code])] : ['sometimes', 'string', 'max:80'],
             'label' => ['required', 'string', 'max:255'],
             'unit' => ['required', Rule::enum(ServingUnit::class)],
             'quantity' => ['required', 'numeric', 'gt:0', 'regex:/^\d{1,9}(?:\.\d{1,3})?$/'],

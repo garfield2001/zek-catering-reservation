@@ -3,6 +3,12 @@
 ## Architecture rules
 Thin controllers and pages; modest use-case actions; Eloquent only for persistence/relations/scopes; Form Requests validate transport; policies authorize; dedicated configuration/selection/price domain services for invariants. Avoid blanket abstract repository pattern, service-per-CRUD, interfaces for every class, global business helpers or single MegaCatalogService. No generic configurable JSON rules engine. Test services independently and use PostgreSQL integration tests for FK/check constraints.
 
+## Feature tracing guide
+
+For a new administrative workflow, follow the existing request path: React/Inertia page under `resources/js/pages` and feature components under `resources/js/features` → route in `routes/web.php` → thin controller under `app/Http/Controllers/Admin` → Form Request under `app/Http/Requests` → focused Action or domain Service under `app/Actions` or `app/Services` → Eloquent models under `app/Models` and PostgreSQL constraints/migrations under `database/migrations`. Authorization belongs in Policies and route middleware; audit writes belong in the workflow Action. Feature tests live under `tests/Feature`, browser workflows under `tests/Browser`, and reusable TypeScript types stay beside their feature.
+
+Example: package creation starts at `resources/js/features/packages/components/product-form.tsx`, posts to `packages.products.store`, is authorized and validated by `SaveProductRequest`, executes `SaveProduct`, creates the Package Product/default Package Variant/first Draft transactionally, and is verified by `PackageDraftTest` and the package browser workflow. Do not add repositories, DTO layers, or interfaces unless a concrete boundary requires them.
+
 ## Suggested backend folders
 app/
   Actions/Catalog/{CreateDish,UpdateDish,PublishVariant,CloneVariantDraft,PublishDirectListing,CloneListingDraft}.php

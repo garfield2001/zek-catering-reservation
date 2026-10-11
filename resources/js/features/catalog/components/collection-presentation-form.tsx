@@ -17,7 +17,6 @@ export function CollectionPresentationForm({
     const form = useForm({
         name: family.name,
         description: family.description ?? "",
-        sort_order: family.sort_order,
         active: family.active,
     });
     if (!canManage) return null;
@@ -75,23 +74,6 @@ export function CollectionPresentationForm({
                             value={form.data.description}
                             onChange={(event) =>
                                 form.setData("description", event.target.value)
-                            }
-                        />
-                    </Field>
-                    <Field
-                        id={`family-order-${family.id}`}
-                        label="Display order"
-                        error={form.errors.sort_order}
-                    >
-                        <input
-                            id={`family-order-${family.id}`}
-                            type="number"
-                            value={form.data.sort_order}
-                            onChange={(event) =>
-                                form.setData(
-                                    "sort_order",
-                                    Number(event.target.value),
-                                )
                             }
                         />
                     </Field>

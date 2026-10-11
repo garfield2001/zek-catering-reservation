@@ -38,7 +38,7 @@ class UpdateFamilyPresentationRequest extends FormRequest
                 }
             }],
             'description' => ['nullable', 'string', 'max:5000'],
-            'sort_order' => ['required', 'integer', 'between:-2147483648,2147483647'],
+            'sort_order' => ['sometimes', 'integer', 'between:-2147483648,2147483647'],
             'active' => ['required', 'boolean'],
         ];
     }

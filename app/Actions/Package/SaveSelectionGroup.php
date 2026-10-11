@@ -12,6 +12,7 @@ use App\Services\Catalog\CatalogAvailability;
 use App\Services\Catalog\MinorMoney;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class SaveSelectionGroup
@@ -23,6 +24,9 @@ class SaveSelectionGroup
         return DB::transaction(function () use ($actor, $version, $data, $group) {
             $version = VariantVersion::with('family')->lockForUpdate()->findOrFail($version->id);
             abort_if($version->status !== 'draft', 404);
+            if (isset($data['draft_revision']) && (int) $data['draft_revision'] !== $version->draft_revision) {
+                throw ValidationException::withMessages(['draft_revision' => 'This draft changed. Reload and review it before saving.']);
+            }
             $group = $group ? SelectionGroup::lockForUpdate()->findOrFail($group->id) : new SelectionGroup;
             abort_if($group->exists && $group->version_id !== $version->id, 404);
             Gate::forUser($actor->fresh())->authorize($group->exists ? 'update' : 'create', $group->exists ? $group : SelectionGroup::class);
@@ -40,7 +44,9 @@ class SaveSelectionGroup
                 ) {
                     throw ValidationException::withMessages(['options' => 'The serving unit does not match this selection group type.']);
                 }
-                $amount = $this->money->parse($row['price_adjustment_minor'], 'options');
+                $amount = array_key_exists('price_adjustment_pesos', $row)
+                    ? $this->money->fromPesos($row['price_adjustment_pesos'], 'options')
+                    : $this->money->parse($row['price_adjustment_minor'], 'options');
                 if ($version->family->behavior() === CollectionBehavior::FixedBundle && $amount !== 0) {
                     throw ValidationException::withMessages(['options' => "Fixed inclusions in {$version->family->name} cannot carry premiums."]);
                 }
@@ -96,9 +102,11 @@ class SaveSelectionGroup
             ) {
                 Gate::forUser($actor->fresh())->authorize('price', VariantVersion::class);
             }
-            $group->fill(collect($data)->except('options', 'category_rules', 'dish_rules')->all());
+            $group->fill(collect($data)->except('options', 'category_rules', 'dish_rules', 'draft_revision', 'group_code', 'sort_order')->all());
             if (! $group->exists) {
                 $group->version_id = $version->id;
+                $group->group_code = $data['group_code'] ?? 'group_'.strtolower((string) Str::ulid());
+                $group->sort_order = (int) SelectionGroup::where('version_id', $version->id)->max('sort_order') + 1;
             }
             $group->save();
             DB::table('group_options')->where('group_id', $group->id)->delete();
@@ -128,6 +136,7 @@ class SaveSelectionGroup
                     'updated_at' => now(),
                 ]);
             }
+            $version->increment('draft_revision');
             $this->audit->record(
                 $before ? 'package.group_updated' : 'package.group_created',
                 $actor,
@@ -164,9 +173,8 @@ class SaveSelectionGroup
         if (
             ! in_array($data['slot_kind'], $allowed, true)
             || ($fixedBundle && $data['mode'] !== 'fixed')
-            || ($data['slot_kind'] === 'rice' && $data['mode'] !== 'fixed')
-            || ($data['slot_kind'] === 'drink' && $data['mode'] !== 'select_one')
-            || ($data['slot_kind'] === 'dish' && $data['mode'] !== 'select_many')
+            || (in_array($data['slot_kind'], ['rice', 'drink', 'dish'], true)
+                && ! in_array($data['mode'], ['fixed', 'select_one', 'select_many'], true))
             || ($data['slot_kind'] === 'lechon' && ! in_array($data['mode'], ['fixed', 'select_one'], true))
             || ($data['slot_kind'] === 'tray' && $data['mode'] !== 'select_many')
             || ($data['slot_kind'] === 'bundle_item' && $data['mode'] !== 'fixed')

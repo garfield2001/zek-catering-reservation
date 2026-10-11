@@ -18,7 +18,9 @@ test("Admin can grant Staff audit access through the interface", async ({
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
-    await page.getByRole("link", { name: "Team Members", exact: true }).click();
+    await page
+        .getByRole("link", { name: "Team & Access", exact: true })
+        .click();
     const row = page
         .getByRole("row")
         .filter({ hasText: "staff-" + run + "@example.test" });

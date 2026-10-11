@@ -1,4 +1,5 @@
 import { useForm } from "@inertiajs/react";
+import { useEffect } from "react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
 import { packagePaths } from "../paths";
@@ -12,35 +13,30 @@ import type {
 import type { SelectionGroupPayload } from "./selection-group-form-types";
 import { GroupAllowedOptionPicker } from "./group-allowed-option-picker";
 import { SelectionGroupRuleEditors } from "./selection-group-rule-editors";
+import { minorToPesoInput } from "../money";
 
 const kinds: Record<
     string,
     { value: SelectionGroup["slot_kind"]; label: string }[]
 > = {
     main_package: [
-        { value: "item", label: "Included item or choice" },
         { value: "rice", label: "Fixed rice" },
         { value: "drink", label: "Drink choice" },
-        { value: "dish", label: "Customer food item choices" },
+        { value: "dish", label: "Food item inclusion or customer choices" },
     ],
     package: [
-        { value: "item", label: "Included item or choice" },
         { value: "lechon", label: "Lechon kilograms" },
         { value: "tray", label: "Tray choices" },
-        { value: "rice", label: "Fixed rice" },
+        { value: "rice", label: "Rice inclusion or choices" },
         { value: "drink", label: "Drink choice" },
         { value: "dish", label: "Customer food item choices" },
     ],
     packed_meal: [
-        { value: "item", label: "Included item or choice" },
-        { value: "rice", label: "Fixed rice" },
+        { value: "rice", label: "Rice inclusion or choices" },
         { value: "drink", label: "Drink choice" },
         { value: "dish", label: "Meal food items" },
     ],
-    fixed_bundle: [
-        { value: "item", label: "Fixed included item" },
-        { value: "bundle_item", label: "Legacy fixed bundle item" },
-    ],
+    fixed_bundle: [{ value: "bundle_item", label: "Fixed included item" }],
 };
 
 export function SelectionGroupForm({
@@ -63,7 +59,7 @@ export function SelectionGroupForm({
     const behaviorType = product.family?.behavior_type ?? "";
     const choices = kinds[behaviorType] ?? [];
     const form = useForm<SelectionGroupPayload>({
-        group_code: group?.group_code ?? "",
+        draft_revision: version.draft_revision,
         name: group?.name ?? "",
         mode: group?.mode ?? "fixed",
         slot_kind: group?.slot_kind ?? choices[0]?.value ?? "dish",
@@ -72,12 +68,13 @@ export function SelectionGroupForm({
         unique_dishes: group?.unique_dishes ?? true,
         category_mode: group?.category_mode ?? "free",
         inclusion_count: group?.inclusion_count ?? "1.000",
-        sort_order: group?.sort_order ?? 0,
         options:
             group?.options?.map((option) => ({
                 offering_option_id: option.offering_option_id,
                 is_default: option.is_default,
-                price_adjustment_minor: option.price_adjustment_minor,
+                price_adjustment_pesos: minorToPesoInput(
+                    option.price_adjustment_minor,
+                ),
             })) ?? [],
         category_rules: group?.category_rules ?? [],
         dish_rules: group?.dish_rules ?? [],
@@ -89,6 +86,15 @@ export function SelectionGroupForm({
               ? option.unit === "tray"
               : true,
     );
+    useEffect(() => {
+        if (!form.isDirty) return;
+        const warn = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+            event.returnValue = "";
+        };
+        window.addEventListener("beforeunload", warn);
+        return () => window.removeEventListener("beforeunload", warn);
+    }, [form.isDirty]);
     return (
         <form
             className="space-y-6"
@@ -105,22 +111,6 @@ export function SelectionGroupForm({
             }}
         >
             <div className="grid gap-4 rounded-xl border border-stone-200 bg-white p-5 sm:grid-cols-2">
-                <Field
-                    id="group_code"
-                    label="Stable selection group code"
-                    error={form.errors.group_code}
-                >
-                    <input
-                        id="group_code"
-                        required
-                        readOnly={!!group}
-                        value={form.data.group_code}
-                        onChange={(event) =>
-                            form.setData("group_code", event.target.value)
-                        }
-                        placeholder="customer_choices"
-                    />
-                </Field>
                 <Field
                     id="group_name"
                     label="Selection group name"
@@ -235,23 +225,6 @@ export function SelectionGroupForm({
                         }
                     />
                 </Field>
-                <Field
-                    id="sort_order"
-                    label="Display order"
-                    error={form.errors.sort_order}
-                >
-                    <input
-                        id="sort_order"
-                        type="number"
-                        value={form.data.sort_order}
-                        onChange={(event) =>
-                            form.setData(
-                                "sort_order",
-                                Number(event.target.value),
-                            )
-                        }
-                    />
-                </Field>
                 <label className="flex items-center gap-2 text-sm">
                     <input
                         type="checkbox"
@@ -273,6 +246,16 @@ export function SelectionGroupForm({
                 error={form.errors.options}
                 onChange={(options) => form.setData("options", options)}
             />
+            {visibleOptions.length === 0 && (
+                <p
+                    id="selection-group-prerequisite"
+                    className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
+                >
+                    Add an active, Collection-eligible Food Item with a Serving
+                    Option before creating this Selection Group. Your draft
+                    remains unchanged.
+                </p>
+            )}
             <SelectionGroupRuleEditors
                 categoryMode={form.data.category_mode}
                 categoryRules={form.data.category_rules}
@@ -297,7 +280,14 @@ export function SelectionGroupForm({
                     Review the selection group and its allowed serving options.
                 </p>
             )}
-            <Button disabled={form.processing || visibleOptions.length === 0}>
+            <Button
+                disabled={form.processing || visibleOptions.length === 0}
+                aria-describedby={
+                    visibleOptions.length === 0
+                        ? "selection-group-prerequisite"
+                        : undefined
+                }
+            >
                 {group ? "Save selection group" : "Add selection group"}
             </Button>
         </form>

@@ -1,0 +1,109 @@
+erDiagram
+    PRODUCT_FAMILIES ||--o{ PRODUCTS : collection
+    PRODUCTS ||--o{ PRODUCT_VARIANTS : owns
+    PRODUCT_VARIANTS ||--o{ VARIANT_VERSIONS : versions
+    PRODUCT_VARIANTS |o--|| VARIANT_VERSIONS : current_published
+    VARIANT_VERSIONS ||--o{ SELECTION_GROUPS : owns
+    VARIANT_VERSIONS |o--o| VARIANT_VERSIONS : cloned_from
+    SELECTION_GROUPS ||--o{ GROUP_OPTIONS : permits
+    SELECTION_GROUPS ||--o{ GROUP_CATEGORY_RULES : category_rules
+    SELECTION_GROUPS ||--o{ GROUP_DISH_RULES : food_item_rules
+    OFFERING_OPTIONS ||--o{ GROUP_OPTIONS : selected_serving
+    DISH_CATEGORIES ||--o{ DISHES : classifies
+    DISHES ||--o{ DISH_OFFERINGS : prepared_as
+    PRODUCT_FAMILIES ||--o{ DISH_OFFERINGS : scoped_to
+    DISH_OFFERINGS ||--o{ OFFERING_OPTIONS : sizes
+    USERS ||--o{ VARIANT_VERSIONS : created_published_abandoned_by
+
+    PRODUCTS {
+        bigint id PK
+        bigint family_id FK
+        string code UK
+        uuid creation_token "nullable unique retry key"
+        string name
+        int sort_order
+        boolean active
+        timestamptz archived_at "nullable permanent"
+    }
+    PRODUCT_VARIANTS {
+        bigint id PK
+        bigint product_id FK
+        string code UK
+        string name
+        int sort_order
+        boolean active
+        timestamptz archived_at "nullable permanent"
+        bigint current_version_id FK "nullable same-variant published"
+    }
+    VARIANT_VERSIONS {
+        bigint id PK
+        bigint variant_id FK
+        bigint family_id FK
+        int version_number "unique per variant"
+        string status "draft published abandoned"
+        int draft_revision
+        bigint cloned_from_id FK "nullable"
+        bigint base_price_minor
+        string currency "PHP"
+        string price_basis
+        jsonb published_snapshot "nullable immutable"
+        timestamptz published_at "nullable"
+        bigint published_by FK "nullable"
+        timestamptz abandoned_at "nullable"
+        bigint abandoned_by FK "nullable"
+    }
+    SELECTION_GROUPS {
+        bigint id PK
+        bigint version_id FK
+        string group_code UK
+        string mode
+        int minimum_count
+        int maximum_count
+        int sort_order
+    }
+    GROUP_OPTIONS {
+        bigint id PK
+        bigint group_id FK
+        bigint offering_option_id FK
+        bigint price_adjustment_minor
+    }
+    GROUP_CATEGORY_RULES {
+        bigint group_id PK,FK
+        bigint category_id PK,FK
+        int minimum_count
+        int maximum_count
+    }
+    GROUP_DISH_RULES {
+        bigint group_id PK,FK
+        bigint dish_id PK,FK
+        string effect
+    }
+    PRODUCT_FAMILIES {
+        bigint id PK
+        string behavior_type
+        boolean active
+        timestamptz archived_at
+    }
+    DISH_CATEGORIES {
+        bigint id PK
+        boolean active
+    }
+    DISHES {
+        bigint id PK
+        bigint category_id FK
+        boolean active
+    }
+    DISH_OFFERINGS {
+        bigint id PK
+        bigint dish_id FK
+        bigint family_id FK
+        boolean active
+    }
+    OFFERING_OPTIONS {
+        bigint id PK
+        bigint offering_id FK
+        boolean active
+    }
+    USERS {
+        bigint id PK
+    }

@@ -330,6 +330,18 @@ class AccessFoundationTest extends TestCase
         $this->assertDatabaseHas('audit_events', ['action' => 'access.admin_bootstrapped', 'subject_id' => $user->id]);
     }
 
+    public function test_bootstrap_command_reports_missing_administrator_role_without_creating_account(): void
+    {
+        Role::where('code', 'admin')->delete();
+        $this->artisan('app:create-admin')
+            ->expectsQuestion('Name', 'Initial Admin')
+            ->expectsQuestion('Email', 'missing-role@example.test')
+            ->expectsQuestion('Password (12+ characters, mixed case and numbers)', 'Initial-Secret123')
+            ->expectsOutput('The Administrator role is missing. Run php artisan db:seed --class=DatabaseSeeder, then retry.')
+            ->assertFailed();
+        $this->assertDatabaseMissing('users', ['email' => 'missing-role@example.test']);
+    }
+
     public function test_audit_database_rejects_update_delete_and_truncate(): void
     {
         app(AuditLogger::class)->record('test.append_only', null);

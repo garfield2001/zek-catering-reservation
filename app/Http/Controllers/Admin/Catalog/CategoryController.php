@@ -32,7 +32,7 @@ class CategoryController extends Controller
 
     public function store(SaveCategoryRequest $request, SaveCategory $action): RedirectResponse
     {
-        $category = $action->handle($request->user(), $request->validated());
+        $category = $action->handle($request->user(), collect($request->validated())->except(['code', 'sort_order'])->all());
 
         return redirect()->route('catalog.categories.show', $category)->with('status', 'Category created.');
     }

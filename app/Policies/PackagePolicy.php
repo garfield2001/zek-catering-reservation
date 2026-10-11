@@ -34,4 +34,19 @@ class PackagePolicy
     {
         return $this->permissions->allows($user, 'package.pricing.manage');
     }
+
+    public function publish(User $user): bool
+    {
+        return $this->permissions->allows($user, 'package.publish');
+    }
+
+    public function history(User $user): bool
+    {
+        return $this->permissions->allows($user, 'package.history.view');
+    }
+
+    public function lifecycle(User $user): bool
+    {
+        return $this->permissions->allows($user, 'package.lifecycle.manage');
+    }
 }

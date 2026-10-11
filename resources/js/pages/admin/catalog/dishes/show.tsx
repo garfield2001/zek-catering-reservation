@@ -7,9 +7,16 @@ import type { FoodItem } from "../../../../features/catalog/types";
 export default function DishShow({
     dish,
     canManage,
+    setup,
 }: {
     dish: FoodItem;
     canManage: boolean;
+    setup: {
+        hasCategory: boolean;
+        eligibleCollections: number;
+        activeOfferings: number;
+        activeServingOptions: number;
+    };
 }) {
     const activeFamilies =
         dish.eligible_families?.filter((family) => family.pivot?.active) ?? [];
@@ -34,6 +41,42 @@ export default function DishShow({
                     {dish.description}
                 </p>
             )}
+            <section className="mb-8 rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+                <h2 className="font-semibold text-emerald-950">
+                    Prepare this Food Item for catering
+                </h2>
+                <p className="mt-1 text-sm text-emerald-900">
+                    Complete the catalog steps below before adding this Food
+                    Item to a package Selection Group.
+                </p>
+                <ol className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+                    <li>
+                        {setup.hasCategory ? "✓" : "○"} Food Category assigned
+                    </li>
+                    <li>
+                        {setup.eligibleCollections > 0 ? "✓" : "○"} Collection
+                        Eligibility configured
+                    </li>
+                    <li>
+                        {setup.activeOfferings > 0 ? "✓" : "○"}{" "}
+                        Collection-specific Offering configured
+                    </li>
+                    <li>
+                        {setup.activeServingOptions > 0 ? "✓" : "○"} Active
+                        Serving Option configured
+                    </li>
+                </ol>
+                {(!setup.hasCategory ||
+                    setup.eligibleCollections === 0 ||
+                    setup.activeOfferings === 0 ||
+                    setup.activeServingOptions === 0) && (
+                    <p className="mt-3 text-sm font-medium text-amber-900">
+                        This Food Item is incomplete and will not be available
+                        for every package selection until the missing step is
+                        completed.
+                    </p>
+                )}
+            </section>
             <section className="mb-8 rounded-xl border border-stone-200 bg-white p-5">
                 <h2 className="font-semibold">Eligible collections</h2>
                 <p className="mt-2 text-sm text-stone-600">

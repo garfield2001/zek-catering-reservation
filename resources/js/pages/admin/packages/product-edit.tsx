@@ -6,16 +6,22 @@ import type { PackageProduct } from "../../../features/packages/types";
 export default function ProductEdit({
     product,
     families,
+    selectedFamilyId,
 }: {
     product: PackageProduct | null;
     families: Collection[];
+    selectedFamilyId?: number | null;
 }) {
     return (
         <AdminLayout
             title={product ? `Edit ${product.name}` : "Create package product"}
             description="Package products group named variants within one collection."
         >
-            <ProductForm product={product} families={families} />
+            <ProductForm
+                product={product}
+                families={families}
+                selectedFamilyId={selectedFamilyId}
+            />
         </AdminLayout>
     );
 }

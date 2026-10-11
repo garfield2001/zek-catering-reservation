@@ -55,10 +55,12 @@ class FamilyPresentationTest extends TestCase
         $this->put(route('catalog.families.update', $pack),
             $this->payload($pack, ['name' => 'Packed Meals', 'description' => 'Boxed meals',
                 'sort_order' => 1, 'active' => false]))->assertRedirect();
+        $this->post(route('catalog.families.move', $pack), ['direction' => 'up'])->assertRedirect();
+        $this->post(route('catalog.families.move', $pack), ['direction' => 'up'])->assertRedirect();
         $this->assertDatabaseHas('product_families', ['id' => $main->id, 'code' => 'main_catering',
-            'is_addon' => false, 'name' => 'Catering Packages', 'sort_order' => 90]);
+            'is_addon' => false, 'name' => 'Catering Packages', 'sort_order' => 20]);
         $this->assertDatabaseHas('product_families', ['id' => $pack->id, 'code' => 'food_pack',
-            'is_addon' => true, 'name' => 'Packed Meals', 'sort_order' => 1, 'active' => false]);
+            'is_addon' => true, 'name' => 'Packed Meals', 'sort_order' => 10, 'active' => false]);
         $this->assertSame('food_pack', ProductFamily::orderBy('sort_order')->first()->code);
         $this->assertSame(2, AuditEvent::where('action', 'catalog.family_presentation_updated')->count());
     }

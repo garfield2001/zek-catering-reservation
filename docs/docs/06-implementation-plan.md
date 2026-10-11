@@ -1,5 +1,7 @@
 # V3 Implementation Plan and Decision Register
 
+Phase 4 is authorized for package-oriented behaviors. The current additive design is documented in [Phase 4 package publication](13-phase-4-package-publication.md); the original Slice 4 row below is a scope summary, not a claim that all acceptance tests have passed. Direct-sale listing revisions remain a later milestone. Phase 4 completion requires an isolated PostgreSQL migration/upgrade run and the full quality gate.
+
 Status: V3 and phased plan approved; Phases 1–3 implemented. Phase 3.5 adds dynamic collections and first-run administration. Phases 4–7 remain outside the current implementation scope. See 07-phase-1-foundation.md through 10-phase-3-5-dynamic-collections.md.
 
 ## Accepted decisions

@@ -26,11 +26,11 @@ export function GroupAllowedOptionPicker({
         onChange(
             checked
                 ? [
-                      ...selected,
+                      ...(mode === "fixed" ? [] : selected),
                       {
                           offering_option_id: id,
                           is_default: mode === "fixed",
-                          price_adjustment_minor: "0",
+                          price_adjustment_pesos: "0.00",
                       },
                   ]
                 : selected.filter((option) => option.offering_option_id !== id),
@@ -51,8 +51,8 @@ export function GroupAllowedOptionPicker({
         <section className="rounded-xl border border-stone-200 bg-white p-5">
             <h2 className="font-semibold">Permitted serving options</h2>
             <p className="mt-1 text-sm text-stone-600">
-                Only active, collection-eligible options appear. Premiums are
-                centavos per pax, pack or set—not per kilogram or tray size.
+                Only active, collection-eligible options appear. Price
+                Adjustments are in Philippine pesos per pax, pack or set.
             </p>
             {error && (
                 <p role="alert" className="text-sm text-red-700">
@@ -87,7 +87,16 @@ export function GroupAllowedOptionPicker({
                             >
                                 <label className="flex items-center gap-2 text-sm">
                                     <input
-                                        type="checkbox"
+                                        type={
+                                            mode === "fixed"
+                                                ? "radio"
+                                                : "checkbox"
+                                        }
+                                        name={
+                                            mode === "fixed"
+                                                ? "fixed-option"
+                                                : undefined
+                                        }
                                         checked={!!current}
                                         onChange={(event) =>
                                             toggle(
@@ -103,13 +112,28 @@ export function GroupAllowedOptionPicker({
                                 {current && (
                                     <label className="flex items-center gap-2 text-sm">
                                         <input
-                                            type="checkbox"
+                                            type={
+                                                mode === "select_one"
+                                                    ? "radio"
+                                                    : "checkbox"
+                                            }
+                                            name={
+                                                mode === "select_one"
+                                                    ? "default-option"
+                                                    : undefined
+                                            }
                                             checked={current.is_default}
                                             onChange={(event) =>
-                                                change(option.id, {
-                                                    is_default:
-                                                        event.target.checked,
-                                                })
+                                                onChange(
+                                                    selected.map((row) => ({
+                                                        ...row,
+                                                        is_default:
+                                                            row.offering_option_id ===
+                                                                option.id &&
+                                                            event.target
+                                                                .checked,
+                                                    })),
+                                                )
                                             }
                                         />
                                         Default
@@ -117,7 +141,7 @@ export function GroupAllowedOptionPicker({
                                 )}
                                 {current && (
                                     <label className="text-xs">
-                                        Premium centavos
+                                        Price Adjustment (PHP)
                                         <input
                                             className="mt-1 w-32"
                                             inputMode="numeric"
@@ -126,11 +150,11 @@ export function GroupAllowedOptionPicker({
                                                 behaviorType === "fixed_bundle"
                                             }
                                             value={
-                                                current.price_adjustment_minor
+                                                current.price_adjustment_pesos
                                             }
                                             onChange={(event) =>
                                                 change(option.id, {
-                                                    price_adjustment_minor:
+                                                    price_adjustment_pesos:
                                                         event.target.value,
                                                 })
                                             }

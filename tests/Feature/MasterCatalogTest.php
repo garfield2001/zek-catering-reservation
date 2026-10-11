@@ -60,24 +60,24 @@ class MasterCatalogTest extends TestCase
 
     private function categoryData(array $changes = []): array
     {
-        return ['code' => 'mains', 'name' => 'Main dishes', 'sort_order' => 1, 'active' => true, ...$changes];
+        return ['name' => 'Main dishes', 'sort_order' => 1, 'active' => true, ...$changes];
     }
 
     private function dishData(DishCategory $category, array $changes = []): array
     {
-        return ['code' => 'roast_chicken', 'name' => 'Roast Chicken', 'description' => null,
+        return ['name' => 'Roast Chicken', 'description' => null,
             'category_id' => $category->id, 'active' => true, 'family_ids' => [], ...$changes];
     }
 
     private function offeringData(ProductFamily $family, array $changes = []): array
     {
-        return ['family_id' => $family->id, 'code' => 'classic', 'name' => 'Classic',
+        return ['family_id' => $family->id, 'name' => 'Classic',
             'description' => null, 'active' => true, ...$changes];
     }
 
     private function optionData(array $changes = []): array
     {
-        return ['option_code' => 'regular', 'label' => 'Regular tray', 'unit' => 'tray',
+        return ['label' => 'Regular tray', 'unit' => 'tray',
             'quantity' => '1.000', 'serving_pax' => 10, 'serving_claim' => 'Serves approximately 10',
             'active' => true, ...$changes];
     }
@@ -100,7 +100,8 @@ class MasterCatalogTest extends TestCase
         $admin = $this->user();
         $this->signIn($admin)->post(route('catalog.categories.store'), $this->categoryData())
             ->assertRedirect();
-        $category = DishCategory::where('code', 'mains')->sole();
+        $category = DishCategory::where('name', 'Main dishes')->sole();
+        $this->assertStringStartsWith('category_', $category->code);
         $this->assertDatabaseHas('audit_events', ['action' => 'catalog.category_created',
             'subject_type' => 'dish_category', 'subject_id' => $category->id]);
         $this->post(route('catalog.categories.store'), $this->categoryData([
@@ -109,8 +110,21 @@ class MasterCatalogTest extends TestCase
         $this->put(route('catalog.categories.update', $category), $this->categoryData([
             'active' => false, 'sort_order' => 9,
         ]))->assertRedirect();
-        $this->assertDatabaseHas('dish_categories', ['id' => $category->id, 'active' => false, 'sort_order' => 9]);
+        $this->assertDatabaseHas('dish_categories', ['id' => $category->id, 'active' => false, 'sort_order' => 1]);
         $this->assertDatabaseHas('audit_events', ['action' => 'catalog.category_updated', 'subject_id' => $category->id]);
+    }
+
+    public function test_food_item_detail_exposes_a_clear_setup_readiness_summary(): void
+    {
+        $admin = $this->user();
+        $category = $this->category('setup', 'Setup foods');
+        $dish = Dish::create(['code' => 'setup_food', 'category_id' => $category->id, 'name' => 'Setup Food', 'active' => true]);
+
+        $this->signIn($admin)->get(route('catalog.dishes.show', $dish))
+            ->assertInertia(fn ($page) => $page->where('setup.hasCategory', true)
+                ->where('setup.eligibleCollections', 0)
+                ->where('setup.activeOfferings', 0)
+                ->where('setup.activeServingOptions', 0));
     }
 
     public function test_canonical_dish_can_serve_multiple_families_and_eligibility_history_is_retained(): void
@@ -122,7 +136,7 @@ class MasterCatalogTest extends TestCase
         $this->signIn($admin)->post(route('catalog.dishes.store'), $this->dishData($category, [
             'family_ids' => [$main->id, $tray->id],
         ]))->assertRedirect();
-        $dish = Dish::where('code', 'roast_chicken')->sole();
+        $dish = Dish::where('name', 'Roast Chicken')->sole();
         $this->assertSame(2, DB::table('dish_family_eligibilities')->where('dish_id', $dish->id)->count());
         $this->post(route('catalog.offerings.store', $dish), $this->offeringData($tray))->assertRedirect();
         $offering = DishOffering::where('dish_id', $dish->id)->sole();
@@ -175,21 +189,21 @@ class MasterCatalogTest extends TestCase
         $this->post(route('catalog.dishes.store'), $this->dishData($category, [
             'family_ids' => [$tray->id, $lechon->id],
         ]))->assertRedirect();
-        $dish = Dish::where('code', 'roast_chicken')->sole();
+        $dish = Dish::where('name', 'Roast Chicken')->sole();
         $this->post(route('catalog.offerings.store', $dish), $this->offeringData($tray))->assertRedirect();
         $this->post(route('catalog.offerings.store', $dish), $this->offeringData($tray, [
             'code' => 'spicy', 'name' => 'Spicy',
         ]))->assertRedirect();
         $this->post(route('catalog.offerings.store', $dish), $this->offeringData($lechon))->assertRedirect();
         $this->assertSame(3, DishOffering::where('dish_id', $dish->id)->count());
-        $offering = DishOffering::where('dish_id', $dish->id)->where('family_id', $tray->id)->where('code', 'classic')->sole();
+        $offering = DishOffering::where('dish_id', $dish->id)->where('family_id', $tray->id)->where('name', 'Classic')->sole();
         $this->post(route('catalog.options.store', [$dish, $offering]), $this->optionData())->assertRedirect();
         $this->post(route('catalog.options.store', [$dish, $offering]), $this->optionData([
             'option_code' => 'large', 'label' => 'Large tray', 'quantity' => '2.500',
             'serving_pax' => 20,
         ]))->assertRedirect();
         $this->assertDatabaseHas('offering_options', ['offering_id' => $offering->id,
-            'option_code' => 'large', 'quantity' => '2.500', 'serving_pax' => 20]);
+            'label' => 'Large tray', 'quantity' => '2.500', 'serving_pax' => 20]);
         $lechonOffering = DishOffering::where('dish_id', $dish->id)->where('family_id', $lechon->id)->sole();
         $this->post(route('catalog.options.store', [$dish, $lechonOffering]), $this->optionData([
             'unit' => 'kg', 'serving_pax' => null, 'serving_claim' => null,
@@ -216,7 +230,9 @@ class MasterCatalogTest extends TestCase
         }
         $this->post(route('catalog.options.store', [$dish, $offering]), $this->optionData())->assertRedirect();
         $this->post(route('catalog.options.store', [$dish, $offering]), $this->optionData())
-            ->assertSessionHasErrors('option_code');
+            ->assertRedirect();
+        $this->assertSame(2, $offering->options()->count());
+        $this->assertSame(2, $offering->options()->distinct('option_code')->count('option_code'));
         $dish->eligibleFamilies()->updateExistingPivot($family->id, ['active' => false]);
         $this->post(route('catalog.options.store', [$dish, $offering]), $this->optionData([
             'option_code' => 'large',
@@ -341,7 +357,7 @@ class MasterCatalogTest extends TestCase
         $this->post(route('catalog.dishes.store'), $this->dishData($category, [
             'family_ids' => [$pack->id],
         ]))->assertRedirect();
-        $dish = Dish::where('code', 'roast_chicken')->sole();
+        $dish = Dish::where('name', 'Roast Chicken')->sole();
         $this->assertSame([$pack->id], $dish->eligibleFamilies()->wherePivot('active', true)->pluck('product_families.id')->all());
         $this->put(route('catalog.dishes.update', $dish), $this->dishData($category, [
             'family_ids' => $allIds,
@@ -350,7 +366,7 @@ class MasterCatalogTest extends TestCase
         $this->put(route('catalog.dishes.update', $dish), $this->dishData($category))->assertRedirect();
         $this->assertSame(0, $dish->eligibleFamilies()->wherePivot('active', true)->count());
         $this->assertSame(5, $dish->eligibleFamilies()->count());
-        $this->assertSame(1, Dish::where('code', 'roast_chicken')->count());
+        $this->assertSame(1, Dish::where('name', 'Roast Chicken')->count());
     }
 
     public function test_deactivation_retains_records_and_combined_availability_fails_closed(): void
@@ -361,7 +377,7 @@ class MasterCatalogTest extends TestCase
         $this->post(route('catalog.dishes.store'), $this->dishData($category, [
             'family_ids' => [$family->id],
         ]))->assertRedirect();
-        $dish = Dish::where('code', 'roast_chicken')->sole();
+        $dish = Dish::where('name', 'Roast Chicken')->sole();
         $this->post(route('catalog.offerings.store', $dish), $this->offeringData($family))->assertRedirect();
         $offering = DishOffering::where('dish_id', $dish->id)->sole();
         $this->post(route('catalog.options.store', [$dish, $offering]), $this->optionData())->assertRedirect();

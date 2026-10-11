@@ -9,6 +9,7 @@ use App\Services\Audit\AuditLogger;
 use App\Services\Catalog\CatalogEligibility;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 
 class SaveOfferingOption
 {
@@ -25,9 +26,10 @@ class SaveOfferingOption
                 $this->eligibility->ensureOptionCanActivate($offering);
             }
             $before = $option->exists ? $option->only('offering_id', 'option_code', 'label', 'unit', 'quantity', 'serving_pax', 'serving_claim', 'active') : null;
-            $option->fill($data);
+            $option->fill(collect($data)->except('option_code')->all());
             if (! $option->exists) {
                 $option->offering_id = $offering->id;
+                $option->option_code = $data['option_code'] ?? 'serving_'.strtolower((string) Str::ulid());
             }
             $option->save();
             $this->audit->record($before ? 'catalog.option_updated' : 'catalog.option_created', $actor, $option,
