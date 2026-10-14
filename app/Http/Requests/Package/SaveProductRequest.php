@@ -30,7 +30,7 @@ class SaveProductRequest extends FormRequest
         $product = $routeProduct instanceof Product ? $routeProduct : null;
 
         return [
-            'family_id' => $product ? ['required', 'integer', Rule::in([$product->family_id])] : ['required', 'integer', Rule::exists('product_families', 'id')->where('active', true)],
+            'family_id' => $this->routeIs('catering.store') ? ['prohibited'] : ($product ? ['required', 'integer', Rule::in([$product->family_id])] : ['required', 'integer', Rule::exists('product_families', 'id')->where('active', true)]),
             'code' => $product ? ['sometimes', 'string', Rule::in([$product->code])] : ['sometimes', 'string', 'max:80'],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],

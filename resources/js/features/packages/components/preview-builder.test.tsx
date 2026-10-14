@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
-import type { VariantVersion, PackageProduct, PackageVariant } from "../types";
+import type { PackageVersion, PackageProduct } from "../types";
 import { PreviewBuilder } from "./preview-builder";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -43,18 +43,9 @@ test("sends selections to Laravel and renders only the server-calculated amount"
         sort_order: 0,
         active: true,
     } satisfies PackageProduct;
-    const variant = {
-        id: 2,
-        product_id: 1,
-        code: "a",
-        name: "A",
-        description: null,
-        sort_order: 0,
-        active: true,
-    } satisfies PackageVariant;
     const version = {
         id: 3,
-        variant_id: 2,
+        package_product_id: 1,
         family_id: 1,
         version_number: 1,
         status: "draft",
@@ -62,17 +53,13 @@ test("sends selections to Laravel and renders only the server-calculated amount"
         base_price_minor: "5000",
         price_basis: "per_pack",
         selection_policy: "uniform",
-        minimum_override: null,
-        step_override: null,
-        maximum_override: null,
-        maximum_override_enabled: false,
         minimum_quantity: 2,
         quantity_step: 1,
         maximum_quantity: null,
         groups: [
             {
                 id: 4,
-                version_id: 3,
+                package_version_id: 3,
                 group_code: "drink",
                 name: "Drink",
                 mode: "select_one",
@@ -100,14 +87,8 @@ test("sends selections to Laravel and renders only the server-calculated amount"
                 ],
             },
         ],
-    } satisfies VariantVersion;
-    render(
-        <PreviewBuilder
-            product={product}
-            variant={variant}
-            version={version}
-        />,
-    );
+    } satisfies PackageVersion;
+    render(<PreviewBuilder product={product} version={version} />);
     fireEvent.click(
         screen.getByRole("button", { name: "Calculate on server" }),
     );

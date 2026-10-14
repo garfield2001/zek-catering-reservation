@@ -1,11 +1,17 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\Catalog\AddonServiceController;
 use App\Http\Controllers\Admin\Catalog\CategoryController;
 use App\Http\Controllers\Admin\Catalog\CollectionController;
 use App\Http\Controllers\Admin\Catalog\DishController;
 use App\Http\Controllers\Admin\Catalog\FamilyOrderDefaultController;
 use App\Http\Controllers\Admin\Catalog\FamilyPresentationController;
+use App\Http\Controllers\Admin\Catalog\FoodCatalogController;
+use App\Http\Controllers\Admin\Catalog\FoodImageController;
+use App\Http\Controllers\Admin\Catalog\ListingAvailabilityController;
+use App\Http\Controllers\Admin\Catalog\ListingController;
+use App\Http\Controllers\Admin\Catalog\ListingPublicationController;
 use App\Http\Controllers\Admin\Catalog\OfferingController;
 use App\Http\Controllers\Admin\Catalog\OfferingOptionController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -13,16 +19,21 @@ use App\Http\Controllers\Admin\DisplayOrderController;
 use App\Http\Controllers\Admin\GuideController;
 use App\Http\Controllers\Admin\LandingController;
 use App\Http\Controllers\Admin\Package\AvailabilityController as PackageAvailabilityController;
+use App\Http\Controllers\Admin\Package\CateringController;
+use App\Http\Controllers\Admin\Package\ConfigurationController;
+use App\Http\Controllers\Admin\Package\DetailsController;
 use App\Http\Controllers\Admin\Package\GroupController as PackageGroupController;
+use App\Http\Controllers\Admin\Package\PackageMenuController;
 use App\Http\Controllers\Admin\Package\PreviewController as PackagePreviewController;
 use App\Http\Controllers\Admin\Package\ProductController as PackageProductController;
 use App\Http\Controllers\Admin\Package\PublicationController;
-use App\Http\Controllers\Admin\Package\VariantController as PackageVariantController;
+use App\Http\Controllers\Admin\Package\VersionController as PackageVersionController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\TeamMemberController;
 use App\Http\Controllers\Auth\SessionController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/media/foods/{dish}/{size}', FoodImageController::class)->name('catalog.images.show');
 Route::redirect('/', '/admin/home');
 Route::middleware('guest')->group(function () {
     Route::get('/login', [SessionController::class, 'create'])->name('login');
@@ -41,6 +52,24 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/staff/{user}/permissions', [PermissionController::class, 'edit']);
     Route::put('/admin/staff/{user}/permissions', [PermissionController::class, 'update']);
     Route::get('/admin/audit', AuditController::class)->name('audit.index');
+    Route::get('/admin/food-catalog', FoodCatalogController::class)->name('catalog.workspace');
+    Route::get('/admin/add-on-services', [AddonServiceController::class, 'index'])->name('services.index');
+    Route::post('/admin/add-on-services', [AddonServiceController::class, 'store'])->name('services.store');
+    Route::get('/admin/add-on-services/{family}', [AddonServiceController::class, 'show'])->name('services.show');
+    Route::get('/admin/add-on-services/{family}/items/create', [ListingController::class, 'create'])->name('listings.create');
+    Route::prefix('admin/items')->name('listings.')->scopeBindings()->group(function () {
+        Route::post('/', [ListingController::class, 'store'])->name('store');
+        Route::get('{listing}', [ListingController::class, 'show'])->name('show');
+        Route::get('{listing}/edit', [ListingController::class, 'edit'])->name('edit');
+        Route::put('{listing}', [ListingController::class, 'update'])->name('update');
+        Route::post('{listing}/availability', ListingAvailabilityController::class)->name('availability');
+        Route::post('{listing}/versions/{version}/publish', [ListingPublicationController::class, 'publish'])->name('publish');
+        Route::post('{listing}/versions/{version}/revise', [ListingPublicationController::class, 'revise'])->name('revise');
+    });
+    Route::get('/admin/catering-packages', [CateringController::class, 'index'])->name('catering.index');
+    Route::get('/admin/catering-packages/create', [CateringController::class, 'create'])->name('catering.create');
+    Route::post('/admin/catering-packages', [CateringController::class, 'store'])->name('catering.store');
+    Route::get('/admin/catering-packages/{product}', [PackageProductController::class, 'workspace'])->name('catering.show');
     Route::prefix('admin/catalog')->name('catalog.')->scopeBindings()->group(function () {
         Route::resource('categories', CategoryController::class)->except('destroy');
         Route::post('categories/{category}/move', [DisplayOrderController::class, 'category'])->name('categories.move');
@@ -63,29 +92,31 @@ Route::middleware('auth')->group(function () {
         Route::put('families/{family}/defaults', [FamilyOrderDefaultController::class, 'update'])->name('families.defaults.update');
     });
     Route::prefix('admin/packages')->name('packages.')->scopeBindings()->group(function () {
+        Route::get('editor', [ConfigurationController::class, 'create'])->name('editor');
+        Route::get('products/{product}/details', DetailsController::class)->name('details');
+        Route::post('configurations', [ConfigurationController::class, 'store'])->name('configurations.store');
+        Route::put('products/{product}/configuration', [ConfigurationController::class, 'update'])->name('configurations.update');
         Route::resource('products', PackageProductController::class)->except('destroy')
             ->parameters(['products' => 'product'])
             ->names(['index' => 'index', 'create' => 'create', 'store' => 'store',
                 'show' => 'show', 'edit' => 'edit', 'update' => 'update']);
         Route::post('products/{product}/availability', [PackageAvailabilityController::class, 'product'])->name('products.availability');
         Route::post('products/{product}/move', [DisplayOrderController::class, 'product'])->name('products.move');
-        Route::post('products/{product}/variants/{variant}/availability', [PackageAvailabilityController::class, 'variant'])->name('variants.availability');
-        Route::post('products/{product}/variants/{variant}/move', [DisplayOrderController::class, 'variant'])->name('variants.move');
-        Route::get('products/{product}/variants/create', [PackageVariantController::class, 'create'])->name('variants.create');
-        Route::post('products/{product}/variants', [PackageVariantController::class, 'store'])->name('variants.store');
-        Route::get('products/{product}/variants/{variant}/versions/{version}', [PackageVariantController::class, 'show'])->name('versions.show');
-        Route::get('products/{product}/variants/{variant}/versions/{version}/edit', [PackageVariantController::class, 'edit'])->name('versions.edit');
-        Route::put('products/{product}/variants/{variant}/versions/{version}', [PackageVariantController::class, 'update'])->name('versions.update');
-        Route::get('products/{product}/variants/{variant}/versions/{version}/review', [PublicationController::class, 'review'])->name('versions.review');
-        Route::post('products/{product}/variants/{variant}/versions/{version}/publish', [PublicationController::class, 'publish'])->name('versions.publish');
-        Route::post('products/{product}/variants/{variant}/versions/{version}/revise', [PublicationController::class, 'revise'])->name('versions.revise');
-        Route::post('products/{product}/variants/{variant}/versions/{version}/abandon', [PublicationController::class, 'abandon'])->name('versions.abandon');
-        Route::get('products/{product}/variants/{variant}/versions/{version}/groups/create', [PackageGroupController::class, 'create'])->name('groups.create');
-        Route::post('products/{product}/variants/{variant}/versions/{version}/groups', [PackageGroupController::class, 'store'])->name('groups.store');
-        Route::get('products/{product}/variants/{variant}/versions/{version}/groups/{group}/edit', [PackageGroupController::class, 'edit'])->name('groups.edit');
-        Route::put('products/{product}/variants/{variant}/versions/{version}/groups/{group}', [PackageGroupController::class, 'update'])->name('groups.update');
-        Route::delete('products/{product}/variants/{variant}/versions/{version}/groups/{group}', [PackageGroupController::class, 'destroy'])->name('groups.destroy');
-        Route::post('products/{product}/variants/{variant}/versions/{version}/groups/{group}/move', [DisplayOrderController::class, 'group'])->name('groups.move');
-        Route::post('products/{product}/variants/{variant}/versions/{version}/preview', PackagePreviewController::class)->name('versions.preview');
+        Route::get('products/{product}/versions/{version}', [PackageVersionController::class, 'show'])->name('versions.show');
+        Route::get('products/{product}/versions/{version}/edit', [PackageVersionController::class, 'edit'])->name('versions.edit');
+        Route::put('products/{product}/versions/{version}', [PackageVersionController::class, 'update'])->name('versions.update');
+        Route::get('products/{product}/versions/{version}/package-menu/edit', [PackageMenuController::class, 'edit'])->name('versions.package-menu.edit');
+        Route::put('products/{product}/versions/{version}/package-menu', [PackageMenuController::class, 'update'])->name('versions.package-menu.update');
+        Route::get('products/{product}/versions/{version}/review', [PublicationController::class, 'review'])->name('versions.review');
+        Route::post('products/{product}/versions/{version}/publish', [PublicationController::class, 'publish'])->name('versions.publish');
+        Route::post('products/{product}/versions/{version}/revise', [PublicationController::class, 'revise'])->name('versions.revise');
+        Route::post('products/{product}/versions/{version}/abandon', [PublicationController::class, 'abandon'])->name('versions.abandon');
+        Route::get('products/{product}/versions/{version}/groups/create', [PackageGroupController::class, 'create'])->name('groups.create');
+        Route::post('products/{product}/versions/{version}/groups', [PackageGroupController::class, 'store'])->name('groups.store');
+        Route::get('products/{product}/versions/{version}/groups/{group}/edit', [PackageGroupController::class, 'edit'])->name('groups.edit');
+        Route::put('products/{product}/versions/{version}/groups/{group}', [PackageGroupController::class, 'update'])->name('groups.update');
+        Route::delete('products/{product}/versions/{version}/groups/{group}', [PackageGroupController::class, 'destroy'])->name('groups.destroy');
+        Route::post('products/{product}/versions/{version}/groups/{group}/move', [DisplayOrderController::class, 'group'])->name('groups.move');
+        Route::post('products/{product}/versions/{version}/preview', PackagePreviewController::class)->name('versions.preview');
     });
 });

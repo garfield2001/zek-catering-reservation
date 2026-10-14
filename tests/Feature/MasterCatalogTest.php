@@ -250,8 +250,9 @@ class MasterCatalogTest extends TestCase
         $this->post(route('catalog.categories.store'), $this->categoryData(['code' => 'other']))->assertForbidden();
         $this->put(route('catalog.families.defaults.update', $family), $defaults)->assertForbidden();
         $this->grant($staff, 'catalog.view');
-        $this->get(route('catalog.categories.index'))->assertOk();
-        $this->get(route('catalog.dishes.index'))->assertOk();
+        $this->get(route('catalog.categories.index'))->assertRedirect(route('catalog.workspace'));
+        $this->get(route('catalog.workspace'))->assertOk();
+        $this->get(route('catalog.dishes.index'))->assertRedirect(route('catalog.workspace'));
         $this->post(route('catalog.categories.store'), $this->categoryData(['code' => 'other']))->assertForbidden();
         $this->grant($staff, 'catalog.manage');
         $this->post(route('catalog.categories.store'), $this->categoryData(['code' => 'other']))->assertRedirect();
@@ -301,7 +302,7 @@ class MasterCatalogTest extends TestCase
             $this->assertSame('audit unavailable', $exception->getMessage());
         }
         $this->assertDatabaseMissing('dish_categories', ['code' => 'mains']);
-        $this->assertSame(0, AuditEvent::count());
+        $this->assertSame(0, AuditEvent::where('action', '!=', 'catalog.primary_service_provisioned')->count());
     }
 
     public function test_malformed_catalog_fields_are_rejected_without_string_coercion(): void

@@ -19,6 +19,16 @@ class CatalogAvailability
             ->exists();
     }
 
+    /** @param array<int, int> $ids
+     * @return array<int, bool>
+     */
+    public function eligibleDishIds(ProductFamily $family, array $ids): array
+    {
+        return $this->eligiblePairs()->where('product_families.id', $family->id)
+            ->whereIn('dishes.id', $ids)->pluck('dishes.id')
+            ->mapWithKeys(fn ($id) => [(int) $id => true])->all();
+    }
+
     public function offeringAvailable(DishOffering $offering): bool
     {
         return $this->availableOfferings()

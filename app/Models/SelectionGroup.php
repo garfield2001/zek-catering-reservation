@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SelectionGroup extends Model
 {
-    protected $fillable = ['version_id', 'group_code', 'name', 'mode', 'slot_kind', 'minimum_count', 'maximum_count',
+    protected $fillable = ['package_version_id', 'group_code', 'name', 'mode', 'slot_kind', 'minimum_count', 'maximum_count',
         'unique_dishes', 'category_mode', 'inclusion_count', 'sort_order'];
 
     protected function casts(): array
@@ -17,10 +17,10 @@ class SelectionGroup extends Model
             'inclusion_count' => 'decimal:3', 'sort_order' => 'integer'];
     }
 
-    /** @return BelongsTo<VariantVersion, $this> */
+    /** @return BelongsTo<PackageVersion, $this> */
     public function version(): BelongsTo
     {
-        return $this->belongsTo(VariantVersion::class, 'version_id');
+        return $this->belongsTo(PackageVersion::class, 'package_version_id');
     }
 
     /** @return HasMany<GroupOption, $this> */

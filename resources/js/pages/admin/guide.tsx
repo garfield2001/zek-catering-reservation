@@ -1,89 +1,62 @@
 import { Link } from "@inertiajs/react";
-import { BookOpen, Info } from "lucide-react";
 import AdminLayout from "../../layouts/admin-layout";
-
-const sections = [
-    {
-        title: "1. Create your primary catering collection",
-        href: "/admin/catalog/families",
-        body: "A new installation has no preloaded business offerings. Create one primary collection, choose its display name, then configure the inherited 150-pax minimum if your approved policy changes.",
-    },
-    {
-        title: "2. Add food categories and food items",
-        href: "/admin/catalog/categories",
-        body: "Create culinary categories, then one canonical record per food or beverage. Assign each item only to the collections where it may be offered. The same item can be shared without duplication.",
-    },
-    {
-        title: "3. Configure offerings and serving options",
-        href: "/admin/catalog/dishes",
-        body: "From a food item, add collection-specific preparations and serving units such as trays, portions, packs or kilograms. Mark unavailable records inactive; their history stays linked.",
-    },
-    {
-        title: "4. Build primary package variants",
-        href: "/admin/packages/products",
-        body: "Create a package product in your primary catering collection, then as many named variants as needed. Each draft has independent base price, quantity overrides, included items or customer choices, allowed serving options and food category/item rules.",
-    },
-    {
-        title: "5. Create add-on collections",
-        href: "/admin/catalog/families",
-        body: "Create any number of add-ons. Choose package-based, packed-meal, fixed-bundle or direct-sale behavior. Two collections may use the same behavior but have separate food eligibility and offerings.",
-    },
-    {
-        title: "6. Configure and preview drafts",
-        href: "/admin/packages/products",
-        body: "Package, packed-meal and fixed-bundle add-ons use the package builder. Packed meals may enable split allocations; fixed bundles only allow fixed inclusions. Preview prices are calculated by Laravel in centavos and are not bookable quotations.",
-    },
-    {
-        title: "7. Manage Staff and review activity",
-        href: "/admin/staff",
-        body: "Staff starts with minimal access. Grant specific collection, catalog, package and price permissions through Team & access. Review successful changes in Activity History.",
-    },
-];
-
 export default function Guide() {
     return (
-        <AdminLayout
-            title="Admin guide"
-            description="A practical setup path for one catering business. Only configured draft features are available now."
-        >
-            <div className="mb-6 flex gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-950">
-                <BookOpen className="shrink-0" size={22} aria-hidden="true" />
-                <p className="text-sm leading-6">
-                    Create business data through the interface; no sample
-                    packages or prices are installed for you. Codes are stable
-                    internal identities, while names are customer-facing and
-                    editable.
-                </p>
-            </div>
-            <div className="space-y-4">
-                {sections.map((section) => (
-                    <section
-                        key={section.title}
-                        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+        <AdminLayout title="Owner Setup Guide">
+            <ol className="max-w-3xl list-inside list-decimal space-y-5 rounded-xl border bg-white p-6">
+                <li>
+                    <Link
+                        className="text-emerald-800 underline"
+                        href="/admin/food-catalog"
                     >
-                        <h2 className="font-semibold">{section.title}</h2>
-                        <p className="mt-2 text-sm leading-6 text-slate-600">
-                            {section.body}
-                        </p>
-                        <Link
-                            href={section.href}
-                            className="mt-3 inline-block text-sm font-semibold text-emerald-800 hover:underline"
-                        >
-                            Open this area →
-                        </Link>
-                    </section>
-                ))}
-            </div>
-            <div className="mt-7 flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
-                <Info size={21} className="shrink-0" aria-hidden="true" />
-                <p className="text-sm leading-6">
-                    <strong>Deferred:</strong> Direct-sale add-ons can be
-                    identified and offered in the master catalog, but their
-                    priced listing manager, publication, customer browsing,
-                    checkout, inquiries and reservations are not implemented in
-                    Phase 3.5. Draft previews do not create sales or bookings.
-                </p>
-            </div>
+                        Food Catalog
+                    </Link>
+                    : add categories and foods. Foods default to Catering
+                    Packages; select other services where relevant. Images are
+                    optional: upload, preview, replace or remove them in the
+                    food form.
+                </li>
+                <li>
+                    <Link
+                        className="text-emerald-800 underline"
+                        href="/admin/catering-packages"
+                    >
+                        Catering Packages
+                    </Link>
+                    : create a named package. Choose exactly how many foods the
+                    menu includes, allowed foods and any required categories.
+                    One allowed food in a required category is automatically
+                    fixed; Always Include can also fix an individual food.
+                </li>
+                <li>
+                    Complete Details, Menu, and Pricing &amp; Quantity, then use
+                    Review &amp; Save. Save Package stores all steps together;
+                    publication is a separate Review &amp; Publish confirmation.
+                </li>
+                <li>
+                    Use Edit Package to start a revision; older publications are
+                    in Publication History. The published menu stays unchanged
+                    until the new draft is published.
+                </li>
+                <li>
+                    Optional: create an{" "}
+                    <Link
+                        className="text-emerald-800 underline"
+                        href="/admin/add-on-services"
+                    >
+                        Add-on Service
+                    </Link>
+                    , choose its foods with the shared Menu builder and optional
+                    measurements, and configure packages for that service. Or
+                    choose Sold Individually to price each food or size, save
+                    its Draft and publish its reviewed configuration.
+                </li>
+            </ol>
+            <p className="mt-5 text-sm text-slate-600">
+                Staff tools depend on assigned permissions. Customer
+                reservations, payments and notifications are not available in
+                this milestone.
+            </p>
         </AdminLayout>
     );
 }

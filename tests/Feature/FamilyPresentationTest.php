@@ -60,7 +60,7 @@ class FamilyPresentationTest extends TestCase
         $this->assertDatabaseHas('product_families', ['id' => $main->id, 'code' => 'main_catering',
             'is_addon' => false, 'name' => 'Catering Packages', 'sort_order' => 20]);
         $this->assertDatabaseHas('product_families', ['id' => $pack->id, 'code' => 'food_pack',
-            'is_addon' => true, 'name' => 'Packed Meals', 'sort_order' => 10, 'active' => false]);
+            'is_addon' => true, 'name' => 'Packed Meals', 'sort_order' => 0, 'active' => false]);
         $this->assertSame('food_pack', ProductFamily::orderBy('sort_order')->first()->code);
         $this->assertSame(2, AuditEvent::where('action', 'catalog.family_presentation_updated')->count());
     }
@@ -75,7 +75,8 @@ class FamilyPresentationTest extends TestCase
             Permission::where('code', 'family.view')->sole()->id => ['effect' => 'allow'],
         ]);
         $staff->unsetRelations();
-        $this->get(route('catalog.families.index'))->assertOk();
+        $this->get(route('catalog.families.index'))->assertRedirect(route('services.index'));
+        $this->get(route('services.index'))->assertOk();
         $this->put($path, $this->payload($family, ['name' => 'Packed Meals']))->assertForbidden();
         $staff->permissionOverrides()->syncWithoutDetaching([
             Permission::where('code', 'family.manage')->sole()->id => ['effect' => 'allow'],
@@ -128,7 +129,7 @@ class FamilyPresentationTest extends TestCase
         $path = route('catalog.families.update', $family);
         $this->signIn($admin)->from(route('catalog.families.index'))->put($path,
             $this->payload($family, ['name' => ['Packed Meals']]))->assertSessionHasErrors('name');
-        $this->put($path, $this->payload($family, ['name' => '  MAIN CATERING PACKAGES  ']))
+        $this->put($path, $this->payload($family, ['name' => '  CATERING PACKAGES  ']))
             ->assertSessionHasErrors('name');
         $this->assertSame('Food Pack Lunch', $family->fresh()->name);
     }

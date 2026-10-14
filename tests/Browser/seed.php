@@ -11,7 +11,7 @@ $app = require __DIR__.'/../../bootstrap/app.php';
 $app->loadEnvironmentFrom('.env.testing');
 $app->make(Kernel::class)->bootstrap();
 
-if (! $app->environment('testing') || ! str_ends_with(config('database.connections.pgsql.database'), '_test')) {
+if (! $app->environment('testing') || $app->configurationIsCached() || config('database.default') !== 'pgsql' || config('database.connections.pgsql.database') !== 'zek_catering_test' || (string) config('database.connections.pgsql.port') !== '5432' || config('database.connections.pgsql.host') !== '127.0.0.1') {
     throw new RuntimeException('Browser fixtures require the isolated test database.');
 }
 Artisan::call('migrate:fresh', ['--force' => true]);

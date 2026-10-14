@@ -21,7 +21,7 @@ export default function DishShow({
     const activeFamilies =
         dish.eligible_families?.filter((family) => family.pivot?.active) ?? [];
     return (
-        <AdminLayout title={dish.name} description={"Food item · " + dish.code}>
+        <AdminLayout title={dish.name} description="Shared Food Item">
             <div className="mb-6 flex flex-wrap items-center gap-3">
                 <StatusBadge active={dish.active} />
                 <span className="text-sm text-stone-600">
@@ -46,39 +46,36 @@ export default function DishShow({
                     Prepare this Food Item for catering
                 </h2>
                 <p className="mt-1 text-sm text-emerald-900">
-                    Complete the catalog steps below before adding this Food
-                    Item to a package Selection Group.
+                    Choose the services that may use this food, then configure
+                    it in the package Menu. Preparations and serving sizes are
+                    optional catalog details for services that need them.
                 </p>
                 <ol className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
                     <li>
                         {setup.hasCategory ? "✓" : "○"} Food Category assigned
                     </li>
                     <li>
-                        {setup.eligibleCollections > 0 ? "✓" : "○"} Collection
-                        Eligibility configured
+                        {setup.eligibleCollections > 0 ? "✓" : "○"} Service
+                        availability configured
                     </li>
                     <li>
-                        {setup.activeOfferings > 0 ? "✓" : "○"}{" "}
-                        Collection-specific Offering configured
+                        {setup.activeOfferings > 0 ? "✓" : "○"} Service
+                        preparation configured (optional)
                     </li>
                     <li>
                         {setup.activeServingOptions > 0 ? "✓" : "○"} Active
-                        Serving Option configured
+                        serving size configured (optional)
                     </li>
                 </ol>
-                {(!setup.hasCategory ||
-                    setup.eligibleCollections === 0 ||
-                    setup.activeOfferings === 0 ||
-                    setup.activeServingOptions === 0) && (
+                {(!setup.hasCategory || setup.eligibleCollections === 0) && (
                     <p className="mt-3 text-sm font-medium text-amber-900">
-                        This Food Item is incomplete and will not be available
-                        for every package selection until the missing step is
-                        completed.
+                        Assign an active category and choose an eligible service
+                        before using this food in a package menu.
                     </p>
                 )}
             </section>
             <section className="mb-8 rounded-xl border border-stone-200 bg-white p-5">
-                <h2 className="font-semibold">Eligible collections</h2>
+                <h2 className="font-semibold">Available for services</h2>
                 <p className="mt-2 text-sm text-stone-600">
                     {activeFamilies.length
                         ? activeFamilies

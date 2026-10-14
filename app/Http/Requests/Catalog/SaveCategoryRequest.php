@@ -3,8 +3,8 @@
 namespace App\Http\Requests\Catalog;
 
 use App\Models\DishCategory;
+use App\Rules\AvailableCategoryName;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class SaveCategoryRequest extends FormRequest
@@ -30,17 +30,9 @@ class SaveCategoryRequest extends FormRequest
     {
         $category = $this->route('category');
 
-        return [
+        return ['return_product_id' => ['nullable', 'integer', 'exists:products,id'],
             'code' => $category ? ['sometimes', Rule::in([$category->code])] : ['sometimes', 'string', 'max:80'],
-            'name' => ['bail', 'required', 'string', 'max:255', function (string $attribute, mixed $value, \Closure $fail) use ($category): void {
-                $query = DB::table('dish_categories')->whereRaw('name_key = lower(btrim(?))', [$value]);
-                if ($category instanceof DishCategory) {
-                    $query->where('id', '!=', $category->id);
-                }
-                if ($query->exists()) {
-                    $fail('This category name is already in use.');
-                }
-            }],
+            'name' => ['bail', 'required', 'string', 'max:255', new AvailableCategoryName($category instanceof DishCategory ? $category->id : null)],
             'sort_order' => ['sometimes', 'integer', 'between:-2147483648,2147483647'],
             'active' => ['required', 'boolean'],
         ];

@@ -1,5 +1,7 @@
 # Implementation Organization — Laravel Modular Monolith + Feature-First React
 
+Current approved refactor: [Business workspaces and package architecture](15-business-workspaces.md) supersedes conflicting historical Variant, manual primary setup, Main Catering surcharge/Serving Option, and empty-primary-installation descriptions below. The primary Catering service is automatically provisioned; add-on services remain dynamic. Catering and compatible add-ons use a shared category/food menu builder. Package quantities are independently owned, not inherited. Advanced Serving Option rules remain internal; their ordinary manual group editor is removed.
+
 ## Architecture rules
 Thin controllers and pages; modest use-case actions; Eloquent only for persistence/relations/scopes; Form Requests validate transport; policies authorize; dedicated configuration/selection/price domain services for invariants. Avoid blanket abstract repository pattern, service-per-CRUD, interfaces for every class, global business helpers or single MegaCatalogService. No generic configurable JSON rules engine. Test services independently and use PostgreSQL integration tests for FK/check constraints.
 
@@ -7,21 +9,23 @@ Thin controllers and pages; modest use-case actions; Eloquent only for persisten
 
 For a new administrative workflow, follow the existing request path: React/Inertia page under `resources/js/pages` and feature components under `resources/js/features` → route in `routes/web.php` → thin controller under `app/Http/Controllers/Admin` → Form Request under `app/Http/Requests` → focused Action or domain Service under `app/Actions` or `app/Services` → Eloquent models under `app/Models` and PostgreSQL constraints/migrations under `database/migrations`. Authorization belongs in Policies and route middleware; audit writes belong in the workflow Action. Feature tests live under `tests/Feature`, browser workflows under `tests/Browser`, and reusable TypeScript types stay beside their feature.
 
-Example: package creation starts at `resources/js/features/packages/components/product-form.tsx`, posts to `packages.products.store`, is authorized and validated by `SaveProductRequest`, executes `SaveProduct`, creates the Package Product/default Package Variant/first Draft transactionally, and is verified by `PackageDraftTest` and the package browser workflow. Do not add repositories, DTO layers, or interfaces unless a concrete boundary requires them.
+Package creation starts at `features/packages/components/complete-package-form.tsx`, posts to `packages.configurations.store`, validates through `SaveCompletePackageRequest`, and runs `SaveCompletePackage`. Existing focused menu/pricing/Product Actions share one outer transaction. `PackageEditor` loads editor data; `DetailsController` returns a current Published snapshot or separately authorized Draft preview. No obsolete create modal or separate Menu/Pricing save form remains.
+
+Individual items use `features/listings`, `SaveListingRequest`, focused Save/Publish/Clone/Availability Actions, `ListingWorkspace`, `ListingConfiguration`, `IndividualListing` and `ListingVersion`. Their standalone service-owned listing model intentionally does not inherit the package selection engine. Images reuse SaveDish with the focused FoodImages storage service. No new dependencies or generic repository layer were introduced.
 
 ## Suggested backend folders
 app/
-  Actions/Catalog/{CreateDish,UpdateDish,PublishVariant,CloneVariantDraft,PublishDirectListing,CloneListingDraft}.php
+  Actions/Catalog/{CreateDish,UpdateDish,PublishDirectListing,CloneListingDraft}.php
   Actions/Access/{UpdateStaffPermissions,DeactivateUser}.php
   Actions/Media/{UploadCatalogImage,RemoveCatalogImage}.php
   Data/Catalog/{VariantDraftData,SelectionData,SplitAllocationData,PricePreviewData}.php
   Domain/Catalog/{CatalogEligibility,CurrentAvailability,GroupSelectionValidator,PackageConfigurationValidator,SplitSelectionValidator,PriceCalculator,QuantityRuleValidator}.php
   Enums/Catalog/{SelectionMode,PriceBasis,ProductFamilyCode,PublicationStatus}.php
   Http/Controllers/{Admin/Catalog,Storefront/Catalog}/...
-  Http/Requests/Catalog/{StoreDishRequest,SaveVariantDraftRequest,PublishVariantRequest}.php
+  Http/Requests/Catalog/{StoreDishRequest,SavePackageVersionRequest,PublishVersionRequest}.php
   Http/Resources/Catalog/...
-  Models/{Dish,DishOffering,OfferingOption,Product,ProductVariant,VariantVersion,SelectionGroup,DirectListing,DirectListingRevision,MediaAsset,...}.php
-  Policies/{DishPolicy,ProductPolicy,VariantVersionPolicy,MediaAssetPolicy}.php
+  Models/{Dish,DishOffering,OfferingOption,Product,PackageVersion,SelectionGroup,DirectListing,DirectListingRevision,MediaAsset,...}.php
+  Policies/{DishPolicy,ProductPolicy,PackageVersionPolicy,MediaAssetPolicy}.php
   Queries/Catalog/{BrowseCatalogQuery,PackageEditorQuery,EligibleOfferingQuery}.php
   Support/Money/{Money,PriceBreakdown}.php
   Jobs/Media/ProcessCatalogImage.php
@@ -30,13 +34,13 @@ Controller example (conceptual): authorize via policy; `$data=$request->validate
 
 ## Suggested React/TypeScript
 resources/js/
-  pages/admin/catalog/{dishes/index.tsx,dishes/edit.tsx,variants/edit.tsx}
+  pages/admin/catalog/{dishes/index.tsx,dishes/edit.tsx,packages/version-show.tsx}
   pages/storefront/{addons/index.tsx,addons/show.tsx}
   features/catalog/components/{DishCard,DishPicker,CategoryTabs,ServingOptionSelector,QuantityInput}.tsx
   features/catalog/hooks/{useDishSelection,useCategoryNavigation}.ts
-  features/catalog/types/{dish,offering,product,variant}.ts
+  features/catalog/types/{dish,offering,product,package-version}.ts
   features/package-builder/components/{SelectionGroupEditor,CategoryRuleEditor,PriceAdjustmentEditor,PublishChecklist}.tsx
-  features/package-builder/hooks/{useVariantDraft}.ts
+  features/package-builder/hooks/{usePackageVersionDraft}.ts
   features/direct-listings/components/{ListingRevisionEditor,ListingPublishChecklist}.tsx
   features/addons/components/{AddonFamilyNavigation,AddonCard}.tsx
   features/food-pack/components/{SplitAllocationEditor}.tsx

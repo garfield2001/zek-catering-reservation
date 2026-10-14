@@ -2,15 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Catalog\EnsurePrimaryService;
+use App\Actions\Package\SavePackageVersion;
+use App\Actions\Package\SaveProduct;
 use App\Actions\Package\SaveSelectionGroup;
-use App\Actions\Package\SaveVariantDraft;
 use App\Models\AuditEvent;
 use App\Models\Dish;
 use App\Models\DishCategory;
 use App\Models\DishOffering;
 use App\Models\OfferingOption;
 use App\Models\Permission;
-use App\Models\Product;
 use App\Models\ProductFamily;
 use App\Models\Role;
 use App\Models\User;
@@ -48,24 +49,15 @@ class DynamicCollectionTest extends TestCase
 
     private function createCollection(string $name, string $kind, string $behavior): ProductFamily
     {
-        $this->post(route('catalog.families.store'), [
+        if ($kind === 'primary') {
+            return app(EnsurePrimaryService::class)->handle();
+        }
+        $this->post(route('services.store'), [
             'name' => $name, 'description' => null, 'kind' => $kind,
             'behavior_type' => $behavior, 'sort_order' => 0, 'active' => true,
         ])->assertRedirect();
 
         return ProductFamily::where('name', $name)->whereNull('archived_at')->sole();
-    }
-
-    public function test_fresh_seed_contains_only_system_configuration_and_empty_catalog_is_usable(): void
-    {
-        $this->assertSame(0, ProductFamily::count());
-        $this->assertSame(0, Dish::count());
-        $this->assertSame(0, Product::count());
-        $this->assertDatabaseHas('permissions', ['code' => 'family.manage']);
-        $this->signIn($this->actor())->get(route('dashboard'))->assertOk()
-            ->assertInertia(fn ($page) => $page->where('setup.hasPrimary', false)->where('setup.collections', 0));
-        $this->get(route('catalog.families.index'))->assertOk()
-            ->assertInertia(fn ($page) => $page->where('hasPrimary', false)->has('families.data', 0));
     }
 
     public function test_activity_history_redacts_legacy_sensitive_fields_before_sending_them_to_the_browser(): void
@@ -98,37 +90,15 @@ class DynamicCollectionTest extends TestCase
         $this->assertTrue($direct->is_addon);
         $this->assertSame(150, $main->orderDefault->minimum_quantity);
         $this->assertSame(1, $dessert->orderDefault->minimum_quantity);
-        $this->assertSame(4, AuditEvent::where('action', 'catalog.collection_created')->count());
+        $this->assertSame(3, AuditEvent::where('action', 'catalog.collection_created')->count());
         $this->assertSame(4, DB::table('family_order_defaults')->count());
-        $this->post(route('catalog.families.store'), [
+        $this->post(route('services.store'), [
             'name' => 'Duplicate main', 'kind' => 'primary', 'behavior_type' => 'main_package',
             'sort_order' => 0, 'active' => true,
-        ])->assertSessionHasErrors('kind');
+        ])->assertStatus(422);
         $this->post(route('catalog.families.archive', $main))->assertRedirect();
         $replacement = $this->createCollection('Catering Packages', 'primary', 'main_package');
         $this->assertNotEquals($main->id, $replacement->id);
-    }
-
-    public function test_package_index_is_collection_scoped_and_creation_cannot_move_an_existing_product(): void
-    {
-        $this->signIn($this->actor());
-        $main = $this->createCollection('Main Service', 'primary', 'main_package');
-        $addon = $this->createCollection('Dessert Service', 'addon', 'package');
-        $mainProduct = Product::create(['family_id' => $main->id, 'code' => 'main_a', 'name' => 'Package A', 'active' => true, 'sort_order' => 1]);
-        $addonProduct = Product::create(['family_id' => $addon->id, 'code' => 'dessert_a', 'name' => 'Dessert A', 'active' => true, 'sort_order' => 1]);
-
-        $this->get(route('packages.index', ['family_id' => $main->id]))
-            ->assertInertia(fn ($page) => $page->where('context.familyId', $main->id)
-                ->where('context.label', 'Main Service')
-                ->where('products.data.0.id', $mainProduct->id)
-                ->where('products.data', fn ($data) => collect($data)->pluck('id')->doesntContain($addonProduct->id)));
-
-        $this->put(route('packages.update', $mainProduct), [
-            'family_id' => $addon->id, 'name' => 'Package A', 'description' => null,
-            'active' => true,
-        ])->assertSessionHasErrors('family_id');
-
-        $this->assertSame($main->id, $mainProduct->fresh()->family_id);
     }
 
     public function test_role_behavior_and_single_primary_rules_hold_in_postgresql(): void
@@ -156,39 +126,10 @@ class DynamicCollectionTest extends TestCase
                 DB::statement('ROLLBACK TO SAVEPOINT collection_constraint_test');
             }
         }
-        $this->post(route('catalog.families.store'), [
+        $this->post(route('services.store'), [
             'name' => 'Custom engine', 'kind' => 'addon', 'behavior_type' => 'arbitrary_script',
             'sort_order' => 0, 'active' => true,
         ])->assertSessionHasErrors('behavior_type');
-    }
-
-    public function test_primary_collection_accepts_more_than_four_independent_variants(): void
-    {
-        $admin = $this->actor();
-        $this->signIn($admin);
-        $main = $this->createCollection('Catering', 'primary', 'main_package');
-        $product = Product::create(['family_id' => $main->id, 'code' => 'catering',
-            'name' => 'Catering', 'active' => true]);
-        for ($number = 1; $number <= 5; $number++) {
-            app(SaveVariantDraft::class)->handle($admin, $product, [
-                'code' => "package_$number", 'name' => "Package $number", 'active' => true,
-                'base_price_minor' => (string) ($number * 10000), 'selection_policy' => 'uniform',
-                'minimum_override' => null, 'step_override' => null,
-                'maximum_override_enabled' => false, 'maximum_override' => null,
-            ]);
-        }
-        $this->assertSame(5, $product->variants()->count());
-        $this->assertSame(5, DB::table('variant_versions')->where('family_id', $main->id)->count());
-        $other = $this->createCollection('Package Add-ons', 'addon', 'package');
-        DB::statement('SAVEPOINT product_reparent_test');
-        try {
-            DB::table('products')->where('id', $product->id)->update(['family_id' => $other->id]);
-            $this->fail('PostgreSQL allowed a package product to change collections.');
-        } catch (QueryException $exception) {
-            $this->assertSame('23514', $exception->errorInfo[0]);
-        } finally {
-            DB::statement('ROLLBACK TO SAVEPOINT product_reparent_test');
-        }
     }
 
     public function test_collection_scoped_eligibility_and_rename_preserve_packed_meal_pricing(): void
@@ -207,14 +148,15 @@ class DynamicCollectionTest extends TestCase
             'code' => 'boxed', 'name' => 'Boxed', 'active' => true]);
         $option = OfferingOption::create(['offering_id' => $offering->id, 'option_code' => 'regular',
             'label' => 'Regular', 'unit' => 'pack', 'quantity' => '1.000', 'active' => true]);
-        $product = Product::create(['family_id' => $first->id, 'code' => 'dessert_box',
-            'name' => 'Dessert Box', 'active' => true]);
-        $version = app(SaveVariantDraft::class)->handle($admin, $product, [
+        $product = app(SaveProduct::class)->handle($admin, ['family_id' => $first->id, 'name' => 'Dessert Box', 'active' => true]);
+        $draft = $product->versions()->sole();
+        $version = app(SavePackageVersion::class)->handle($admin, $product, [
+            'draft_revision' => $draft->draft_revision,
             'code' => 'standard', 'name' => 'Standard', 'active' => true,
             'base_price_minor' => '12500', 'selection_policy' => 'uniform',
-            'minimum_override' => null, 'step_override' => null,
-            'maximum_override_enabled' => false, 'maximum_override' => null,
-        ]);
+            'minimum_quantity' => 1, 'quantity_step' => 1,
+            'maximum_quantity' => null,
+        ], $draft);
         app(SaveSelectionGroup::class)->handle($admin, $version, [
             'group_code' => 'dessert', 'name' => 'Dessert choice', 'mode' => 'select_one',
             'slot_kind' => 'item', 'minimum_count' => 1, 'maximum_count' => 1,
@@ -238,22 +180,22 @@ class DynamicCollectionTest extends TestCase
         $this->signIn($this->actor());
         $first = $this->createCollection('Dessert Boxes', 'addon', 'package');
         $this->createCollection('Snack Boxes', 'addon', 'package');
-        $this->get(route('catalog.families.index', ['q' => 'Dessert', 'sort' => 'name']))->assertOk()
-            ->assertInertia(fn ($page) => $page->where('families.total', 1)->where('families.data.0.id', $first->id));
-        $this->get(route('catalog.families.index', ['q' => '%']))->assertOk()
-            ->assertInertia(fn ($page) => $page->where('families.total', 0));
+        $this->get(route('services.index', ['q' => 'Dessert', 'sort' => 'name']))->assertOk()
+            ->assertInertia(fn ($page) => $page->where('services.total', 1)->where('services.data.0.id', $first->id));
+        $this->get(route('services.index', ['q' => '%']))->assertOk()
+            ->assertInertia(fn ($page) => $page->where('services.total', 0));
         $this->post(route('catalog.families.archive', $first))->assertRedirect();
-        $this->get(route('catalog.families.index'))->assertOk()
-            ->assertInertia(fn ($page) => $page->where('families.total', 1));
-        $this->get(route('catalog.families.index', ['status' => 'archived']))->assertOk()
-            ->assertInertia(fn ($page) => $page->where('families.total', 1)->where('families.data.0.id', $first->id));
+        $this->get(route('services.index'))->assertOk()
+            ->assertInertia(fn ($page) => $page->where('services.total', 1));
+        $this->get(route('services.index', ['archived' => 1, 'q' => 'Dessert']))->assertOk()
+            ->assertInertia(fn ($page) => $page->where('services.total', 1)->where('services.data.0.id', $first->id));
     }
 
     public function test_staff_needs_collection_permission_and_archive_keeps_history(): void
     {
         $admin = $this->actor();
         $staff = $this->actor('staff');
-        $this->signIn($staff)->post(route('catalog.families.store'), [
+        $this->signIn($staff)->post(route('services.store'), [
             'name' => 'Denied', 'kind' => 'addon', 'behavior_type' => 'package',
             'sort_order' => 0, 'active' => true,
         ])->assertForbidden();
@@ -271,7 +213,7 @@ class DynamicCollectionTest extends TestCase
         $this->assertSame('Staff Collection', $replacement->name);
     }
 
-    public function test_package_addon_needs_no_kilograms_and_direct_sale_rejects_package_variants(): void
+    public function test_package_addon_needs_no_kilograms_and_direct_sale_rejects_package_creation(): void
     {
         $admin = $this->actor();
         $this->signIn($admin);
@@ -285,14 +227,15 @@ class DynamicCollectionTest extends TestCase
             'code' => 'boxed', 'name' => 'Boxed', 'active' => true]);
         $option = OfferingOption::create(['offering_id' => $offering->id, 'option_code' => 'small',
             'label' => 'Small', 'unit' => 'piece', 'quantity' => '1.000', 'active' => true]);
-        $product = Product::create(['family_id' => $package->id, 'code' => 'celebration',
-            'name' => 'Celebration', 'active' => true]);
-        $version = app(SaveVariantDraft::class)->handle($admin, $product, [
+        $product = app(SaveProduct::class)->handle($admin, ['family_id' => $package->id, 'name' => 'Celebration', 'active' => true]);
+        $draft = $product->versions()->sole();
+        $version = app(SavePackageVersion::class)->handle($admin, $product, [
+            'draft_revision' => $draft->draft_revision,
             'code' => 'regular', 'name' => 'Regular', 'active' => true,
             'base_price_minor' => '20000', 'selection_policy' => 'uniform',
-            'minimum_override' => null, 'step_override' => null,
-            'maximum_override_enabled' => false, 'maximum_override' => null,
-        ]);
+            'minimum_quantity' => 1, 'quantity_step' => 1,
+            'maximum_quantity' => null,
+        ], $draft);
         app(SaveSelectionGroup::class)->handle($admin, $version, [
             'group_code' => 'cake', 'name' => 'Cake inclusion', 'mode' => 'fixed',
             'slot_kind' => 'item', 'minimum_count' => 1, 'maximum_count' => 1,
@@ -304,18 +247,7 @@ class DynamicCollectionTest extends TestCase
         $this->assertSame('per_set', $version->price_basis);
         $this->assertSame('41000', app(PackagePricePreview::class)->calculate($version->fresh(), 2,
             [['quantity' => 2, 'selections' => ['cake' => [$option->id]]]])['total_minor']);
-        $directProduct = Product::create(['family_id' => $direct->id, 'code' => 'direct_items',
-            'name' => 'Direct items', 'active' => true]);
-        DB::statement('SAVEPOINT direct_sale_variant_test');
-        try {
-            DB::table('product_variants')->insert(['product_id' => $directProduct->id,
-                'code' => 'wrong', 'name' => 'Wrong', 'created_at' => now(), 'updated_at' => now()]);
-            $this->fail('Direct-sale product accepted a package variant.');
-        } catch (QueryException $exception) {
-            $this->assertSame('23514', $exception->errorInfo[0]);
-        } finally {
-            DB::statement('ROLLBACK TO SAVEPOINT direct_sale_variant_test');
-        }
+        $this->post(route('packages.store'), ['family_id' => $direct->id, 'name' => 'Invalid', 'active' => true, 'creation_token' => (string) str()->uuid()])->assertSessionHasErrors('family_id');
     }
 
     public function test_fixed_bundle_cannot_accept_customer_substitutions_or_premiums(): void
@@ -332,14 +264,15 @@ class DynamicCollectionTest extends TestCase
             'code' => 'classic', 'name' => 'Classic', 'active' => true]);
         $option = OfferingOption::create(['offering_id' => $offering->id, 'option_code' => 'regular',
             'label' => 'Regular', 'unit' => 'piece', 'quantity' => '1.000', 'active' => true]);
-        $product = Product::create(['family_id' => $bundle->id, 'code' => 'party',
-            'name' => 'Party', 'active' => true]);
-        $version = app(SaveVariantDraft::class)->handle($admin, $product, [
+        $product = app(SaveProduct::class)->handle($admin, ['family_id' => $bundle->id, 'name' => 'Party', 'active' => true]);
+        $draft = $product->versions()->sole();
+        $version = app(SavePackageVersion::class)->handle($admin, $product, [
+            'draft_revision' => $draft->draft_revision,
             'code' => 'basic', 'name' => 'Basic', 'active' => true,
             'base_price_minor' => '50000', 'selection_policy' => 'uniform',
-            'minimum_override' => null, 'step_override' => null,
-            'maximum_override_enabled' => false, 'maximum_override' => null,
-        ]);
+            'minimum_quantity' => 1, 'quantity_step' => 1,
+            'maximum_quantity' => null,
+        ], $draft);
         $data = ['group_code' => 'snack', 'name' => 'Snack', 'mode' => 'fixed',
             'slot_kind' => 'item', 'minimum_count' => 1, 'maximum_count' => 1,
             'unique_dishes' => true, 'category_mode' => 'free', 'inclusion_count' => '2.000',

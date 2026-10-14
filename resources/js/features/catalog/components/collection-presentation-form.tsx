@@ -45,8 +45,17 @@ export function CollectionPresentationForm({
                 >
                     <p className="text-sm text-slate-600">
                         Configuration type:{" "}
-                        {family.behavior_type.replaceAll("_", " ")}. Renaming
-                        does not change pricing, eligibility or existing links.
+                        {family.behavior_type === "main_package"
+                            ? "Catering Packages"
+                            : family.behavior_type === "package"
+                              ? "Configurable package"
+                              : family.behavior_type === "packed_meal"
+                                ? "Packed Meals"
+                                : family.behavior_type === "fixed_bundle"
+                                  ? "Fixed Bundle"
+                                  : "Direct Sale"}
+                        . Renaming does not change pricing, eligibility or
+                        existing links.
                     </p>
                     <Field
                         id={`family-name-${family.id}`}

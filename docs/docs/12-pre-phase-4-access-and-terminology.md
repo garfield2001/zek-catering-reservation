@@ -2,6 +2,8 @@
 
 Scope: administrative access safeguards, permission presentation, and approved terminology only. Publication, direct listings, customer transactions and full permission-capability redesign remain deferred.
 
+> Historical note: this pre-Phase-4 record predates the clean fresh-install baseline. The current schema is documented in [14-clean-schema-migration.md](14-clean-schema-migration.md); it creates Package Products and Package Versions directly and does not provide the former Variant tables.
+
 ## 403 diagnosis and recovery
 
 Local authorization logs recorded repeated denials for account ID 2 at `GET /admin` after account ID 1 changed its permissions. Read-only inspection showed account 2 is an active **Staff** account, not an Administrator, with an explicit `dashboard.view = deny` override. `PermissionResolver` correctly gives that override precedence over the Staff role's dashboard grant. The `/admin` dashboard route retains its server-side `can:dashboard.view` check and direct access remains 403. The failure was compounded by login, the root redirect and the site logo targeting `/admin` regardless of effective access.

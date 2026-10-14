@@ -12,12 +12,12 @@ class AdminLanding
     {
         foreach ([
             'dashboard.view' => '/admin',
-            'family.view' => '/admin/catalog/families',
-            'family.manage' => '/admin/catalog/families',
-            'catalog.view' => '/admin/catalog/dishes',
-            'catalog.manage' => '/admin/catalog/dishes',
-            'package.view' => '/admin/packages/products',
-            'package.manage' => '/admin/packages/products',
+            'family.view' => '/admin/add-on-services',
+            'family.manage' => '/admin/add-on-services',
+            'catalog.view' => '/admin/food-catalog',
+            'catalog.manage' => '/admin/food-catalog',
+            'package.view' => '/admin/catering-packages',
+            'package.manage' => '/admin/catering-packages',
             'staff.view' => '/admin/staff',
             'audit.view' => '/admin/audit',
         ] as $permission => $path) {

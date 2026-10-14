@@ -3,10 +3,9 @@ import { Button } from "../../../components/ui/button";
 import { packagePaths } from "../paths";
 import { formatPesos } from "../money";
 import type {
-    VariantVersion,
+    PackageVersion,
     SelectionGroup,
     PackageProduct,
-    PackageVariant,
     Preview,
 } from "../types";
 
@@ -25,12 +24,10 @@ const defaults = (groups: SelectionGroup[]): Record<string, number[]> =>
 
 export function PreviewBuilder({
     product,
-    variant,
     version,
 }: {
     product: PackageProduct;
-    variant: PackageVariant;
-    version: VariantVersion;
+    version: PackageVersion;
 }) {
     const groups = version.groups ?? [];
     const [quantity, setQuantity] = useState(version.minimum_quantity);
@@ -56,8 +53,7 @@ export function PreviewBuilder({
         setError("");
         try {
             const response = await fetch(
-                packagePaths.version(product.id, variant.id, version.id) +
-                    "/preview",
+                packagePaths.version(product.id, version.id) + "/preview",
                 {
                     method: "POST",
                     credentials: "same-origin",

@@ -2,19 +2,20 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Package\SavePackageVersion;
+use App\Actions\Package\SaveProduct;
 use App\Actions\Package\SaveSelectionGroup;
-use App\Actions\Package\SaveVariantDraft;
 use App\Models\AuditEvent;
 use App\Models\Dish;
 use App\Models\DishCategory;
 use App\Models\DishOffering;
 use App\Models\OfferingOption;
+use App\Models\PackageVersion;
 use App\Models\Permission;
 use App\Models\Product;
 use App\Models\ProductFamily;
 use App\Models\Role;
 use App\Models\User;
-use App\Models\VariantVersion;
 use App\Services\Catalog\PackagePricePreview;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Database\QueryException;
@@ -82,18 +83,19 @@ class PackageDraftTest extends TestCase
     private function draft(User $actor, string $familyCode, array $changes = []): array
     {
         $family = $this->family($familyCode);
-        $product = Product::create(['family_id' => $family->id, 'code' => 'package',
-            'name' => 'Package', 'active' => true]);
         $data = ['code' => 'standard', 'name' => 'Standard', 'active' => true,
             'base_price_minor' => '10000', 'selection_policy' => 'uniform',
-            'minimum_override' => null, 'step_override' => null,
-            'maximum_override_enabled' => false, 'maximum_override' => null, ...$changes];
-        $version = app(SaveVariantDraft::class)->handle($actor, $product, $data);
+            'minimum_quantity' => $family->orderDefault->minimum_quantity, 'quantity_step' => 1,
+            'maximum_quantity' => null, ...$changes];
+        $initial = app(SaveProduct::class)->handle($actor, ['family_id' => $family->id, 'name' => 'Configured '.++$this->sequence, 'active' => true]);
+        $product = $initial;
+        $draft = $product->versions()->sole();
+        $version = app(SavePackageVersion::class)->handle($actor, $product, [...$data, 'draft_revision' => $draft->draft_revision], $draft);
 
         return [$product, $version];
     }
 
-    private function group(User $actor, VariantVersion $version, string $kind, string $mode,
+    private function group(User $actor, PackageVersion $version, string $kind, string $mode,
         array $options, int $minimum = 1, int $maximum = 1, array $changes = []): void
     {
         $code = $kind.'_'.++$this->sequence;
@@ -107,7 +109,7 @@ class PackageDraftTest extends TestCase
         ]);
     }
 
-    private function selections(VariantVersion $version, array $changes = []): array
+    private function selections(PackageVersion $version, array $changes = []): array
     {
         $selected = [];
         foreach ($version->fresh()->groups as $group) {
@@ -117,7 +119,7 @@ class PackageDraftTest extends TestCase
         return [...$selected, ...$changes];
     }
 
-    private function preview(VariantVersion $version, int $quantity, array $allocations): array
+    private function preview(PackageVersion $version, int $quantity, array $allocations): array
     {
         return app(PackagePricePreview::class)->calculate($version->fresh(), $quantity, $allocations);
     }
@@ -132,10 +134,10 @@ class PackageDraftTest extends TestCase
         }
     }
 
-    public function test_main_package_calculates_fixed_rice_drink_and_distinct_dishes_in_integer_minor_units(): void
+    public function test_addon_package_calculates_fixed_items_and_distinct_dishes_in_integer_minor_units(): void
     {
         $admin = $this->actor();
-        [, $version] = $this->draft($admin, 'main_catering', ['base_price_minor' => '12555']);
+        [, $version] = $this->draft($admin, 'belly_lechon', ['base_price_minor' => '12555']);
         $family = $version->family;
         $this->group($admin, $version, 'rice', 'fixed', [$this->option($family, 'portion')]);
         $drink = $this->option($family, 'bottle');
@@ -155,10 +157,10 @@ class PackageDraftTest extends TestCase
             fn ($group) => $group->slot_kind === 'drink'))] = [$upgrade->id];
         $result = $this->preview($version, 150, [['quantity' => 150, 'selections' => $selections]]);
         $this->assertSame('1924500', $result['total_minor']);
-        $this->assertSame('per_pax', $result['price_basis']);
+        $this->assertSame('per_set', $result['price_basis']);
         $this->assertSame('draft_preview', $result['status']);
         $this->assertSame('41250', $result['groups'][0]['adjustments'][0]['line_amount_minor']);
-        $this->assertDatabaseHas('audit_events', ['action' => 'package.draft_created', 'subject_id' => $version->id]);
+        $this->assertDatabaseHas('audit_events', ['action' => 'package.draft_updated', 'subject_id' => $version->id]);
         $this->assertSame(3, AuditEvent::where('action', 'package.group_created')->count());
     }
 
@@ -193,7 +195,7 @@ class PackageDraftTest extends TestCase
     {
         $admin = $this->actor();
         [, $version] = $this->draft($admin, 'food_pack', ['selection_policy' => 'split',
-            'minimum_override' => 10, 'step_override' => 2, 'base_price_minor' => '12500']);
+            'minimum_quantity' => 10, 'quantity_step' => 2, 'base_price_minor' => '12500']);
         $family = $version->family;
         $this->group($admin, $version, 'rice', 'fixed', [$this->option($family, 'portion')]);
         $drink = $this->option($family, 'bottle');
@@ -232,67 +234,10 @@ class PackageDraftTest extends TestCase
         ]);
     }
 
-    public function test_staff_needs_both_package_manage_and_pricing_permission_to_save_variants(): void
+    public function test_addon_category_quotas_distinct_same_category_dishes_and_duplicate_rejection(): void
     {
         $admin = $this->actor();
-        $staff = $this->actor('staff');
-        $family = $this->family('main_catering');
-        $this->signIn($staff)->post(route('packages.store'), [
-            'family_id' => $family->id, 'code' => 'basic', 'name' => 'Basic', 'description' => null, 'active' => true,
-            'creation_token' => '64d203ad-889a-42b7-8f50-b31838999b4c',
-        ])->assertForbidden();
-        $this->grant($staff, 'package.manage');
-        $this->post(route('packages.store'), [
-            'family_id' => $family->id, 'code' => 'basic', 'name' => 'Basic', 'description' => null, 'active' => true,
-            'creation_token' => '64d203ad-889a-42b7-8f50-b31838999b4c',
-        ])->assertRedirect();
-        $product = Product::where('name', 'Basic')->sole();
-        $payload = ['code' => 'premium', 'name' => 'Premium', 'active' => true,
-            'base_price_minor' => '10000', 'selection_policy' => 'uniform',
-            'minimum_override' => null, 'step_override' => null,
-            'maximum_override_enabled' => false, 'maximum_override' => null];
-        $this->post(route('packages.variants.store', $product), $payload)->assertForbidden();
-        $this->grant($staff, 'package.pricing.manage');
-        $this->post(route('packages.variants.store', $product), $payload)->assertRedirect();
-        $this->assertSame(2, VariantVersion::count());
-        $staff->update(['active' => false]);
-        $this->post(route('packages.variants.store', $product), $payload)->assertRedirect(route('login'));
-        $this->assertSame(2, VariantVersion::count());
-        $this->signIn($admin)->get(route('packages.index'))->assertOk();
-    }
-
-    public function test_postgresql_rejects_cross_family_options_negative_prices_and_published_status(): void
-    {
-        $admin = $this->actor();
-        [, $version] = $this->draft($admin, 'main_catering');
-        $main = $this->option($version->family, 'portion');
-        $this->group($admin, $version, 'rice', 'fixed', [$main]);
-        $group = $version->fresh()->groups()->sole();
-        $foreign = $this->option($this->family('food_pack'), 'portion');
-        foreach ([
-            fn () => DB::table('group_options')->insert(['group_id' => $group->id,
-                'offering_option_id' => $foreign->id, 'price_adjustment_minor' => 0]),
-            fn () => DB::table('group_options')->where('group_id', $group->id)->update(['price_adjustment_minor' => -1]),
-            fn () => DB::table('variant_versions')->where('id', $version->id)->update(['status' => 'published']),
-            fn () => DB::table('variant_versions')->where('id', $version->id)->update(['price_basis' => 'per_set']),
-            fn () => DB::table('selection_groups')->where('id', $group->id)->update(['slot_kind' => 'lechon']),
-        ] as $write) {
-            DB::statement('SAVEPOINT package_constraint_test');
-            try {
-                $write();
-                $this->fail('PostgreSQL accepted invalid package data.');
-            } catch (QueryException $exception) {
-                $this->assertSame('23514', $exception->errorInfo[0]);
-            } finally {
-                DB::statement('ROLLBACK TO SAVEPOINT package_constraint_test');
-            }
-        }
-    }
-
-    public function test_main_category_quotas_distinct_same_category_dishes_and_duplicate_rejection(): void
-    {
-        $admin = $this->actor();
-        [, $version] = $this->draft($admin, 'main_catering');
+        [, $version] = $this->draft($admin, 'belly_lechon');
         $family = $version->family;
         $mains = DishCategory::create(['code' => 'mains', 'name' => 'Mains', 'active' => true]);
         $sides = DishCategory::create(['code' => 'sides', 'name' => 'Sides', 'active' => true]);
@@ -406,62 +351,6 @@ class PackageDraftTest extends TestCase
         $this->expectInvalid(fn () => $this->preview($version, 1, $selection), 'groups.0.selections.'.$version->fresh()->groups()->sole()->group_code);
     }
 
-    public function test_quantity_inheritance_revision_guard_and_overflow_are_enforced(): void
-    {
-        $admin = $this->actor();
-        [$product, $version] = $this->draft($admin, 'food_pack', ['base_price_minor' => '100']);
-        $this->assertSame(10, $version->minimum_quantity);
-        $this->expectInvalid(fn () => app(SaveVariantDraft::class)->handle($admin, $product, [
-            'code' => 'standard', 'name' => 'Standard', 'active' => true,
-            'base_price_minor' => '100', 'selection_policy' => 'uniform',
-            'minimum_override' => 1, 'step_override' => 1,
-            'maximum_override_enabled' => false, 'maximum_override' => null,
-            'draft_revision' => 0,
-        ], $version->variant, $version), 'draft_revision');
-        $this->assertSame(1, $version->fresh()->draft_revision);
-        $this->expectInvalid(fn () => app(SaveVariantDraft::class)->handle($admin, $product, [
-            'code' => 'standard', 'name' => 'Standard', 'active' => true,
-            'base_price_minor' => '100', 'selection_policy' => 'uniform',
-            'minimum_override' => null, 'step_override' => null,
-            'maximum_override_enabled' => false, 'maximum_override' => 20,
-            'draft_revision' => 1,
-        ], $version->variant, $version), 'maximum_override');
-        [, $main] = $this->draft($admin, 'main_catering', ['base_price_minor' => (string) PHP_INT_MAX]);
-        $family = $main->family;
-        $this->group($admin, $main, 'rice', 'fixed', [$this->option($family, 'portion')]);
-        $drink = $this->option($family, 'bottle');
-        $this->group($admin, $main, 'drink', 'select_one', [$drink], 1, 1, [
-            'options' => [['offering_option_id' => $drink->id, 'is_default' => true, 'price_adjustment_minor' => '0']],
-        ]);
-        $this->group($admin, $main, 'dish', 'select_many', [$this->option($family)]);
-        $this->expectInvalid(fn () => $this->preview($main, 150, [[
-            'quantity' => 150, 'selections' => $this->selections($main),
-        ]]), 'price');
-    }
-
-    public function test_admin_preview_is_not_customer_bookable_and_staff_direct_requests_are_authorized(): void
-    {
-        $admin = $this->actor();
-        $staff = $this->actor('staff');
-        [$product, $version] = $this->draft($admin, 'pica_pica');
-        $option = $this->option($version->family, 'piece');
-        $this->group($admin, $version, 'bundle_item', 'fixed', [$option]);
-        $path = route('packages.versions.preview', [$product, $version->variant, $version]);
-        $payload = ['quantity' => 1, 'groups' => [[
-            'quantity' => 1, 'selections' => $this->selections($version),
-        ]], 'total_minor' => '1'];
-        $this->postJson($path, $payload)->assertUnauthorized();
-        $this->signIn($staff)->postJson($path, $payload)->assertForbidden();
-        $this->grant($staff, 'package.view');
-        $this->postJson($path, $payload)->assertOk()->assertJsonPath('total_minor', '10000');
-        $this->post(route('packages.groups.store', [$product, $version->variant, $version]), [
-            'group_code' => 'forged',
-        ])->assertForbidden();
-        $this->assertDatabaseMissing('selection_groups', ['group_code' => 'forged']);
-        $this->assertSame('draft', $version->fresh()->status);
-        $this->assertSame(0, DB::table('variant_versions')->where('status', 'published')->count());
-    }
-
     public function test_draft_slot_can_be_removed_with_audit_and_staff_cannot_bypass_authorization(): void
     {
         $admin = $this->actor();
@@ -469,7 +358,7 @@ class PackageDraftTest extends TestCase
         [$product, $version] = $this->draft($admin, 'pica_pica');
         $this->group($admin, $version, 'bundle_item', 'fixed', [$this->option($version->family, 'piece')]);
         $group = $version->fresh()->groups()->sole();
-        $path = route('packages.groups.destroy', [$product, $version->variant, $version, $group]);
+        $path = route('packages.groups.destroy', [$product, $version, $group]);
         $this->signIn($staff)->delete($path)->assertForbidden();
         $this->assertDatabaseHas('selection_groups', ['id' => $group->id]);
         $this->signIn($admin)->delete($path, ['draft_revision' => $version->fresh()->draft_revision])->assertRedirect();
@@ -482,7 +371,7 @@ class PackageDraftTest extends TestCase
     public function test_cross_slot_canonical_dish_duplicates_are_rejected_even_with_different_offerings(): void
     {
         $admin = $this->actor();
-        [, $version] = $this->draft($admin, 'main_catering');
+        [, $version] = $this->draft($admin, 'belly_lechon');
         $family = $version->family;
         $this->group($admin, $version, 'rice', 'fixed', [$this->option($family, 'portion')]);
         $drink = $this->option($family, 'bottle');
@@ -537,7 +426,7 @@ class PackageDraftTest extends TestCase
         $group = $version->fresh()->groups()->sole();
         foreach ([
             fn () => DB::table('selection_groups')->insert([
-                'version_id' => $version->id, 'group_code' => $group->group_code,
+                'package_version_id' => $version->id, 'group_code' => $group->group_code,
                 'name' => 'Duplicate', 'mode' => 'fixed', 'slot_kind' => 'bundle_item',
                 'minimum_count' => 1, 'maximum_count' => 1, 'inclusion_count' => '1.000',
             ]),
@@ -562,7 +451,7 @@ class PackageDraftTest extends TestCase
     {
         $admin = $this->actor();
         $staff = $this->actor('staff');
-        [$product, $version] = $this->draft($admin, 'main_catering');
+        [$product, $version] = $this->draft($admin, 'belly_lechon');
         $option = $this->option($version->family, 'bottle');
         $this->group($admin, $version, 'drink', 'select_one', [$option], 1, 1, [
             'options' => [['offering_option_id' => $option->id, 'is_default' => true, 'price_adjustment_minor' => '0']],
@@ -575,7 +464,7 @@ class PackageDraftTest extends TestCase
             'sort_order' => 0, 'options' => [['offering_option_id' => $option->id,
                 'is_default' => true, 'price_adjustment_minor' => '275']],
             'category_rules' => [], 'dish_rules' => []];
-        $path = route('packages.groups.update', [$product, $version->variant, $version, $group]);
+        $path = route('packages.groups.update', [$product, $version, $group]);
         $this->grant($staff, 'package.manage');
         $this->signIn($staff)->put($path, $payload)->assertForbidden();
         $this->assertDatabaseHas('group_options', ['group_id' => $group->id, 'price_adjustment_minor' => 0]);
@@ -588,7 +477,7 @@ class PackageDraftTest extends TestCase
     public function test_dish_allow_and_deny_rules_constrain_selected_options(): void
     {
         $admin = $this->actor();
-        [, $version] = $this->draft($admin, 'main_catering');
+        [, $version] = $this->draft($admin, 'belly_lechon');
         $family = $version->family;
         $this->group($admin, $version, 'rice', 'fixed', [$this->option($family, 'portion')]);
         $drink = $this->option($family, 'bottle');
@@ -646,81 +535,117 @@ class PackageDraftTest extends TestCase
         $this->expectInvalid(fn () => $this->preview($version, 10, [['quantity' => 10, 'selections' => $selections]]), 'package');
     }
 
-    public function test_additional_renamed_variant_preserves_groups_and_independent_structure(): void
+    public function test_postgresql_rejects_cross_family_options_negative_prices_and_published_status(): void
     {
         $admin = $this->actor();
-        [$product, $first] = $this->draft($admin, 'main_catering');
-        $rice = $this->option($first->family, 'portion');
-        $this->group($admin, $first, 'rice', 'fixed', [$rice]);
-        $firstDrink = $this->option($first->family, 'bottle');
-        $this->group($admin, $first, 'drink', 'select_one', [$firstDrink], 1, 1, [
-            'options' => [['offering_option_id' => $firstDrink->id, 'is_default' => true, 'price_adjustment_minor' => '0']],
-        ]);
-        $this->group($admin, $first, 'dish', 'select_many', [$this->option($first->family)]);
-        foreach (['b', 'c', 'd', 'premium'] as $index => $code) {
-            $version = app(SaveVariantDraft::class)->handle($admin, $product, [
-                'code' => $code, 'name' => $code === 'premium' ? 'Premium Package' : strtoupper($code),
-                'description' => $code === 'premium' ? 'More dish choices' : null,
-                'sort_order' => ($index + 1) * 10, 'active' => true,
-                'base_price_minor' => '12000', 'selection_policy' => 'uniform',
-                'minimum_override' => null, 'step_override' => null,
-                'maximum_override_enabled' => false, 'maximum_override' => null,
-            ]);
+        [, $version] = $this->draft($admin, 'belly_lechon');
+        $main = $this->option($version->family, 'portion');
+        $this->group($admin, $version, 'rice', 'fixed', [$main]);
+        $group = $version->fresh()->groups()->sole();
+        $foreign = $this->option($this->family('food_pack'), 'portion');
+        foreach ([
+            fn () => DB::table('group_options')->insert(['group_id' => $group->id,
+                'offering_option_id' => $foreign->id, 'price_adjustment_minor' => 0]),
+            fn () => DB::table('group_options')->where('group_id', $group->id)->update(['price_adjustment_minor' => -1]),
+            fn () => DB::table('package_versions')->where('id', $version->id)->update(['status' => 'published']),
+            fn () => DB::table('package_versions')->where('id', $version->id)->update(['price_basis' => 'per_pax']),
+            fn () => DB::table('selection_groups')->where('id', $group->id)->update(['slot_kind' => 'lechon']),
+        ] as $index => $write) {
+            DB::statement('SAVEPOINT package_constraint_test');
+            try {
+                $write();
+                $this->fail('PostgreSQL accepted invalid package data at case '.$index);
+            } catch (QueryException $exception) {
+                $this->assertSame('23514', $exception->errorInfo[0]);
+            } finally {
+                DB::statement('ROLLBACK TO SAVEPOINT package_constraint_test');
+            }
         }
-        $this->assertSame(5, $product->variants()->count());
-        $this->assertSame('Premium Package', $version->variant->name);
-        $this->group($admin, $version, 'rice', 'fixed', [$rice]);
-        $secondDrink = $this->option($version->family, 'bottle');
-        $this->group($admin, $version, 'drink', 'select_one', [$secondDrink], 1, 1, [
-            'options' => [['offering_option_id' => $secondDrink->id, 'is_default' => true, 'price_adjustment_minor' => '0']],
+    }
+
+    public function test_independent_quantities_revision_guard_and_overflow_are_enforced(): void
+    {
+        $admin = $this->actor();
+        [$product, $version] = $this->draft($admin, 'food_pack', ['base_price_minor' => '100']);
+        $this->assertSame(10, $version->minimum_quantity);
+        $this->expectInvalid(fn () => app(SavePackageVersion::class)->handle($admin, $product, [
+            'code' => 'standard', 'name' => 'Standard', 'active' => true,
+            'base_price_minor' => '100', 'selection_policy' => 'uniform',
+            'minimum_quantity' => 1, 'quantity_step' => 1,
+            'maximum_quantity' => null,
+            'draft_revision' => 0,
+        ], $version), 'draft_revision');
+        $this->assertSame(2, $version->fresh()->draft_revision);
+        $this->expectInvalid(fn () => app(SavePackageVersion::class)->handle($admin, $product, [
+            'code' => 'standard', 'name' => 'Standard', 'active' => true,
+            'base_price_minor' => '100', 'selection_policy' => 'uniform',
+            'minimum_quantity' => 21, 'quantity_step' => 1,
+            'maximum_quantity' => 20,
+            'draft_revision' => 1,
+        ], $version), 'maximum_quantity');
+        [, $main] = $this->draft($admin, 'belly_lechon', ['base_price_minor' => (string) PHP_INT_MAX]);
+        $family = $main->family;
+        $this->group($admin, $main, 'rice', 'fixed', [$this->option($family, 'portion')]);
+        $drink = $this->option($family, 'bottle');
+        $this->group($admin, $main, 'drink', 'select_one', [$drink], 1, 1, [
+            'options' => [['offering_option_id' => $drink->id, 'is_default' => true, 'price_adjustment_minor' => '0']],
         ]);
-        $firstDish = $this->option($version->family);
-        $secondDish = $this->option($version->family);
-        $this->group($admin, $version, 'dish', 'select_many', [$firstDish, $secondDish], 2, 2, [
-            'options' => [
-                ['offering_option_id' => $firstDish->id, 'is_default' => true, 'price_adjustment_minor' => '0'],
-                ['offering_option_id' => $secondDish->id, 'is_default' => true, 'price_adjustment_minor' => '0'],
-            ],
-        ]);
-        $this->assertSame('1800000', $this->preview($version, 150, [[
-            'quantity' => 150, 'selections' => $this->selections($version),
-        ]])['total_minor']);
-        $dishSlot = $version->fresh()->groups->firstWhere('slot_kind', 'dish');
-        $invalidSelections = $this->selections($version);
-        $invalidSelections[$dishSlot->group_code] = [$firstDish->id];
-        try {
-            $this->preview($version, 150, [['quantity' => 150, 'selections' => $invalidSelections]]);
-            $this->fail('A required second dish was omitted.');
-        } catch (ValidationException $exception) {
-            $message = $exception->errors()['groups.0.selections.'.$dishSlot->group_code][0];
-            $this->assertStringContainsString('exactly 2', $message);
-            $this->assertStringContainsString($dishSlot->name, $message);
-        }
-        $this->assertSame(1, $first->fresh()->groups->firstWhere('slot_kind', 'dish')->minimum_count);
-        $renamed = app(SaveVariantDraft::class)->handle($admin, $product, [
-            'code' => 'premium', 'name' => 'Celebration Package', 'description' => 'Renamed package',
-            'sort_order' => 99, 'active' => true, 'base_price_minor' => '12000',
-            'selection_policy' => 'uniform', 'minimum_override' => null,
-            'step_override' => null, 'maximum_override_enabled' => false, 'maximum_override' => null,
-            'draft_revision' => $version->fresh()->draft_revision,
-        ], $version->variant, $version);
-        $this->assertSame($version->id, $renamed->id);
-        $this->assertSame('premium', $renamed->variant->code);
-        $this->assertSame('Celebration Package', $renamed->variant->name);
-        $this->assertSame(3, $renamed->groups()->count());
-        $this->assertSame('1800000', $this->preview($renamed, 150, [[
-            'quantity' => 150, 'selections' => $this->selections($renamed),
-        ]])['total_minor']);
-        DB::statement('SAVEPOINT variant_display_name_test');
-        try {
-            DB::table('product_variants')->insert(['product_id' => $product->id,
-                'code' => 'duplicate_label', 'name' => '  CELEBRATION PACKAGE  ',
-                'created_at' => now(), 'updated_at' => now()]);
-            $this->fail('PostgreSQL accepted a duplicate variant display name.');
-        } catch (QueryException $exception) {
-            $this->assertSame('23505', $exception->errorInfo[0]);
-        } finally {
-            DB::statement('ROLLBACK TO SAVEPOINT variant_display_name_test');
-        }
+        $this->group($admin, $main, 'dish', 'select_many', [$this->option($family)]);
+        $this->expectInvalid(fn () => $this->preview($main, 150, [[
+            'quantity' => 150, 'selections' => $this->selections($main),
+        ]]), 'price');
+    }
+
+    public function test_staff_needs_both_edit_and_pricing_permission_to_save_package_prices(): void
+    {
+        $admin = $this->actor();
+        $staff = $this->actor('staff');
+        $family = $this->family('belly_lechon');
+        $this->signIn($staff)->post(route('packages.store'), [
+            'family_id' => $family->id, 'code' => 'basic', 'name' => 'Basic', 'description' => null, 'active' => true,
+            'creation_token' => '64d203ad-889a-42b7-8f50-b31838999b4c',
+        ])->assertForbidden();
+        $this->grant($staff, 'package.manage');
+        $this->post(route('packages.store'), [
+            'family_id' => $family->id, 'code' => 'basic', 'name' => 'Basic', 'description' => null, 'active' => true,
+            'creation_token' => '64d203ad-889a-42b7-8f50-b31838999b4c',
+        ])->assertRedirect();
+        $product = Product::where('name', 'Basic')->sole();
+        $draft = $product->versions()->sole();
+        $payload = ['code' => 'premium', 'name' => 'Premium', 'active' => true,
+            'draft_revision' => $draft->draft_revision, 'base_price_minor' => '10000', 'selection_policy' => 'uniform',
+            'minimum_quantity' => 1, 'quantity_step' => 1,
+            'maximum_quantity' => null];
+        $this->put(route('packages.versions.update', [$product, $draft]), $payload)->assertForbidden();
+        $this->grant($staff, 'package.pricing.manage');
+        $this->put(route('packages.versions.update', [$product, $draft]), $payload)->assertRedirect();
+        $this->assertSame(1, PackageVersion::count());
+        $staff->update(['active' => false]);
+        $this->put(route('packages.versions.update', [$product, $draft]), $payload)->assertRedirect(route('login'));
+        $this->assertSame(1, PackageVersion::count());
+        $this->signIn($admin)->get(route('catering.index'))->assertOk();
+    }
+
+    public function test_admin_preview_is_not_customer_bookable_and_staff_direct_requests_are_authorized(): void
+    {
+        $admin = $this->actor();
+        $staff = $this->actor('staff');
+        [$product, $version] = $this->draft($admin, 'pica_pica');
+        $option = $this->option($version->family, 'piece');
+        $this->group($admin, $version, 'bundle_item', 'fixed', [$option]);
+        $path = route('packages.versions.preview', [$product, $version]);
+        $payload = ['quantity' => 1, 'groups' => [[
+            'quantity' => 1, 'selections' => $this->selections($version),
+        ]], 'total_minor' => '1'];
+        $this->postJson($path, $payload)->assertUnauthorized();
+        $this->signIn($staff)->postJson($path, $payload)->assertForbidden();
+        $this->grant($staff, 'package.view');
+        $this->postJson($path, $payload)->assertOk()->assertJsonPath('total_minor', '10000');
+        $this->post(route('packages.groups.store', [$product, $version]), [
+            'group_code' => 'forged',
+        ])->assertForbidden();
+        $this->assertDatabaseMissing('selection_groups', ['group_code' => 'forged']);
+        $this->assertSame('draft', $version->fresh()->status);
+        $this->assertSame(0, DB::table('package_versions')->where('status', 'published')->count());
     }
 }

@@ -2,11 +2,10 @@
 
 namespace App\Actions\Package;
 
+use App\Models\PackageVersion;
 use App\Models\Product;
 use App\Models\ProductFamily;
-use App\Models\ProductVariant;
 use App\Models\User;
-use App\Models\VariantVersion;
 use App\Services\Audit\AuditLogger;
 use App\Services\Catalog\PackageQuantityRules;
 use Illuminate\Support\Facades\DB;
@@ -45,7 +44,7 @@ class SaveProduct
                 throw ValidationException::withMessages(['family_id' => "{$family->name} is disabled for new package drafts."]);
             }
             if (! $family->behavior()->supportsPackageDrafts()) {
-                throw ValidationException::withMessages(['family_id' => "{$family->name} uses individual direct listings, not package variants."]);
+                throw ValidationException::withMessages(['family_id' => "{$family->name} uses individual direct listings, not package products."]);
             }
             $before = $product->exists ? $product->only('family_id', 'code', 'name', 'description', 'sort_order', 'active') : null;
             $product->fill(collect($data)->except(['code', 'sort_order', 'creation_token'])->all());
@@ -56,13 +55,12 @@ class SaveProduct
             }
             $product->save();
             if ($before === null) {
-                $variant = ProductVariant::create(['product_id' => $product->id, 'code' => 'default',
-                    'name' => 'Standard', 'sort_order' => 1, 'active' => true]);
                 $effective = $this->quantities->resolve($family, []);
-                VariantVersion::create(['variant_id' => $variant->id, 'family_id' => $family->id,
+                PackageVersion::create(['package_product_id' => $product->id, 'family_id' => $family->id,
                     'version_number' => 1, 'status' => 'draft', 'draft_revision' => 1,
                     'base_price_minor' => 0, 'currency' => 'PHP', 'price_basis' => $family->behavior()->priceBasis(),
-                    'selection_policy' => 'uniform', ...$effective, 'created_by' => $actor->id]);
+                    'selection_policy' => 'uniform', 'total_selection_count' => $data['total_selection_count'] ?? null,
+                    ...$effective, 'created_by' => $actor->id]);
             }
             $this->audit->record($before ? 'package.product_updated' : 'package.product_created', $actor, $product,
                 $before, $product->only('family_id', 'code', 'name', 'description', 'sort_order', 'active'));

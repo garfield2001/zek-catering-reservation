@@ -2,41 +2,40 @@ import { useForm } from "@inertiajs/react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
 
-const behaviors = [
+export const serviceBehaviors = [
     {
         value: "package",
-        label: "Package-based add-on",
-        detail: "Fixed items, choices and per-set prices",
+        label: "Sold by Package",
+        detail: "Sell sets with included foods, serving sizes and customer choices.",
     },
     {
         value: "packed_meal",
-        label: "Packed meals",
-        detail: "Per-pack prices and optional split groups",
+        label: "Packed Meals",
+        detail: "Price each pack, with the same meal for everyone or split meal groups.",
     },
     {
         value: "fixed_bundle",
-        label: "Fixed bundles",
-        detail: "Fixed inclusions and per-set prices",
+        label: "Fixed Bundle",
+        detail: "Sell a set of fixed inclusions. No substitutions or food surcharges.",
     },
     {
         value: "direct_sale",
-        label: "Direct-sale items",
-        detail: "Catalog context now; listing manager comes later",
+        label: "Sold Individually",
+        detail: "Independently priced items with their own Drafts and Published Versions.",
     },
 ] as const;
 
 export function CollectionCreateForm({
-    hasPrimary,
     onCancel,
     onCreated,
 }: {
-    hasPrimary: boolean;
+    hasPrimary?: boolean;
     onCancel: () => void;
     onCreated: () => void;
 }) {
     const form = useForm({
-        kind: hasPrimary ? "addon" : "primary",
-        behavior_type: hasPrimary ? "package" : "main_package",
+        kind: "addon",
+        behavior_type: "package",
         name: "",
         description: "",
         active: true,
@@ -44,113 +43,92 @@ export function CollectionCreateForm({
     return (
         <form
             className="space-y-5"
-            onSubmit={(event) => {
-                event.preventDefault();
-                form.post("/admin/catalog/families", { onSuccess: onCreated });
+            onSubmit={(e) => {
+                e.preventDefault();
+                form.post("/admin/add-on-services", { onSuccess: onCreated });
             }}
         >
             <Field
-                id="collection-kind"
-                label="Collection role"
-                error={form.errors.kind}
-            >
-                <select
-                    id="collection-kind"
-                    value={form.data.kind}
-                    onChange={(event) => {
-                        const kind = event.target.value;
-                        form.setData({
-                            ...form.data,
-                            kind,
-                            behavior_type:
-                                kind === "primary" ? "main_package" : "package",
-                        });
-                    }}
-                >
-                    {!hasPrimary && (
-                        <option value="primary">
-                            Primary catering collection
-                        </option>
-                    )}
-                    <option value="addon">Optional add-on</option>
-                </select>
-            </Field>
-            {form.data.kind === "addon" && (
-                <Field
-                    id="collection-behavior"
-                    label="Configuration type"
-                    error={form.errors.behavior_type}
-                >
-                    <select
-                        id="collection-behavior"
-                        value={form.data.behavior_type}
-                        onChange={(event) =>
-                            form.setData("behavior_type", event.target.value)
-                        }
-                    >
-                        {behaviors.map((behavior) => (
-                            <option key={behavior.value} value={behavior.value}>
-                                {behavior.label} — {behavior.detail}
-                            </option>
-                        ))}
-                    </select>
-                </Field>
-            )}
-            {form.data.kind === "primary" && (
-                <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
-                    One primary catering collection is allowed. Add any number
-                    of independently configured package variants after setup.
-                </p>
-            )}
-            <Field
-                id="collection-name"
-                label="Customer-facing name"
+                id="service-name"
+                label="Service name"
                 error={form.errors.name}
             >
                 <input
-                    id="collection-name"
+                    id="service-name"
                     required
                     maxLength={255}
                     value={form.data.name}
-                    onChange={(event) =>
-                        form.setData("name", event.target.value)
-                    }
-                    placeholder="e.g. Catering Packages"
+                    onChange={(e) => form.setData("name", e.target.value)}
                 />
             </Field>
+            <fieldset>
+                <legend className="mb-3 text-sm font-medium">
+                    How will you sell this service?
+                </legend>
+                <div className="mb-4 grid gap-3 sm:grid-cols-2">
+                    <label className="flex items-center gap-3 rounded-xl border p-4">
+                        <input
+                            type="radio"
+                            name="selling-method"
+                            checked={form.data.behavior_type !== "direct_sale"}
+                            onChange={() =>
+                                form.setData("behavior_type", "package")
+                            }
+                        />
+                        <span>
+                            <strong className="block text-sm">
+                                Sold by Package
+                            </strong>
+                            <span className="text-xs text-slate-500">
+                                Configurable sets, packed meals or fixed bundles
+                            </span>
+                        </span>
+                    </label>
+                    <label className="flex items-center gap-3 rounded-xl border p-4">
+                        <input
+                            type="radio"
+                            name="selling-method"
+                            checked={form.data.behavior_type === "direct_sale"}
+                            onChange={() =>
+                                form.setData("behavior_type", "direct_sale")
+                            }
+                        />
+                        <span>
+                            <strong className="block text-sm">
+                                Sold Individually
+                            </strong>
+                            <span className="text-xs text-slate-500">
+                                Independently priced foods and sizes
+                            </span>
+                        </span>
+                    </label>
+                </div>
+            </fieldset>
             <Field
-                id="collection-description"
+                id="service-description"
                 label="Description (optional)"
                 error={form.errors.description}
             >
                 <textarea
-                    id="collection-description"
-                    maxLength={5000}
+                    id="service-description"
                     value={form.data.description}
-                    onChange={(event) =>
-                        form.setData("description", event.target.value)
+                    onChange={(e) =>
+                        form.setData("description", e.target.value)
                     }
                 />
             </Field>
-            <label className="flex items-center gap-2 text-sm">
-                <input
-                    type="checkbox"
-                    checked={form.data.active}
-                    onChange={(event) =>
-                        form.setData("active", event.target.checked)
-                    }
-                />
-                Enabled for new catalog configuration
-            </label>
-            <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-                >
+            {Object.entries(form.errors)
+                .filter(([key]) => key !== "name" && key !== "description")
+                .map(([key, error]) => (
+                    <p role="alert" key={key} className="text-sm text-red-700">
+                        {error}
+                    </p>
+                ))}
+            <div className="flex justify-end gap-3">
+                <button type="button" onClick={onCancel}>
                     Cancel
                 </button>
-                <Button disabled={form.processing}>Create collection</Button>
+                <Button disabled={form.processing}>Create Service</Button>
             </div>
         </form>
     );

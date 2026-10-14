@@ -15,19 +15,12 @@ export const packagePaths = {
     },
     product: (product: number, familyId?: number | null) =>
         `/admin/packages/products/${product}${familyId ? `?family_id=${familyId}` : ""}`,
-    variantCreate: (product: number) =>
-        `/admin/packages/products/${product}/variants/create`,
-    variants: (product: number) =>
-        `/admin/packages/products/${product}/variants`,
-    version: (product: number, variant: number, version: number) =>
-        `/admin/packages/products/${product}/variants/${variant}/versions/${version}`,
-    review: (product: number, variant: number, version: number) =>
-        `${packagePaths.version(product, variant, version)}/review`,
-    group: (
-        product: number,
-        variant: number,
-        version: number,
-        group?: number,
-    ) =>
-        `/admin/packages/products/${product}/variants/${variant}/versions/${version}/groups${group ? `/${group}` : ""}`,
+    version: (product: number, version: number) =>
+        `/admin/packages/products/${product}/versions/${version}`,
+    review: (product: number, version: number) =>
+        `${packagePaths.version(product, version)}/review`,
+    mainMenu: (product: number, version: number) =>
+        `/admin/packages/products/${product}/versions/${version}/package-menu/edit`,
+    group: (product: number, version: number, group?: number) =>
+        `/admin/packages/products/${product}/versions/${version}/groups${group ? `/${group}` : ""}`,
 };

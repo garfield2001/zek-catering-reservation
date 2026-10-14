@@ -2,6 +2,8 @@
 
 Historical implementation record: Phase 3.5 supersedes this document wherever it assumes five seeded commercial families, a fresh Food Pack minimum of 10, mandatory rice/drink/dish groups, mandatory lechon kilograms/trays, or behavior selected by a historical family code. Fresh installations have no commercial collections; Administrators create collections and configure required Selection Groups. See [Phase 3.5](10-phase-3-5-dynamic-collections.md) for current rules. Names and prices below are examples, not production defaults.
 
+> Current schema note: the clean fresh-install baseline creates Package Products and Package Versions directly. References to Variant tables in this historical Phase 3 record describe the former migration strategy only; `product_variants` and `variant_versions` are absent from the current schema.
+
 Implemented 2026-10-09. This phase creates editable, administrator-only package configurations for Main Catering, Belly Lechon, Food Pack Lunch and Pica-Pica. Food Tray Menu still requires its separate direct-listing implementation. No package draft is published, customer-bookable, or a commercial quotation.
 
 ## Entities and migration decisions

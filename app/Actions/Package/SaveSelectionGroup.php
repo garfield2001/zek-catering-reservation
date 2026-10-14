@@ -4,9 +4,9 @@ namespace App\Actions\Package;
 
 use App\Enums\Catalog\CollectionBehavior;
 use App\Models\OfferingOption;
+use App\Models\PackageVersion;
 use App\Models\SelectionGroup;
 use App\Models\User;
-use App\Models\VariantVersion;
 use App\Services\Audit\AuditLogger;
 use App\Services\Catalog\CatalogAvailability;
 use App\Services\Catalog\MinorMoney;
@@ -19,16 +19,17 @@ class SaveSelectionGroup
 {
     public function __construct(private AuditLogger $audit, private CatalogAvailability $availability, private MinorMoney $money) {}
 
-    public function handle(User $actor, VariantVersion $version, array $data, ?SelectionGroup $group = null): SelectionGroup
+    public function handle(User $actor, PackageVersion $version, array $data, ?SelectionGroup $group = null): SelectionGroup
     {
         return DB::transaction(function () use ($actor, $version, $data, $group) {
-            $version = VariantVersion::with('family')->lockForUpdate()->findOrFail($version->id);
-            abort_if($version->status !== 'draft', 404);
+            $version = PackageVersion::with('family')->lockForUpdate()->findOrFail($version->id);
+            abort_if($version->status !== 'draft' || $version->family->behavior_type === 'main_package'
+                || $version->product->archived_at !== null || $version->family->archived_at !== null, 404);
             if (isset($data['draft_revision']) && (int) $data['draft_revision'] !== $version->draft_revision) {
                 throw ValidationException::withMessages(['draft_revision' => 'This draft changed. Reload and review it before saving.']);
             }
             $group = $group ? SelectionGroup::lockForUpdate()->findOrFail($group->id) : new SelectionGroup;
-            abort_if($group->exists && $group->version_id !== $version->id, 404);
+            abort_if($group->exists && $group->package_version_id !== $version->id, 404);
             Gate::forUser($actor->fresh())->authorize($group->exists ? 'update' : 'create', $group->exists ? $group : SelectionGroup::class);
             $this->validateShape($version, $data);
             $options = [];
@@ -100,16 +101,20 @@ class SaveSelectionGroup
                 array_filter($oldPrices, fn ($amount) => (int) $amount !== 0)
                 != array_filter($newPrices, fn ($amount) => $amount !== 0)
             ) {
-                Gate::forUser($actor->fresh())->authorize('price', VariantVersion::class);
+                Gate::forUser($actor->fresh())->authorize('price', PackageVersion::class);
             }
             $group->fill(collect($data)->except('options', 'category_rules', 'dish_rules', 'draft_revision', 'group_code', 'sort_order')->all());
             if (! $group->exists) {
-                $group->version_id = $version->id;
+                $group->package_version_id = $version->id;
                 $group->group_code = $data['group_code'] ?? 'group_'.strtolower((string) Str::ulid());
-                $group->sort_order = (int) SelectionGroup::where('version_id', $version->id)->max('sort_order') + 1;
+                $group->sort_order = (int) SelectionGroup::where('package_version_id', $version->id)->max('sort_order') + 1;
+            }
+            // Replace children within the same transaction before changing a group's unit rule.
+            // This permits legitimate unit changes without a transient incompatible option set.
+            if ($group->exists) {
+                DB::table('group_options')->where('group_id', $group->id)->delete();
             }
             $group->save();
-            DB::table('group_options')->where('group_id', $group->id)->delete();
             foreach ($options as $row) {
                 DB::table('group_options')->insert([
                     ...$row,
@@ -165,7 +170,7 @@ class SaveSelectionGroup
         });
     }
 
-    private function validateShape(VariantVersion $version, array $data): void
+    private function validateShape(PackageVersion $version, array $data): void
     {
         $fixedBundle = $version->family->behavior() === CollectionBehavior::FixedBundle;
         $allowed = $fixedBundle ? ['item', 'bundle_item']

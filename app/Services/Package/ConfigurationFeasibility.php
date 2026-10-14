@@ -2,8 +2,8 @@
 
 namespace App\Services\Package;
 
+use App\Models\PackageVersion;
 use App\Models\SelectionGroup;
-use App\Models\VariantVersion;
 use App\Services\Catalog\CatalogAvailability;
 use Illuminate\Validation\ValidationException;
 
@@ -16,7 +16,7 @@ class ConfigurationFeasibility
     public function __construct(private CatalogAvailability $availability) {}
 
     /** @return array<int, array<int, int>> One valid selection of serving-option IDs per group. */
-    public function find(VariantVersion $version): array
+    public function find(PackageVersion $version): array
     {
         $version->load(['groups.options.offeringOption.offering.dish', 'groups.categoryRules', 'groups.dishRules']);
         if ($version->groups->isEmpty()) {
@@ -27,7 +27,7 @@ class ConfigurationFeasibility
         )->unique()->values()->all());
         $choices = [];
         foreach ($version->groups as $group) {
-            $choices[] = [$group, $this->candidates($group, $version->family_id, $availableIds)];
+            $choices[] = [$group, $this->candidates($group, $version->family_id, $availableIds, $version->status === 'published')];
         }
         $this->visited = 0;
         $solution = $this->search($choices, 0, [], []);
@@ -39,7 +39,7 @@ class ConfigurationFeasibility
     }
 
     /** @return array<int, array{option_id: int, dish_id: int, category_id: int}> */
-    private function candidates(SelectionGroup $group, int $familyId, array $availableIds): array
+    private function candidates(SelectionGroup $group, int $familyId, array $availableIds, bool $published): array
     {
         $allowed = [];
         $allowIds = $group->dishRules->where('effect', 'allow')->pluck('dish_id')->all();
@@ -48,16 +48,18 @@ class ConfigurationFeasibility
         foreach ($group->options as $choice) {
             $option = $choice->offeringOption;
             $dish = $option?->offering?->dish;
+            $categoryId = $published ? $choice->snapshot_category_id : $dish?->category_id;
+            $unit = $published ? $choice->snapshot_unit : $option?->unit;
             if (! $option || ! $dish || $option->offering->family_id !== $familyId
-                || ($group->slot_kind === 'lechon' && $option->unit !== 'kg')
-                || ($group->slot_kind === 'tray' && $option->unit !== 'tray')
+                || ($group->slot_kind === 'lechon' && $unit !== 'kg')
+                || ($group->slot_kind === 'tray' && $unit !== 'tray')
                 || ! isset($availableIds[$option->id])
                 || in_array($dish->id, $denyIds, true)
                 || ($allowIds !== [] && ! in_array($dish->id, $allowIds, true))
-                || ($group->category_mode === 'restricted' && ! in_array($dish->category_id, $categories, true))) {
+                || ($group->category_mode === 'restricted' && ! in_array($categoryId, $categories, true))) {
                 continue;
             }
-            $allowed[] = ['option_id' => $option->id, 'dish_id' => $dish->id, 'category_id' => $dish->category_id];
+            $allowed[] = ['option_id' => $option->id, 'dish_id' => $dish->id, 'category_id' => $categoryId];
         }
         if ($group->mode === 'fixed' && (count($allowed) !== 1 || $group->options->count() !== 1
             || ! $group->options->first()->is_default)) {

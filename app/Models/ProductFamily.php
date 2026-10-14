@@ -41,4 +41,10 @@ class ProductFamily extends Model
     {
         return $this->hasMany(Product::class, 'family_id');
     }
+
+    /** @return HasMany<IndividualListing, $this> */
+    public function listings(): HasMany
+    {
+        return $this->hasMany(IndividualListing::class, 'family_id');
+    }
 }

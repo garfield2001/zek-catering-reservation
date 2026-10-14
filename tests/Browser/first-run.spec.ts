@@ -1,10 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
-
+import { login, createPackage } from "./workflow";
 const run = randomBytes(6).toString("hex");
 const password = "Browser-" + randomBytes(18).toString("hex") + "A1";
-
 test.beforeAll(() => {
     execFileSync("php", ["tests/Browser/seed.php"], {
         env: {
@@ -16,31 +15,35 @@ test.beforeAll(() => {
     });
 });
 
-test("Admin starts from an empty catalog and creates Main Catering", async ({
+test("fresh install provisions catering without manual Collection setup", async ({
     page,
 }) => {
-    await page.goto("/login");
-    await page.getByLabel("Email address").fill(`admin-${run}@example.test`);
-    await page.getByLabel("Password", { exact: true }).fill(password);
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await login(page, run, password);
+    await page
+        .getByRole("navigation", { name: "Administration" })
+        .getByRole("link", { name: "Catering Packages", exact: true })
+        .click();
     await expect(
-        page.getByText("No commercial products are preloaded.", {
-            exact: false,
+        page.getByRole("heading", { name: "Catering Packages", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText("No packages yet")).toBeVisible();
+    await createPackage(page, "Independent Package");
+    await expect(page.getByLabel("Add-on service")).toHaveCount(0);
+    expect(new URL(page.url()).pathname).toBe("/admin/packages/editor");
+
+    await expect(
+        page.getByRole("button", {
+            name: "Add Food or New Category",
+            exact: true,
         }),
     ).toBeVisible();
-    await page.getByRole("link", { name: "Open collections" }).click();
     await expect(
-        page.getByRole("heading", { name: "No collections yet" }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Start setup" }).click();
-    const dialog = page.getByRole("dialog", { name: "Create collection" });
-    await expect(dialog.getByLabel("Collection role")).toHaveValue("primary");
-    await dialog.getByLabel("Customer-facing name").fill("Main Catering");
-    await dialog.getByRole("button", { name: "Create collection" }).click();
-    await expect(
-        page.getByRole("heading", { name: "Main Catering" }),
-    ).toBeVisible();
-    await expect(
-        page.getByText("Main catering packages", { exact: true }),
-    ).toBeVisible();
+        page
+            .getByRole("navigation", { name: "Administration" })
+            .locator('[aria-current="page"]'),
+    ).toHaveCount(1);
+    await page.screenshot({
+        path: "test-results/first-package-workspace.png",
+        fullPage: true,
+    });
 });

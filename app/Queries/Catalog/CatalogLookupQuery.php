@@ -25,6 +25,6 @@ class CatalogLookupQuery
     {
         return $dish->eligibleFamilies()->wherePivot('active', true)
             ->where('product_families.active', true)->whereNull('product_families.archived_at')->orderBy('product_families.id')
-            ->get(['product_families.id', 'code', 'name'])->toArray();
+            ->get(['product_families.id', 'code', 'name', 'is_addon'])->toArray();
     }
 }

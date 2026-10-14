@@ -1,67 +1,82 @@
 import { test, expect } from "@playwright/test";
 import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
-
+import {
+    login,
+    createPackage,
+    step,
+    inlineFood,
+    savePackage,
+} from "./workflow";
 const run = randomBytes(6).toString("hex");
 const password = "Browser-" + randomBytes(18).toString("hex") + "A1";
-
 test.beforeAll(() => {
     execFileSync("php", ["tests/Browser/seed.php"], {
-        env: { ...process.env, BROWSER_RUN: run, BROWSER_PASSWORD: password },
+        env: {
+            ...process.env,
+            BROWSER_RUN: run,
+            BROWSER_PASSWORD: password,
+            BROWSER_LEGACY: "0",
+        },
     });
 });
 
-test("Admin creates a package with its initial draft and enters pesos", async ({
+test("canonical package navigation does not mix primary and add-on packages", async ({
     page,
 }) => {
-    await page.goto("/login");
-    await page.getByLabel("Email address").fill(`admin-${run}@example.test`);
-    await page.getByLabel("Password", { exact: true }).fill(password);
-    await page.getByRole("button", { name: "Sign in" }).click();
-
+    await login(page, run, password);
+    await page.goto("/admin/catering-packages");
+    await createPackage(page, "Main Only");
+    await inlineFood(page, "Scope Food", "Scope Foods");
+    await page.getByLabel("Scope Food", { exact: true }).check();
+    await step(page, "Pricing & Quantity");
+    await page.getByLabel("Price per pax (PHP)").fill("500.00");
+    await savePackage(page);
+    await page.goto("/admin/add-on-services");
+    await page.getByRole("button", { name: "Create Add-on Service" }).click();
+    await page.getByLabel("Service name").fill("Party Sets");
+    await page.getByRole("radio", { name: /Sold by Package/ }).check();
     await page
-        .getByRole("link", { name: "Add-on Services", exact: true })
+        .getByRole("button", { name: "Create Service", exact: true })
         .click();
-    await page.getByRole("link", { name: "Create package product" }).click();
-    await page.getByLabel("Collection").selectOption({ label: "Pica-Pica" });
-    await page.getByLabel("Product name").fill(`Browser bundle ${run}`);
-    await page.getByRole("button", { name: "Create product" }).click();
+    await createPackage(page, "Bundle Only");
+    await inlineFood(page, "Bundle Food", "Scope Foods");
+    await page.getByLabel("Bundle Food", { exact: true }).check();
+    await step(page, "Pricing & Quantity");
+    await page.getByLabel("Price per package (PHP)").fill("4500.00");
+    await savePackage(page);
+    await page.goto("/admin/packages/products?scope=primary");
+    await expect(page).toHaveURL(/\/admin\/catering-packages$/);
     await expect(
-        page.getByRole("heading", { name: /Standard.*draft Version 1/i }),
+        page.getByRole("heading", { name: "Main Only" }),
     ).toBeVisible();
+    await expect(page.getByText("Bundle Only")).toHaveCount(0);
+    await page.goto("/admin/packages/products?scope=addon");
+    await expect(page).toHaveURL(/\/admin\/add-on-services$/);
     await page
-        .getByRole("link", { name: "Edit price and quantity rules" })
+        .getByRole("article")
+        .filter({ has: page.getByRole("heading", { name: "Party Sets" }) })
+        .getByRole("link", { name: "Open Service" })
         .click();
-    await page.getByLabel("Base Price (PHP, per set)").fill("4500.00");
-    await page.getByRole("button", { name: "Save draft" }).click();
     await expect(
-        page.getByText("This is an editable draft", { exact: false }),
+        page.getByRole("heading", { name: "Bundle Only" }),
     ).toBeVisible();
-    await expect(page.getByText("No selection groups")).toBeVisible();
+    await expect(page.getByText("Main Only")).toHaveCount(0);
 });
 
-test("Package draft explains the Food Item prerequisite before adding a group", async ({
+test("unprivileged staff cannot reach catalog or package mutation workflows", async ({
     page,
 }) => {
-    await page.goto("/login");
-    await page.getByLabel("Email address").fill(`admin-${run}@example.test`);
-    await page.getByLabel("Password", { exact: true }).fill(password);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await page
-        .getByRole("link", { name: "Add-on Services", exact: true })
-        .click();
-    await page
-        .getByRole("link", { name: new RegExp(`Browser bundle ${run}`) })
-        .click();
-    await page.getByRole("link", { name: /Configure draft/ }).click();
-    await page.getByRole("link", { name: "Add selection group" }).click();
+    await login(page, run, password, "staff");
     await expect(
-        page.getByRole("heading", { name: /Add selection group/i }),
-    ).toBeVisible();
-    await expect(
-        page.getByText(/Add an active, Collection-eligible Food Item/i),
-    ).toBeVisible();
-    await expect(
-        page.getByRole("button", { name: "Add selection group" }),
-    ).toBeDisabled();
+        page
+            .getByRole("navigation", { name: "Administration" })
+            .getByRole("link", { name: "Food Catalog" }),
+    ).toHaveCount(0);
+    for (const path of [
+        "/admin/food-catalog",
+        "/admin/catering-packages/create",
+        "/admin/add-on-services",
+    ])
+        expect((await page.goto(path))?.status()).toBe(403);
 });

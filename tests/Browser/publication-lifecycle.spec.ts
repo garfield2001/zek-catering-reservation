@@ -1,146 +1,184 @@
 import { test, expect } from "@playwright/test";
 import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
-
+import {
+    login,
+    addCategory,
+    addFood,
+    createPackage,
+    step,
+    inlineFood,
+    savePackage,
+} from "./workflow";
 const run = randomBytes(6).toString("hex");
 const password = "Browser-" + randomBytes(18).toString("hex") + "A1";
-
 test.beforeAll(() => {
     execFileSync("php", ["tests/Browser/seed.php"], {
-        env: { ...process.env, BROWSER_RUN: run, BROWSER_PASSWORD: password },
+        env: {
+            ...process.env,
+            BROWSER_RUN: run,
+            BROWSER_PASSWORD: password,
+            BROWSER_LEGACY: "0",
+        },
     });
 });
 
-test("Admin can publish, revise, and archive a package product", async ({
+test("owner creates exact main menu, publishes immutable history, revises and archives", async ({
     page,
 }) => {
-    test.setTimeout(120000);
-    const category = `Lifecycle category ${run}`;
-    const dish = `Lifecycle dish ${run}`;
-    const product = `Lifecycle package ${run}`;
-
-    await page.goto("/login");
-    await page.getByLabel("Email address").fill(`admin-${run}@example.test`);
-    await page.getByLabel("Password", { exact: true }).fill(password);
-    await page.getByRole("button", { name: "Sign in" }).click();
-
-    // Build the minimum real catalog graph required by a valid package draft.
-    await page
-        .getByRole("link", { name: "Food Categories", exact: true })
-        .click();
-    await page.getByRole("button", { name: "Add category" }).click();
-    await page.getByLabel("Category name").fill(category);
-    await page.getByRole("button", { name: "Create category" }).click();
-
-    await page.getByRole("link", { name: "Food Items", exact: true }).click();
-    await page.getByRole("link", { name: "Add food item" }).click();
-    await page.getByLabel("Food item name").fill(dish);
-    await page.getByLabel("Food category").selectOption({ label: category });
-    await page.getByLabel("Main Catering Packages").check();
-    await page.getByRole("button", { name: "Create food item" }).click();
-    await expect(page.getByRole("heading", { name: dish })).toBeVisible();
-
-    await page.getByRole("link", { name: "Add offering" }).click();
-    await page
-        .getByLabel("Collection")
-        .selectOption({ label: "Main Catering Packages" });
-    await page
-        .getByLabel("Preparation name")
-        .fill(`Lifecycle preparation ${run}`);
-    await page.getByRole("button", { name: "Create offering" }).click();
-    await page.getByRole("link", { name: "Add serving option" }).click();
-    await page.getByLabel("Serving label").fill("Standard tray");
-    await page.getByLabel("Size per option").fill("1.000");
-    await page.getByRole("button", { name: "Create serving option" }).click();
-    await expect(page.getByText("Standard tray")).toBeVisible();
-
-    // Create the package and price its initial draft.
-    await page
-        .getByRole("link", { name: "Main Catering Packages", exact: true })
-        .click();
-    await page.getByRole("link", { name: "Create package product" }).click();
-    await page
-        .getByLabel("Collection")
-        .selectOption({ label: "Main Catering Packages" });
-    await page.getByLabel("Product name").fill(product);
-    await page.getByRole("button", { name: "Create product" }).click();
+    test.setTimeout(180000);
+    await login(page, run, password);
+    await page.goto("/admin/food-catalog");
+    for (const category of ["Rice", "Drinks", "Beef", "Chicken", "Other Foods"])
+        await addCategory(page, category);
+    for (const [food, category] of [
+        ["Fried Rice", "Rice"],
+        ["Cola", "Drinks"],
+        ["Juice", "Drinks"],
+        ["Beef Stew", "Beef"],
+        ["Beef Steak", "Beef"],
+        ["Chicken BBQ", "Chicken"],
+        ["Spring Rolls", "Other Foods"],
+    ])
+        await addFood(page, food, category);
+    await page.goto("/admin/catering-packages");
+    await createPackage(page, `Lifecycle package ${run}`);
+    await page.getByLabel("Total included food selections").fill("5");
+    const beef = page.getByRole("group", { name: /^Beef / });
+    await beef.getByRole("button", { name: "Select All", exact: true }).click();
+    await expect(page.getByLabel("Beef Stew", { exact: true })).toBeChecked();
+    await expect(page.getByLabel("Beef Steak", { exact: true })).toBeChecked();
+    await expect(beef.getByLabel("Require at least one")).not.toBeChecked();
+    await beef.getByRole("button", { name: "Clear All", exact: true }).click();
     await expect(
-        page.getByRole("heading", { name: /draft Version 1/i }),
-    ).toBeVisible();
-    await page
-        .getByRole("link", { name: "Edit price and quantity rules" })
-        .click();
-    await page.getByLabel(/Base Price \(PHP/).fill("850.00");
-    await page.getByRole("button", { name: "Save draft" }).click();
-
-    await page.getByRole("link", { name: "Add selection group" }).click();
-    await page.getByLabel("Selection group name").fill("Included main dish");
-    await page.getByLabel("Inclusion type").selectOption("dish");
-    await page.getByLabel("Selection mode").selectOption("fixed");
-    await page
-        .getByRole("radio", { name: /Lifecycle dish .*Standard tray/ })
-        .check();
-    await page.getByRole("button", { name: "Add selection group" }).click();
+        page.getByLabel("Beef Stew", { exact: true }),
+    ).not.toBeChecked();
+    await expect(beef.getByLabel("Require at least one")).not.toBeChecked();
+    for (const food of [
+        "Fried Rice",
+        "Cola",
+        "Juice",
+        "Beef Stew",
+        "Beef Steak",
+        "Chicken BBQ",
+        "Spring Rolls",
+    ])
+        await page.getByLabel(food, { exact: true }).check();
+    for (const category of ["Rice", "Drinks"])
+        await page
+            .getByRole("group", { name: new RegExp("^" + category + " ") })
+            .getByLabel("Require at least one")
+            .check();
+    await expect(page.getByLabel("Menu summary")).toContainText("Fried Rice");
+    await expect(page.getByLabel("Menu summary")).toContainText(
+        "1 required category choices",
+    );
+    // Inline catalog creation must keep unsaved menu selections.
+    await inlineFood(page, "Fruit Salad", "Desserts");
+    await expect(page.getByLabel("Fried Rice", { exact: true })).toBeChecked();
+    await expect(page.getByLabel("Total included food selections")).toHaveValue(
+        "5",
+    );
+    await expect(page.locator("#nprogress")).toHaveCount(0);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+        path: "test-results/main-configured-menu.png",
+        fullPage: true,
+    });
+    await step(page, "Pricing & Quantity");
+    await page.getByLabel("Price per pax (PHP)").fill("850.00");
+    await page.getByLabel("Minimum guests", { exact: true }).fill("150");
+    await expect(page.locator("#nprogress")).toHaveCount(0);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+        path: "test-results/main-pricing.png",
+        fullPage: true,
+    });
     await expect(
-        page.getByRole("heading", { name: /draft Version 1/i }),
-    ).toBeVisible();
-
-    // Review and explicitly confirm publication.
-    await page.getByRole("link", { name: "Review and publish" }).click();
+        page.getByText(/Variant|Selection Group|slot kind/i),
+    ).toHaveCount(0);
+    await step(page, "Review & Publish");
+    const workspace = page.url();
+    await page
+        .getByRole("link", { name: "Review & Publish", exact: true })
+        .click();
     await expect(
         page.getByRole("heading", { name: "Review publication" }),
     ).toBeVisible();
-    await expect(page.getByText("Included main dish")).toBeVisible();
+    await expect(
+        page.getByText("Menu: exactly 5 distinct foods"),
+    ).toBeVisible();
+    await expect(page.locator("#nprogress")).toHaveCount(0);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+        path: "test-results/main-publication-review.png",
+        fullPage: true,
+    });
     await page.getByLabel(/I reviewed this configuration/).check();
-    await page.getByRole("button", { name: "Publish Version 1" }).click();
-    await expect(
-        page.getByRole("heading", { name: /published Version 1/i }),
-    ).toBeVisible();
-
-    // Historical publication remains available while revision creates a new draft.
-    await page.getByRole("button", { name: "Restore as a new draft" }).click();
-    await expect(
-        page.getByRole("heading", { name: /draft Version 2/i }),
-    ).toBeVisible();
-
-    // Disable first, then archive the package; the confirmation is a real browser dialog.
-    await page.goto("/admin/packages/products");
-    await page.getByRole("link", { name: product, exact: true }).click();
-    await expect(
-        page.getByRole("link", { name: /View published version 1/i }),
-    ).toBeVisible();
-    await expect(
-        page.getByRole("link", { name: /Configure draft 2/i }),
-    ).toBeVisible();
-    const disableResponse = page.waitForResponse(
-        (response) =>
-            response.url().includes("/availability") &&
-            response.request().method() === "POST",
-    );
+    await page.getByRole("button", { name: "Publish Package" }).click();
     await page
-        .getByRole("button", { name: "Temporarily disable product" })
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Confirm Publication" })
         .click();
-    const disableResult = await disableResponse;
-    expect(disableResult.status()).toBeLessThan(400);
-    await page.goto(page.url());
+    await expect(page).toHaveURL(workspace);
+    if (
+        (await page
+            .locator("#history details")
+            .first()
+            .getAttribute("open")) === null
+    )
+        await page.getByText("Version 1 · Published", { exact: true }).click();
+    await expect(page.getByText(/Fried Rice.*Fixed inclusion/)).toBeVisible();
+    await page.getByRole("link", { name: "Edit Package", exact: true }).click();
     await expect(
-        page.getByRole("button", { name: "Enable product" }),
+        page.getByText(/The current Published Version remains unchanged/),
     ).toBeVisible();
-    page.once("dialog", (dialog) => dialog.accept());
-    await page.getByRole("button", { name: "Archive product" }).click();
-    await page.goto("/admin/packages/products");
-    await expect(page.getByText(/Archived$/, { exact: false })).toBeVisible();
-
+    await step(page, "Pricing & Quantity");
+    await page.getByLabel("Price per pax (PHP)").fill("900.00");
+    await savePackage(page);
+    if (
+        (await page
+            .locator("#history details")
+            .first()
+            .getAttribute("open")) === null
+    )
+        await page.getByText("Version 1 · Published", { exact: true }).click();
+    await expect(page.getByText(/Base Price:.*850/)).toBeVisible();
+    await expect(page.locator("#nprogress")).toHaveCount(0);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+        path: "test-results/main-revision-history.png",
+        fullPage: true,
+    });
+    await page
+        .getByRole("button", { name: "Disable Package", exact: true })
+        .click();
+    await expect(
+        page.getByRole("button", { name: "Enable Package", exact: true }),
+    ).toBeVisible();
+    await page
+        .getByRole("button", { name: "Archive Package", exact: true })
+        .click();
+    await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Confirm Archive" })
+        .click();
+    await expect(page.getByText("Archived", { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByText("Archived", { exact: true })).toBeVisible();
     const result = execFileSync(
         "php",
         ["tests/Browser/assert-publication-lifecycle.php"],
-        {
-            env: { ...process.env, BROWSER_RUN: run },
-            encoding: "utf8",
-        },
+        { env: { ...process.env, BROWSER_RUN: run }, encoding: "utf8" },
     );
-    expect(result).toContain('"published_version":1');
-    expect(result).toContain('"archived":true');
-    expect(result).toContain('"cloned_version":2');
-    expect(result).toContain('"cloned_status":"abandoned"');
+    expect(JSON.parse(result)).toMatchObject({
+        published_version: 1,
+        cloned_version: 2,
+        cloned_status: "abandoned",
+        archived: true,
+        published_price: "85000",
+        revision_price: "90000",
+        fixed_food: "Fried Rice",
+        total: 5,
+    });
 });

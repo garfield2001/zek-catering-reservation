@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Services\Access\PermissionResolver;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -18,7 +19,7 @@ class HandleInertiaRequests extends Middleware
                 'isAdmin' => $request->user()->isAdmin(),
                 'permissions' => app(PermissionResolver::class)->codes($request->user()),
             ] : null,
-            'flash' => ['status' => fn () => $request->session()->get('status')],
+            'flash' => ['status' => fn () => $request->session()->get('status'), 'id' => fn () => $request->session()->has('status') ? (string) Str::uuid() : null],
         ];
     }
 }

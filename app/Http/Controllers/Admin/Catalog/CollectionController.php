@@ -10,18 +10,14 @@ use App\Models\ProductFamily;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class CollectionController extends Controller
 {
-    public function create(): Response
+    public function create(): RedirectResponse
     {
         Gate::authorize('manage', ProductFamily::class);
 
-        return Inertia::render('admin/catalog/families/create', [
-            'hasPrimary' => ProductFamily::where('is_addon', false)->whereNull('archived_at')->exists(),
-        ]);
+        return redirect()->route('services.index');
     }
 
     public function store(CreateCollectionRequest $request, CreateCollection $action): RedirectResponse
@@ -36,6 +32,6 @@ class CollectionController extends Controller
         Gate::authorize('manage', ProductFamily::class);
         $action->handle($request->user(), $family);
 
-        return redirect()->route('catalog.families.index')->with('status', 'Collection archived. Existing history and catalog references were retained.');
+        return redirect()->route($family->is_addon ? 'services.index' : 'catering.index')->with('status', 'Service archived. Existing history was retained.');
     }
 }

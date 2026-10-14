@@ -16,7 +16,7 @@ return new class extends Migration
         'family.view' => ['View product family presentation and ordering defaults', 'View collections and ordering defaults'],
         'family.manage' => ['Create and manage catering and add-on collections', 'Create and manage primary and add-on collections'],
         'package.view' => ['View package drafts and configuration previews', 'View package drafts and price previews'],
-        'package.manage' => ['Manage package products, variants and selection rules', 'Manage package products, variants and selection groups'],
+        'package.manage' => ['Manage package products and configuration rules', 'Manage package products and package configuration'],
         'package.pricing.manage' => ['Manage package base prices and option premiums', 'Manage draft prices and price adjustments'],
     ];
 

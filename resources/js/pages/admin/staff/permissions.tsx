@@ -1,4 +1,6 @@
 import { useForm } from "@inertiajs/react";
+import { useState } from "react";
+import { ConfirmDialog } from "../../../components/ui/confirm-dialog";
 import AdminLayout from "../../../layouts/admin-layout";
 import { PermissionGrid } from "../../../features/access/components/permission-grid";
 import { Button } from "../../../components/ui/button";
@@ -16,6 +18,7 @@ export default function Permissions({
     roleGrants: string[];
     grantable: string[];
 }) {
+    const [confirming, setConfirming] = useState(false);
     const form = useForm({
         access_version: staff.access_version,
         overrides: Object.entries(overrides).map(([code, effect]) => ({
@@ -32,13 +35,7 @@ export default function Permissions({
                 className="max-w-2xl rounded-xl border border-stone-200 bg-white p-6"
                 onSubmit={(e) => {
                     e.preventDefault();
-                    if (
-                        !window.confirm(
-                            "Apply these permission changes? Existing sessions for this team member will be revoked.",
-                        )
-                    )
-                        return;
-                    form.put("/admin/staff/" + staff.id + "/permissions");
+                    setConfirming(true);
                 }}
             >
                 <PermissionGrid
@@ -69,6 +66,19 @@ export default function Permissions({
                     Save permissions
                 </Button>
             </form>
+            <ConfirmDialog
+                open={confirming}
+                onClose={() => setConfirming(false)}
+                title="Apply permission changes?"
+                description="Existing sessions for this team member will be revoked. Their next sign-in will use these permissions."
+                confirmLabel="Apply changes"
+                busy={form.processing}
+                onConfirm={() =>
+                    form.put("/admin/staff/" + staff.id + "/permissions", {
+                        onSuccess: () => setConfirming(false),
+                    })
+                }
+            />
         </AdminLayout>
     );
 }

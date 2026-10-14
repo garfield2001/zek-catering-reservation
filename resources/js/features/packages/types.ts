@@ -1,6 +1,7 @@
 import type { Collection } from "../catalog/types";
 
 export type PackageProduct = {
+    current_version_id?: number | null;
     id: number;
     family_id: number;
     code: string;
@@ -10,24 +11,13 @@ export type PackageProduct = {
     active: boolean;
     archived_at?: string | null;
     family?: Collection;
-    variants?: PackageVariant[];
-    variants_count?: number;
+    versions?: PackageVersion[];
+    versions_count?: number;
 };
-export type PackageVariant = {
+export type PackageVersion = {
+    estimated_capacity?: number | null;
     id: number;
-    product_id: number;
-    code: string;
-    name: string;
-    description: string | null;
-    sort_order: number;
-    active: boolean;
-    archived_at?: string | null;
-    current_version_id?: number | null;
-    versions?: VariantVersion[];
-};
-export type VariantVersion = {
-    id: number;
-    variant_id: number;
+    package_product_id: number;
     family_id: number;
     version_number: number;
     status: "draft" | "published" | "abandoned";
@@ -35,13 +25,10 @@ export type VariantVersion = {
     base_price_minor: string;
     price_basis: "per_pax" | "per_pack" | "per_set";
     selection_policy: "uniform" | "split";
-    minimum_override: number | null;
-    step_override: number | null;
-    maximum_override: number | null;
-    maximum_override_enabled: boolean;
     minimum_quantity: number;
     quantity_step: number;
     maximum_quantity: number | null;
+    total_selection_count?: number | null;
     groups?: SelectionGroup[];
     published_snapshot?: PublishedPackageSnapshot | null;
 };
@@ -53,8 +40,9 @@ export type PublishedPackageSnapshot = {
         behavior_type: string;
     };
     product: { name: string; description: string | null };
-    variant: { name: string; description: string | null };
+    package: { name: string; description: string | null };
     version: {
+        estimated_capacity?: number | null;
         number: number;
         base_price_minor: string;
         price_basis: string;
@@ -63,6 +51,20 @@ export type PublishedPackageSnapshot = {
         maximum_quantity: number | null;
         selection_policy: string;
     };
+    menu?: {
+        total_selection_count: number | null;
+        food_items: {
+            id: number;
+            name: string;
+            is_fixed: boolean;
+            always_include?: boolean;
+            category_name?: string;
+            included_quantity?: string | null;
+            included_unit?: string | null;
+            price_adjustment_minor?: string;
+        }[];
+        required_categories: { id: number; name: string }[];
+    } | null;
     groups: {
         group_code: string;
         name: string;
@@ -114,7 +116,7 @@ export type CategoryRule = {
 export type FoodItemRule = { dish_id: number; effect: "allow" | "deny" };
 export type SelectionGroup = {
     id: number;
-    version_id: number;
+    package_version_id: number;
     group_code: string;
     name: string;
     mode: "fixed" | "select_one" | "select_many";

@@ -21,9 +21,15 @@ class Product extends Model
         return $this->belongsTo(ProductFamily::class, 'family_id');
     }
 
-    /** @return HasMany<ProductVariant, $this> */
-    public function variants(): HasMany
+    /** @return HasMany<PackageVersion, $this> */
+    public function versions(): HasMany
     {
-        return $this->hasMany(ProductVariant::class)->orderBy('sort_order')->orderBy('id');
+        return $this->hasMany(PackageVersion::class, 'package_product_id')->orderBy('version_number')->orderBy('id');
+    }
+
+    /** @return BelongsTo<PackageVersion, $this> */
+    public function currentVersion(): BelongsTo
+    {
+        return $this->belongsTo(PackageVersion::class, 'current_version_id');
     }
 }

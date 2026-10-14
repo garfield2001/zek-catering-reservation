@@ -7,8 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Package\SaveProductRequest;
 use App\Models\Product;
 use App\Models\ProductFamily;
-use App\Models\VariantVersion;
-use App\Services\Package\EffectivePackageAvailability;
+use App\Queries\Package\PackageEditor;
+use App\Queries\Package\PackageWorkspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -17,96 +17,71 @@ use Inertia\Response;
 
 class ProductController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request): Response|RedirectResponse
     {
         Gate::authorize('viewAny', Product::class);
 
         $familyId = filter_var($request->query('family_id'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
         $scope = in_array($request->query('scope'), ['primary', 'addon'], true) ? $request->query('scope') : null;
+        if ($scope === 'primary' || (! $scope && ! $familyId) || ($familyId && ProductFamily::find($familyId)?->behavior_type === 'main_package')) {
+            return redirect()->route('catering.index');
+        }
+        if ($scope === 'addon' && ! $familyId) {
+            return redirect()->route('services.index');
+        }
 
-        return Inertia::render('admin/packages/index', [
-            'products' => Product::query()->select('products.*')
-                ->join('product_families as family', 'family.id', '=', 'products.family_id')
-                ->when($familyId, fn ($query) => $query->where('products.family_id', $familyId))
-                ->when($scope === 'primary', fn ($query) => $query->where('family.is_addon', false))
-                ->when($scope === 'addon', fn ($query) => $query->where('family.is_addon', true))
-                ->with('family')->withCount('variants')
-                ->orderBy('family.sort_order')->orderBy('products.sort_order')->orderBy('products.id')->paginate(20),
-            'canManage' => Gate::allows('create', Product::class),
-            'context' => [
-                'familyId' => $familyId,
-                'scope' => $scope,
-                'label' => $familyId ? ProductFamily::find($familyId)?->name : ($scope === 'primary' ? 'Main Catering Packages' : ($scope === 'addon' ? 'Add-on Services' : 'All Catering Packages')),
-            ],
-        ]);
+        return redirect()->route('services.show', ProductFamily::findOrFail($familyId));
     }
 
-    public function create(Request $request): Response
+    public function create(Request $request): RedirectResponse
     {
         Gate::authorize('create', Product::class);
-
         $familyId = filter_var($request->query('family_id'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
-        $scope = in_array($request->query('scope'), ['primary', 'addon'], true) ? $request->query('scope') : null;
+        $family = $familyId ? ProductFamily::findOrFail($familyId) : null;
+        if ($family?->behavior_type === 'main_package' || (! $family && $request->query('scope') !== 'addon')) {
+            return redirect()->route('catering.index');
+        }
 
-        return Inertia::render('admin/packages/product-edit', ['product' => null,
-            'families' => ProductFamily::where('active', true)->whereNull('archived_at')
-                ->where('behavior_type', '!=', 'direct_sale')
-                ->when($scope === 'primary', fn ($query) => $query->where('is_addon', false))
-                ->when($scope === 'addon', fn ($query) => $query->where('is_addon', true))
-                ->orderBy('sort_order')->orderBy('id')->get(),
-            'selectedFamilyId' => $familyId,
-            'context' => ['familyId' => $familyId, 'scope' => $scope],
-        ]);
+        return $family ? redirect()->route('services.show', $family) : redirect()->route('services.index');
     }
 
     public function store(SaveProductRequest $request, SaveProduct $action): RedirectResponse
     {
         $product = $action->handle($request->user(), collect($request->validated())->except(['code', 'sort_order'])->all());
-        $version = $product->variants()->firstOrFail()->versions()->firstOrFail();
 
-        return redirect()->route('packages.versions.show', [$product, $version->variant, $version])
+        return redirect()->route($product->family->behavior_type === 'main_package' ? 'catering.show' : 'packages.show', $product)
             ->with('status', 'Package created with an initial draft. Configure its inclusions and price.');
     }
 
-    public function show(Product $product, EffectivePackageAvailability $availability): Response
+    public function show(Product $product, PackageWorkspace $workspace): Response|RedirectResponse
     {
         Gate::authorize('view', $product);
-        $canHistory = Gate::allows('history', VariantVersion::class);
-        $product->load(['family', 'variants.versions', 'variants.currentVersion']);
-        $availabilityByVariant = [];
-        foreach ($product->variants as $variant) {
-            $variant->setRelation('product', $product);
-            $availabilityByVariant[$variant->id] = $availability->forVariant($variant);
-            $variant->unsetRelation('product');
-        }
-        if (! $canHistory) {
-            foreach ($product->variants as $variant) {
-                $variant->setRelation('versions', $variant->versions->where('status', 'draft')->values());
-                $variant->unsetRelation('currentVersion');
-            }
+        if ($product->family->behavior_type === 'main_package') {
+            return redirect()->route('catering.show', $product);
         }
 
-        return Inertia::render('admin/packages/product-show', [
-            'product' => $product,
-            'canManage' => Gate::allows('update', $product),
-            'canPrice' => Gate::allows('price', VariantVersion::class),
-            'canHistory' => $canHistory,
-            'canLifecycle' => Gate::allows('lifecycle', $product),
-            'availabilityByVariant' => $availabilityByVariant,
-        ]);
+        return Inertia::render('admin/packages/workspace', $workspace->data($product));
     }
 
-    public function edit(Product $product): Response
+    public function workspace(Product $product, PackageWorkspace $workspace): Response
+    {
+        Gate::authorize('view', $product);
+        abort_unless($product->family->behavior_type === 'main_package', 404);
+
+        return Inertia::render('admin/packages/workspace', $workspace->data($product));
+    }
+
+    public function edit(Product $product, PackageEditor $editor): Response
     {
         Gate::authorize('update', $product);
 
-        return Inertia::render('admin/packages/product-edit', ['product' => $product->load('family'), 'families' => []]);
+        return Inertia::render('admin/packages/editor', $editor->data($product->family, $product));
     }
 
     public function update(SaveProductRequest $request, Product $product, SaveProduct $action): RedirectResponse
     {
         $action->handle($request->user(), $request->validated(), $product);
 
-        return redirect()->route('packages.show', $product)->with('status', 'Package product updated.');
+        return redirect()->route($product->family->behavior_type === 'main_package' ? 'catering.show' : 'packages.show', $product)->with('status', 'Package details saved.');
     }
 }

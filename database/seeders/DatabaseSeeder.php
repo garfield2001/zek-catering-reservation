@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Actions\Catalog\EnsurePrimaryService;
 use App\Models\Permission;
 use App\Models\Role;
 use Illuminate\Database\Seeder;
@@ -23,15 +24,17 @@ class DatabaseSeeder extends Seeder
                 'family.view' => 'View collections and ordering defaults',
                 'family.manage' => 'Create and manage primary and add-on collections',
                 'package.view' => 'View package drafts and price previews',
-                'package.manage' => 'Manage package products, variants and selection groups',
+                'package.manage' => 'Manage package products and configuration rules',
                 'package.pricing.manage' => 'Manage draft prices and price adjustments',
-                'package.publish' => 'Publish package variant versions',
+                'package.publish' => 'Publish package versions',
                 'package.history.view' => 'View published and abandoned package history',
                 'package.lifecycle.manage' => 'Disable and archive package offerings',
             ] as $code => $description) {
                 Permission::firstOrCreate(['code' => $code], ['description' => $description]);
             }
             $staff->permissions()->syncWithoutDetaching([Permission::where('code', 'dashboard.view')->sole()->id]);
+
+            app(EnsurePrimaryService::class)->handle();
 
         });
     }

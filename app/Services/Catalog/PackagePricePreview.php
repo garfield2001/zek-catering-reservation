@@ -4,7 +4,8 @@ namespace App\Services\Catalog;
 
 use App\Enums\Catalog\CollectionBehavior;
 use App\Models\GroupOption;
-use App\Models\VariantVersion;
+use App\Models\PackageVersion;
+use App\Services\Package\MenuPricePreview;
 use Illuminate\Validation\ValidationException;
 
 class PackagePricePreview
@@ -15,14 +16,13 @@ class PackagePricePreview
         private PackageSelectionValidator $selections,
     ) {}
 
-    public function calculate(VariantVersion $version, int $quantity, array $groups): array
+    public function calculate(PackageVersion $version, int $quantity, array $groups): array
     {
-        $version->loadMissing(['family', 'variant.product']);
-        if ($version->status !== 'draft' || ! $version->family->active || $version->family->archived_at !== null || ! $version->variant->active
-            || ! $version->variant->product->active) {
+        $version->loadMissing(['family', 'product']);
+        if ($version->status !== 'draft' || ! $version->family->active || $version->family->archived_at !== null || ! $version->product->active) {
             throw ValidationException::withMessages(['package' => "{$version->family->name} or this draft is unavailable for a new preview."]);
         }
-        $basis = $version->family->behavior()->priceBasis();
+        $basis = $version->behavior()->priceBasis();
         if ($basis === null) {
             throw ValidationException::withMessages(['package' => "{$version->family->name} does not use package previews."]);
         }
@@ -30,6 +30,9 @@ class PackagePricePreview
             throw ValidationException::withMessages(['package' => 'The package price basis or currency is invalid.']);
         }
         $effective = $this->quantities->validate($version, $quantity);
+        if ($version->usesFoodMenu()) {
+            return app(MenuPricePreview::class)->calculate($version, $quantity, $groups, $effective);
+        }
         $allocations = $this->selections->validate($version, $quantity, $groups);
         $base = $this->money->parse($version->base_price_minor, 'base_price_minor');
         $total = 0;
@@ -41,7 +44,7 @@ class PackagePricePreview
                 foreach ($choices as $choice) {
                     /** @var GroupOption $choice */
                     $amount = $this->money->parse($choice->price_adjustment_minor, 'price_adjustment_minor');
-                    if ($version->family->behavior() === CollectionBehavior::FixedBundle && $amount !== 0) {
+                    if ($version->behavior() === CollectionBehavior::FixedBundle && $amount !== 0) {
                         throw ValidationException::withMessages(['price_adjustment_minor' => "Fixed inclusions in {$version->family->name} cannot carry premiums."]);
                     }
                     $unitAdjustments = $this->money->add($unitAdjustments, $amount);
@@ -62,7 +65,7 @@ class PackagePricePreview
                 'line_total_minor' => (string) $lineTotal];
         }
 
-        return ['variant_version_id' => $version->id, 'status' => 'draft_preview',
+        return ['package_version_id' => $version->id, 'status' => 'draft_preview',
             'price_basis' => $basis, 'currency' => 'PHP', 'quantity' => $quantity,
             'effective_quantity_rules' => $effective, 'groups' => $breakdown, 'total_minor' => (string) $total];
     }

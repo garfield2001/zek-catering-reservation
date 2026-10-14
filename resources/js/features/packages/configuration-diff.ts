@@ -10,9 +10,9 @@ export function configurationDiff(
         changes.push(
             `Package Product name: ${previous.product.name} → ${next.product.name}`,
         );
-    if (previous.variant.name !== next.variant.name)
+    if (previous.package.name !== next.package.name)
         changes.push(
-            `Package Variant name: ${previous.variant.name} → ${next.variant.name}`,
+            `Package name: ${previous.package.name} → ${next.package.name}`,
         );
     if (previous.version.base_price_minor !== next.version.base_price_minor)
         changes.push(

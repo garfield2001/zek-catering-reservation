@@ -24,6 +24,7 @@ export type Collection = {
     pivot?: { active: boolean };
     order_default?: CollectionOrderingDefault;
     products_count?: number;
+    listings_count?: number;
 };
 export type CollectionOrderingDefault = {
     family_id: number;
@@ -55,6 +56,8 @@ export type Offering = {
     options?: ServingOption[];
 };
 export type FoodItem = {
+    image_url?: string | null;
+    thumbnail_url?: string | null;
     id: number;
     code: string;
     name: string;

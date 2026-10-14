@@ -9,17 +9,20 @@ use App\Models\User;
 use App\Queries\Access\TeamMemberDirectory;
 use App\Services\Access\AdministratorAuthority;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class TeamMemberController extends Controller
 {
-    public function index(TeamMemberDirectory $directory): Response
+    public function index(Request $request, TeamMemberDirectory $directory): Response
     {
         Gate::authorize('viewAny', User::class);
 
-        return Inertia::render('admin/staff/index', ['users' => $directory->get(), 'canCreate' => Gate::allows('create', User::class)]);
+        $filters = $request->validate(['q' => ['nullable', 'string', 'max:100'], 'status' => ['nullable', 'in:active,inactive'], 'sort' => ['nullable', 'in:name,email,created_at'], 'direction' => ['nullable', 'in:asc,desc']]);
+
+        return Inertia::render('admin/staff/index', ['filters' => $filters, 'users' => $directory->get($filters), 'canCreate' => Gate::allows('create', User::class)]);
     }
 
     public function create(): Response

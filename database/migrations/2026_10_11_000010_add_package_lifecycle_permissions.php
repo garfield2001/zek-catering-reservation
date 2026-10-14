@@ -7,7 +7,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        foreach (['package.publish' => 'Publish package variant versions',
+        foreach (['package.publish' => 'Publish package versions',
             'package.history.view' => 'View published and abandoned package history',
             'package.lifecycle.manage' => 'Disable and archive package offerings'] as $code => $description) {
             DB::table('permissions')->insertOrIgnore(['code' => $code, 'description' => $description,

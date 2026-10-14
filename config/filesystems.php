@@ -30,6 +30,13 @@ return [
 
     'disks' => [
 
+        'catalog' => [
+            'driver' => 'local',
+            'root' => storage_path('app/'.(env('APP_ENV') === 'testing' ? 'testing/' : '').'catalog'),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),

@@ -7,39 +7,52 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Catalog\SaveDishRequest;
 use App\Models\Dish;
 use App\Models\OfferingOption;
-use App\Queries\Catalog\CatalogLookupQuery;
-use App\Queries\Catalog\DishBrowseQuery;
+use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DishController extends Controller
 {
-    public function index(Request $request, DishBrowseQuery $query): Response
+    public function index(): RedirectResponse
     {
         Gate::authorize('viewAny', Dish::class);
-        $request->validate(['q' => ['nullable', 'string', 'max:100']]);
 
-        return Inertia::render('admin/catalog/dishes/index', [
-            'dishes' => $query->paginate($request->query('q')), 'filters' => ['q' => $request->query('q', '')],
-            'canManage' => Gate::allows('create', Dish::class),
-        ]);
+        return redirect()->route('catalog.workspace');
     }
 
-    public function create(CatalogLookupQuery $lookups): Response
+    public function create(): RedirectResponse
     {
         Gate::authorize('create', Dish::class);
 
-        return Inertia::render('admin/catalog/dishes/edit', [
-            'dish' => null, 'categories' => $lookups->categories(), 'families' => $lookups->families(),
-        ]);
+        return redirect()->route('catalog.workspace', ['create' => 'food']);
     }
 
     public function store(SaveDishRequest $request, SaveDish $action): RedirectResponse
     {
+        // Authorize the return context before writing; never accept an arbitrary redirect URL.
+        if ($request->boolean('return_to_editor')) {
+            $product = $request->filled('return_product_id') ? Product::findOrFail($request->integer('return_product_id')) : null;
+            Gate::authorize($product ? 'update' : 'create', $product ?? Product::class);
+            abort_unless($product || $request->filled('editor_family_id'), 422);
+        }
         $dish = $action->handle($request->user(), collect($request->validated())->except('code')->all());
+
+        if ($request->boolean('return_to_editor')) {
+            return ($product ? redirect()->route('packages.edit', $product) : redirect()->route('packages.editor', ['service' => $request->integer('editor_family_id')]))
+                ->with('status', 'Food item saved. Your unsaved package configuration is retained.');
+        }
+
+        if ($request->filled('return_product_id')) {
+            $product = Product::findOrFail($request->integer('return_product_id'));
+            Gate::authorize('view', $product);
+
+            return redirect()->route($product->family->behavior_type === 'main_package' ? 'catering.show' : 'packages.show', $product)->with('status', 'Food item saved.');
+        }
+        if ($request->boolean('workspace')) {
+            return redirect()->route('catalog.workspace')->with('status', 'Food item created.');
+        }
 
         return redirect()->route('catalog.dishes.show', $dish)->with('status', 'Food item created.');
     }
@@ -62,19 +75,20 @@ class DishController extends Controller
         ]);
     }
 
-    public function edit(Dish $dish, CatalogLookupQuery $lookups): Response
+    public function edit(Dish $dish): RedirectResponse
     {
         Gate::authorize('update', $dish);
-        $dish->load('eligibleFamilies');
 
-        return Inertia::render('admin/catalog/dishes/edit', [
-            'dish' => $dish, 'categories' => $lookups->categories($dish), 'families' => $lookups->families(),
-        ]);
+        return redirect()->route('catalog.workspace', ['edit_food' => $dish->id]);
     }
 
     public function update(SaveDishRequest $request, Dish $dish, SaveDish $action): RedirectResponse
     {
         $action->handle($request->user(), $request->validated(), $dish);
+
+        if ($request->boolean('workspace')) {
+            return redirect()->route('catalog.workspace')->with('status', 'Food item saved.');
+        }
 
         return redirect()->route('catalog.dishes.show', $dish)->with('status', 'Food item updated.');
     }

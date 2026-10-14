@@ -5,11 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Catalog\MoveDisplayRecord;
 use App\Http\Controllers\Controller;
 use App\Models\DishCategory;
+use App\Models\PackageVersion;
 use App\Models\Product;
 use App\Models\ProductFamily;
-use App\Models\ProductVariant;
 use App\Models\SelectionGroup;
-use App\Models\VariantVersion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -43,17 +42,7 @@ class DisplayOrderController extends Controller
         return back();
     }
 
-    public function variant(Request $request, Product $product, ProductVariant $variant,
-        MoveDisplayRecord $action): RedirectResponse
-    {
-        Gate::authorize('update', $variant);
-        $data = $request->validate(['direction' => ['required', 'in:up,down']]);
-        $action->handle($request->user(), $variant, $data['direction']);
-
-        return back();
-    }
-
-    public function group(Request $request, Product $product, ProductVariant $variant, VariantVersion $version,
+    public function group(Request $request, Product $product, PackageVersion $version,
         SelectionGroup $group, MoveDisplayRecord $action): RedirectResponse
     {
         Gate::authorize('update', $group);

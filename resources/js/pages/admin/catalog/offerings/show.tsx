@@ -20,7 +20,12 @@ export default function OfferingShow({
         >
             <div className="mb-6 flex items-center gap-4">
                 <StatusBadge active={offering.active} />
-                <span className="text-sm text-stone-500">{offering.code}</span>
+                <Link
+                    href="/admin/food-catalog"
+                    className="text-sm text-emerald-800 underline"
+                >
+                    Back to Food Catalog
+                </Link>
                 {canManage && (
                     <Link
                         className="text-sm text-emerald-800 underline"
@@ -29,7 +34,7 @@ export default function OfferingShow({
                             "/edit"
                         }
                     >
-                        Edit offering
+                        Edit preparation
                     </Link>
                 )}
             </div>

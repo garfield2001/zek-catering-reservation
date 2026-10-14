@@ -1,6 +1,12 @@
-# Catering Catalog Specification V3
-Phase 4 package publication work is documented in [the Phase 4 architecture](docs/13-phase-4-package-publication.md) and [its additive ERD](diagrams/phase4-package-lifecycle.mmd). The original draw.io diagram remains a historical logical overview where it conflicts with that amendment. Direct-sale listings, customer transactions, and media remain deferred.
-Updated 2026-10-10 with the approved dynamic-collection Phase 3.5 architecture. Phases 1–3 are implemented; Phase 3.5 adds administrator-created collections and an empty-catalog setup flow. Publication and later phases remain specifications only. Read:
+# Current catering administration specification
+
+The latest owner-approved [Milestone B commercial catalog](docs/18-milestone-b-commercial-catalog.md) supersedes conflicting earlier phase rules. Read it with the [owner walkthrough](docs/11-admin-staff-guide.md), [clean baseline](docs/14-clean-schema-migration.md) and editable [Draw.io ERD](diagrams/catalog_v3.drawio). Collection → Product → Package Version is the current architecture. Independent package quantities replace inheritance; the shared food/category menu builder replaces ordinary manual Selection Group forms. Package publication is implemented; individual listing publication and Food Item images are implemented in Milestone B; customer transactions remain deferred. Milestone B verification has passed; see its report for exact results and the required owner-approved development migration.
+
+The [final execution and handoff report](docs/16-final-refactor-verification.md) records local verification, screenshots, coverage reconciliation and manual-testing boundaries.
+
+The [Milestone A UI modernization report](docs/17-milestone-a-ui-modernization.md) records the current component decisions, verification and owner-testing scope.
+
+## Historical phase references
 
 1. [Architecture and approved rules](docs/01-architecture.md)
 2. [Acceptance criteria](docs/02-acceptance-cases.md)
@@ -19,6 +25,6 @@ Updated 2026-10-10 with the approved dynamic-collection Phase 3.5 architecture. 
 15. [Phase 4 package publishing and version lifecycle](docs/13-phase-4-package-publication.md)
 16. [Phase 4 package lifecycle ERD](diagrams/phase4-package-lifecycle.mmd)
 
-The former five family names are examples, not seeded or required business records. One primary collection and unlimited add-on collections can be created by Admin using controlled behavior types. Customer accounts, reservations, quotations, payments, scheduling, inventory and notifications are deferred. Phase 4 package publication freezes commercial facts while checking live availability; direct-sale pricing remains a future listing-revision workflow.
+The former five family names are examples, not seeded or required business records. One primary Collection is provisioned automatically; Administrators create dynamically named add-on services using controlled behaviors. Customer accounts, reservations, quotations, payments, scheduling, inventory and notifications are deferred. Phase 4 package publication freezes commercial facts while checking live availability; individual-sale pricing uses immutable listing_versions snapshots.
 
 Phases 1–3 provide access control, master catalog administration, package draft configuration and administrator-only price previews. Phase 4 adds package-version publication; direct listings, reservations and other transaction workflows remain unimplemented. Commercial configuration values must be approved before production publication; examples remain fixtures. Routine database decisions are documented and do not require repeated approval. Read all specifications before writing migrations.

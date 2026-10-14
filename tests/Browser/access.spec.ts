@@ -17,7 +17,10 @@ test("Admin can grant Staff audit access through the interface", async ({
         .fill("admin-" + run + "@example.test");
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+    await expect(page).toHaveURL(/\/admin(?:\/home)?$/);
+    await expect(
+        page.getByRole("heading", { name: "Dashboard" }),
+    ).toBeVisible();
     await page
         .getByRole("link", { name: "Team & Access", exact: true })
         .click();
@@ -28,15 +31,24 @@ test("Admin can grant Staff audit access through the interface", async ({
     await page
         .getByLabel("View Activity History", { exact: false })
         .selectOption("allow");
-    page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Save permissions" }).click();
-    await expect(page.getByRole("status")).toContainText("Permissions updated");
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Apply changes" })
+        .click();
+    await expect(
+        page
+            .locator("[data-sonner-toast]")
+            .filter({ hasText: "Permissions updated" }),
+    ).toHaveCount(1);
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await page.getByRole("menuitem", { name: "Sign out" }).click();
     await page
         .getByLabel("Email address")
         .fill("staff-" + run + "@example.test");
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/admin(?:\/home)?$/);
     await page
         .getByRole("link", { name: "Activity History", exact: true })
         .click();

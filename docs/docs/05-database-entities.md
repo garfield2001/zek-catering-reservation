@@ -1,16 +1,20 @@
 # V3 Database Entity Definitions
 
-## Phase 4 package publication amendment (supersedes provisional rows below)
+## Current implementation authority
 
-The original logical ERD and the rows below retain physical legacy names and some provisional publication assumptions. The [Phase 4 package architecture](13-phase-4-package-publication.md) is authoritative for implemented package lifecycle rules. Direct-sale listing, navigation and media entities remain future specifications.
+[Final product configuration](15-business-workspaces.md) supersedes conflicting historical/provisional fields below. The implemented hierarchy is Collection → Product → Package Version. Shared menu pivots support all package behaviors; quantity rules are independently stored on each Version, with no override or inheritance columns. The editable Draw.io ERD represents this baseline.
 
-`products.archived_at?` and `product_variants.archived_at?` permanently archive a commercial offering and require `active=false`. `product_variants.current_version_id?` has a composite same-Variant FK to `variant_versions`; its trigger requires published status, forbids clearing, and forbids moving backward. `variant_versions.status` now permits `draft`, `published`, `abandoned`; a partial unique index on `variant_id WHERE status='draft'` enforces one active Draft per Variant. `published_snapshot? JSONB`, `published_at?`, `published_by? FK users`, `abandoned_at?` and `abandoned_by? FK users` are constrained by state. Published and abandoned Versions and their child rows are database-immutable.
+## Phase 4 package publication amendment
 
-Earlier references below to multiple active drafts, clearing the current pointer, or populating `group_options.snapshot_*` at publication are **superseded**. Phase 4 freezes full commercial terms in `variant_versions.published_snapshot`; the nullable `group_options.snapshot_*` columns remain unused compatibility columns. Clone provenance is checked by the Action, not a same-variant database FK. The additive migrations are `2026_10_11_000009_publish_package_versions.php` and `2026_10_11_000010_add_package_lifecycle_permissions.php`. Rollback is refused once published or abandoned history exists.
+The original logical ERD and the rows below retain physical legacy names and some provisional publication assumptions. The [Phase 4 package architecture](13-phase-4-package-publication.md) is authoritative for implemented package lifecycle rules. Milestone B supersedes the former direct-listing and media designs; storefront navigation remains deferred.
 
-Current-state/ERD legend: this document and `docs/diagrams/catalog_v3.drawio` retain physical table and FK names, including `product_families` (Collection), `dishes` (Food Item), `dish_categories` (Food Category), `selection_groups` (Selection Group), and `group_options` (Group Allowed Option). Older fixed-five-family and mandatory-slot descriptions are historical; [Phase 3.5](10-phase-3-5-dynamic-collections.md) defines the active dynamic collection constraints, and the [approved vocabulary](domain-terminology-audit.md) defines presentation terms. Future publication/direct-listing/media entities shown in the ERD are specifications, not implemented migrations.
+`products.archived_at?` permanently archives a Package Product and requires `active=false`. `products.current_version_id?` has a composite same-product FK to `package_versions`; its trigger requires published status, forbids clearing, and forbids moving backward. `package_versions.status` permits `draft`, `published`, `abandoned`; a partial unique index on `package_product_id WHERE status='draft'` enforces one active Draft per Package Product. Publication metadata and `published_snapshot` are constrained by state. Published and abandoned Versions and their child rows are database-immutable.
 
-This document defines physical-design decisions missing from the original logical ERD. Phases 1–3 are implemented in migrations; the publication, direct-listing, navigation and media sections remain future specifications. See 09-phase-3-package-drafts.md for Phase 3's draft-only differences. The draw.io diagram visualizes entities and FK dependencies.
+Current implementation: Package Versions freeze the complete commercial JSON snapshot and populate `group_options.snapshot_*` at publication for add-on feasibility checks. Master category/unit edits do not rewrite published facts; current active status and eligibility remain live checks. Clone provenance is checked by the Action and PostgreSQL trigger. Child reparenting is forbidden; child mutations lock their Version. The clean baseline directly creates these objects. It is a fresh-install baseline, not an in-place development upgrade. The shared category menu uses the two menu tables below for Catering and add-ons. Advanced serving-option groups remain an internal separately validated configuration, with no ordinary manual editor and no mixing within a Version.
+
+Current-state/ERD legend: this document and `docs/diagrams/catalog_v3.drawio` retain physical table and FK names, including `product_families` (Collection), `dishes` (Food Item), `dish_categories` (Food Category), `selection_groups` (Selection Group), and `group_options` (Group Allowed Option). Older fixed-five-family and mandatory-slot descriptions are historical; [Phase 3.5](10-phase-3-5-dynamic-collections.md) defines the active dynamic collection constraints, and the [approved vocabulary](domain-terminology-audit.md) defines presentation terms. Milestone B implements individual listing versions and Food Item image metadata. Storefront taxonomy remains deferred.
+
+This document describes implemented access, catalog, package configuration and publication entities. Individual listings and Food Item images are implemented by Milestone B. Storefront navigation below remains a deferred design.
 
 ## Conventions and constraints
 
@@ -46,13 +50,13 @@ Laravel infrastructure tables (sessions, jobs, failed jobs, cache as selected) a
 |---|---|---|
 | dish_categories | id, code, name, active=true | Unique code; one primary category per dish |
 | dishes | id, code, category_id FK dish_categories, name, description?, active=true | Unique code; canonical identity; names need not be globally unique |
-| product_families | id, code, name, description?, sort_order=0, is_addon, active=true | Unique code and normalized case-insensitive display name; seed exactly five stable codes. DB trigger makes code and primary/add-on flag immutable. Display fields and active state are editable with `family.manage` and audit. Four are add-ons; `main_catering` is the required primary for future reservations. |
+| product_families | id, code, name, description?, sort_order=0, is_addon, behavior_type, active=true, archived_at? | Immutable code/role/behavior; normalized name unique among nonarchived rows; one current primary provisioned idempotently; dynamically named add-ons created by Admin. No mandatory five-family seed. |
 | dish_family_eligibilities | dish_id FK dishes, family_id FK product_families, active=true | Composite PK; inactivate retained eligibility instead of deleting referenced pairs |
 | dish_offerings | id, dish_id, family_id, code, name, description?, active=true | Composite FK (dish_id,family_id) to eligibility; UNIQUE(dish_id,family_id,code); multiple preparations allowed |
 | offering_options | id, offering_id FK dish_offerings, option_code, label, unit, quantity, serving_pax?, serving_claim?, active=true | UNIQUE(offering_id,option_code); serving_pax positive integer when present; no price column |
-| family_order_defaults | family_id PK/FK product_families, minimum_quantity, quantity_step, maximum_quantity?, enforce_minimum_floor=false | Exactly one per family; Main Catering starts at minimum 150 and enforce=true; Food Pack starts at 10 packs from Phase 3 |
+| family_order_defaults | family_id PK/FK product_families, minimum_quantity, quantity_step, maximum_quantity?, enforce_minimum_floor=false | Retained catalog metadata only; no package inheritance or enforced package floor |
 
-No generic business_settings key/value table is required for this scope: the one documented business floor and its enforcement flag live in typed family_order_defaults. Changing them is Admin-only and audited. This removes an untyped competing source of truth.
+No generic business_settings key/value table is required. Typed family_order_defaults remains retained catalog metadata; it does not constrain package purchases or drafts. Package quantity settings live exclusively on their Versions.
 
 The availability predicate includes active family and retained eligibility in addition to all applicable active owner/master rows. Editing current culinary classification does not change frozen classification; active checks for a published selection also include its frozen category.
 
@@ -60,23 +64,24 @@ The availability predicate includes active family and retained eligibility in ad
 
 | Entity | Fields | Keys and behavior |
 |---|---|---|
-| products | id, family_id FK product_families, code, name, description?, sort_order=0, active=true | UNIQUE(family_id,code); family immutable once versions/listings reference the product; no redundant product type |
-| product_variants | id, product_id FK products, code, name, description?, sort_order=0, active=true, current_version_id? | UNIQUE(product_id,code) and normalized case-insensitive display name per product; no fixed variant count. Current pointer constrained below; Food Tray products cannot own package variants |
-| variant_versions | id, variant_id FK product_variants, version_number, status draft/published, draft_revision=1, cloned_from_id? FK variant_versions, family_id FK product_families, base_price_minor, currency, price_basis, selection_policy uniform/split, minimum_override?, step_override?, maximum_override?, maximum_override_enabled=false, minimum_quantity, quantity_step, maximum_quantity?, subgroup_minimum?, subgroup_step?, subgroup_maximum?, created_by FK users, published_by? FK users, published_at? | UNIQUE(variant_id,version_number), UNIQUE(variant_id,id); effective fields freeze on publication |
+| products | id, family_id FK product_families, code, name, description?, sort_order=0, active=true | UNIQUE(family_id,code); family immutable; current_version_id and archived_at preserve publication/history; optional creation_token is unique; no redundant product type |
+| package_versions | id, package_product_id FK products, version_number, status draft/published/abandoned, draft_revision=1, cloned_from_id? FK package_versions, family_id FK product_families, base_price_minor, currency, price_basis, selection_policy, total_selection_count?, estimated_capacity?, independent minimum_quantity/quantity_step/maximum_quantity, publication metadata | UNIQUE(package_product_id,version_number), UNIQUE(package_product_id,id); one active Draft partial index; effective fields freeze on publication |
 
-Draft effective values are resolved live by services and for display when defaults change; draft materialized effective columns update on draft save and are not authoritative if family defaults change afterward. Nullable overrides inherit defaults; maximum_override_enabled=true with a null maximum_override explicitly means unbounded, while false means inherit and requires maximum_override to be null. Publication must store both configured override provenance and current effective values in one transaction. The family floor check still applies.
+Each Version stores its independent minimum, increment and optional maximum. Draft changes are validated directly; Collection defaults never constrain package values. Copying another package's rules copies values once and creates no inheritance relationship. These commercial facts freeze on publication.
 
-Family dictates price_basis: main_catering/per_pax, belly_lechon/per_set, food_pack/per_pack, pica_pica/per_set. Split and non-null subgroup fields are legal only for Food Pack; subgroup fields are all null by default. If restrictions exist, minimum and step are required, maximum optional. Pica-Pica is uniform.
+Stable Collection behavior dictates price basis: main_package/per_pax, package/per_set, packed_meal/per_pack, fixed_bundle/per_set. Split and optional subgroup restrictions are legal only for packed_meal. Subgroup fields are null by default; if configured, minimum and step are required and maximum is optional. Fixed bundles are uniform.
 
-Current pointer uses composite FK (id,current_version_id) from product_variants to variant_versions(variant_id,id). A trigger additionally requires published status. Clone provenance must reference the same variant and a published source. Initial draft has no source. Version numbers allocate under the owner lock. Multiple drafts are permitted; stale publication must explicitly acknowledge a newer current version using an expected current ID, otherwise return conflict.
+Current pointer uses composite FK (id,current_version_id) from products to package_versions(package_product_id,id). A trigger additionally requires published status. Clone provenance must reference the same Package Product and a published source. Initial draft has no source. Version numbers allocate under the owner lock. One active Draft is permitted per Package Product; stale publication must explicitly acknowledge a newer current ID, otherwise return conflict.
 
-Published metadata must be non-null exactly when status=published. Published version columns and owned rules/snapshots cannot be changed. A newer current publication does not mark the former one draft or mutate its status. Clearing a current pointer withdraws an offering and is audited.
+Published metadata must be non-null exactly when status=published. Published version columns and owned rules/snapshots cannot be changed. A newer current publication does not mark the former one draft or mutate its status. Current pointers cannot be cleared; disable/archive controls withdraw packages while retaining history.
 
 ## Package groups and frozen option facts
 
 | Entity | Fields | Keys and behavior |
 |---|---|---|
-| selection_groups | id, version_id FK variant_versions, group_code, name, mode fixed/select_one/select_many, slot_kind rice/drink/dish/lechon/tray/bundle_item, minimum_count, maximum_count, unique_dishes=true, category_mode free/restricted, inclusion_count, sort_order | UNIQUE(version_id,group_code); inclusion_count is number of selected options per purchased unit, not kilograms/serving size; slot_kind makes family policy explicit |
+| package_version_food_items | package_version_id FK package_versions, dish_id FK dishes, is_fixed, always_include, included_quantity?, included_unit?, price_adjustment_minor, timestamps | Composite PK; shared food menus; always_include preserves explicit add-on intent separately from derived fixed status; Published children immutable; Main forbids measurements/premiums, bundles require all fixed and no premiums |
+| package_version_required_categories | package_version_id FK package_versions, category_id FK dish_categories, timestamps | Composite PK; shared package menus; each required category needs a selectable food; Published children immutable |
+| selection_groups | id, package_version_id FK package_versions, group_code, name, mode fixed/select_one/select_many, slot_kind item/rice/drink/dish/lechon/tray/bundle_item, minimum_count, maximum_count, unique_dishes=true, category_mode free/restricted, inclusion_count, sort_order | UNIQUE(package_version_id,group_code); add-on package groups; Main Catering uses package_version_food_items and package_version_required_categories |
 | group_options | id, group_id FK selection_groups, offering_option_id FK offering_options, is_default=false, price_adjustment_minor=0, snapshot_dish_id? FK dishes, snapshot_category_id? FK dish_categories, snapshot_offering_name?, snapshot_dish_name?, snapshot_category_name?, snapshot_option_code?, snapshot_option_label?, snapshot_unit?, snapshot_quantity?, snapshot_serving_pax?, snapshot_serving_claim? | UNIQUE(group_id,offering_option_id); all mandatory snapshot fields populated at publication; nullable serving estimates/claims remain optional |
 | group_category_rules | group_id FK selection_groups, category_id FK dish_categories, minimum_count, maximum_count | Composite PK; restricted-mode whitelist/quotas; no rows for free mode |
 | group_dish_rules | group_id FK selection_groups, dish_id FK dishes, effect allow/deny | Composite PK; conflicting allow+deny rows impossible |
@@ -87,55 +92,44 @@ The group_option snapshot is the historical commercial description, not a second
 
 Rules are version-owned through groups and remain immutable, including inserts into a published group. The same trigger protection applies to changing a child's parent from or into a published version. Publication validates references, family consistency, default selections, exact fixed counts, category quotas and satisfiability considering current availability and canonical uniqueness.
 
-## Food Tray direct listings
+## Individual listings — Milestone B
 
-| Entity | Fields | Keys and behavior |
+| Entity | Fields | Integrity |
 |---|---|---|
-| direct_listings | id, product_id FK products, offering_option_id FK offering_options, code, active=true, current_revision_id? | UNIQUE(product_id,code), UNIQUE(product_id,offering_option_id); only food_tray product/option pairs allowed |
-| direct_listing_revisions | id, listing_id FK direct_listings, revision_number, status draft/published, draft_revision=1, cloned_from_id? FK direct_listing_revisions, price_minor, currency, price_basis per_tray, minimum_override?, step_override?, maximum_override?, maximum_override_enabled=false, minimum_quantity, quantity_step, maximum_quantity?, snapshot_dish_id? FK dishes, snapshot_category_id? FK dish_categories, snapshot_dish_name?, snapshot_category_name?, snapshot_offering_name?, snapshot_option_code?, snapshot_option_label?, snapshot_unit?, snapshot_quantity?, snapshot_serving_pax?, snapshot_serving_claim?, created_by FK users, published_by? FK users, published_at? | UNIQUE(listing_id,revision_number), UNIQUE(listing_id,id); same snapshot completeness, immutable publication and effective quantity rules as packages |
+| individual_listings | family_id, dish_id, offering_option_id?, code, creation_token, creation_hash, active, archived_at?, current_version_id? | Service must be an add-on with stable direct_sale behavior; source identity immutable; composite eligibility FK; option must match food/service; restrictive deletion; actor-bound idempotent creation |
+| listing_versions | listing_id, version_number, draft_revision, status, name, description?, selling_unit, price_minor, currency PHP, minimum_quantity, quantity_step, maximum_quantity?, published_snapshot?, published_at?, published_by?, cloned_from_id? | Unique listing/version number; one Draft partial unique index; positive quantities; nonnegative centavos; positive price and complete snapshot on publication; same-owner older Published clone source |
 
-Composite FK (id,current_revision_id) references direct_listing_revisions(listing_id,id); trigger verifies published status. Clone provenance stays in the same listing. Listing product/option identity is immutable after first publication. A different tray size is a distinct offering option and listing, not a price mutation. Published tray options use unit=tray; snapshot quantity records the tray count represented by one listing unit. No price exists on direct_listings or offering_options.
+A composite current pointer references (id, listing_id) and must identify that listing's Published Version. The pointer cannot be cleared or moved backward. Parent locking serializes publication and cloning. Published/Abandoned rows and all version identities are immutable; history cannot be deleted. A separate size is another listing associated with an optional Serving Option, never a Product Variant.
 
-Versioned direct listings share the publication protocol with packages, without requiring a generic repository or a universal sellable table. No order lines, reservations or persisted previews are added.
+The authoritative published price, names, category, source size/quantity/capacity, selling unit and purchase rules live in JSONB published_snapshot. Current availability combines listing, service, food, category, eligibility and any offering/option active state. Live master edits never rewrite snapshots. Individual listings do not belong to Package Products and never require a package menu. Independent permissions use listing.view/manage/pricing.manage/publish/history.view/lifecycle.manage; none are granted to Staff by default.
 
-## Navigation
+## Storefront navigation — deferred design, not implemented
 
 | Entity | Fields | Keys and behavior |
 |---|---|---|
 | catalog_categories | id, parent_id? FK catalog_categories, slug, name, visible=true, sort_order | Globally unique slug; reject self-parenting and descendant cycles; lock taxonomy edits to prevent concurrent cycles |
 | category_direct_listings | category_id FK catalog_categories, direct_listing_id FK direct_listings, sort_order | Composite PK; browse current published revision |
-| category_variants | category_id FK catalog_categories, variant_id FK product_variants, sort_order | Composite PK; browse current published version |
+| category_package_products | category_id FK catalog_categories, package_product_id FK products, sort_order | Composite PK; browse current published version (future navigation scope) |
 
 Navigation visibility is inherited: a hidden ancestor hides descendants from storefront browsing. Assignment is explicit, not inferred from a culinary category. Stable ordering is sort_order then id; tied sort values are allowed. Reparenting/renaming does not affect purchasing rules. Delete only unreferenced nodes or explicitly reassign children/attachments in a transaction.
 
-## Media
+## Food image metadata — Milestone B
 
-| Entity | Fields | Keys and behavior |
-|---|---|---|
-| media_assets | id, disk, path, mime, size_bytes, width, height, alt_text?, uploader_id FK users, status processing/ready/failed/deleting, checksum? | UNIQUE(disk,path); positive bytes/dimensions for processed images; private original until ready |
-| media_derivatives | id, media_id FK media_assets, preset, disk, path, mime, size_bytes, width, height, status processing/ready/failed | UNIQUE(media_id,preset), UNIQUE(disk,path); retryable deterministic presets |
-| dish_media | dish_id FK dishes, media_id FK media_assets, is_primary=false, sort_order | Composite PK |
-| offering_media | offering_id FK dish_offerings, media_id FK media_assets, is_primary=false, sort_order | Composite PK |
-| product_media | product_id FK products, media_id FK media_assets, is_primary=false, sort_order | Composite PK |
-| variant_media | variant_id FK product_variants, media_id FK media_assets, is_primary=false, sort_order | Composite PK |
-| category_media | category_id FK catalog_categories, media_id FK media_assets, is_primary=false, sort_order | Composite PK; navigation category, not culinary category |
+The dishes table has nullable image_disk, image_path, image_thumbnail_path, image_width and image_height. A CHECK enforces either all NULL or all present with positive dimensions. Binary data is not stored in PostgreSQL. Paths are server-generated ULID JPEG names; filesystem metadata is hidden from serialized models, which expose controlled image URLs.
 
-Each attachment table has a partial unique index on owner WHERE is_primary and UNIQUE(owner,sort_order). Reordering uses a transaction with temporary free positions to avoid immediate unique collisions. Primary selection/replacement locks the owner. Public fallback chooses primary ready attachment, then first ready attachment by order, then the documented fallback.
-
-Delete checks every attachment table under an asset lock, marks deleting, then queues file deletion after commit. Attachment creation locks that same asset and rejects deleting assets. Physical deletion is idempotent/retryable; remove derivative/asset rows only after successful cleanup and a final reference check. Database/storage failures must not produce public broken images.
+Laravel's private catalog disk stores a full re-encoded image bounded to 1600 pixels and a thumbnail bounded to 360 pixels. Testing uses a separate testing/catalog directory. Decode/type/size/dimension validation precedes storage. New files are removed on transaction rollback (including ancestor workflows); replaced/removed files are deleted after commit. A generic cleanup warning records storage-deletion failures for operator follow-up without exposing credentials. Crashes/storage outages can still require operational orphan cleanup; no asynchronous media pipeline or multi-image attachment tables are introduced.
 
 ## Migration/entity dependency order
 
 1. Users, roles, permissions, access junctions and append-only audit.
 2. Culinary categories, product families, family defaults, dishes, eligibility.
-3. Offerings, options, products, variants without current pointer FK.
-4. Variant versions, groups, options/snapshots and category/dish rules.
-5. Direct listings without pointer FK, then listing revisions.
+3. Offerings, options, products and Package Versions without current pointer FK.
+4. Selection Groups, allowed options/snapshots and category/dish rules.
+5. Milestone B forward extensions: explicit Main fixed intent and package per-pack behavior, then dish image metadata, individual listings and listing_versions.
 6. Add composite current-pointer FKs, provenance checks, immutable-publication triggers and supporting indexes.
-7. Navigation categories and typed listing/variant junctions.
-8. Media assets/derivatives and all owner attachments.
+7. Storefront navigation and multi-image attachment entities remain deferred and are not created.
 
-Use PostgreSQL integration tests for constraints/triggers and migrations. Publication feasibility cannot be an ordinary row CHECK. No claim of migration validity is made until actual implementation/tests run.
+The implemented schema includes Milestone B listing and image extensions but excludes storefront navigation and multi-image attachment designs. PostgreSQL integration tests verify the implemented constraints, publication guards and fresh schema. Publication feasibility remains authoritative domain validation, not an ordinary row CHECK.
 
 Database design reference: [PostgreSQL constraints](https://www.postgresql.org/docs/current/ddl-constraints.html) explains composite foreign keys, row-local CHECK limitations, partial unique indexes and why referencing foreign-key columns need deliberate indexing.
 # Phase 3.5 entity amendment (2026-10-10)

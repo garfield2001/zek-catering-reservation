@@ -3,13 +3,12 @@
 namespace App\Actions\Catalog;
 
 use App\Models\DishCategory;
+use App\Models\PackageVersion;
 use App\Models\Product;
 use App\Models\ProductFamily;
-use App\Models\ProductVariant;
 use App\Models\Role;
 use App\Models\SelectionGroup;
 use App\Models\User;
-use App\Models\VariantVersion;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +19,7 @@ class MoveDisplayRecord
 {
     public function __construct(private AuditLogger $audit) {}
 
-    public function handle(User $actor, ProductFamily|DishCategory|Product|ProductVariant|SelectionGroup $record,
+    public function handle(User $actor, ProductFamily|DishCategory|Product|SelectionGroup $record,
         string $direction, ?int $draftRevision = null): void
     {
         DB::transaction(function () use ($actor, $record, $direction, $draftRevision) {
@@ -35,16 +34,13 @@ class MoveDisplayRecord
             } elseif ($record instanceof Product) {
                 ProductFamily::lockForUpdate()->findOrFail($record->family_id);
                 $query = Product::where('family_id', $record->family_id)->whereNull('archived_at');
-            } elseif ($record instanceof ProductVariant) {
-                Product::lockForUpdate()->findOrFail($record->product_id);
-                $query = ProductVariant::where('product_id', $record->product_id)->whereNull('archived_at');
             } else {
-                $version = VariantVersion::lockForUpdate()->findOrFail($record->version_id);
+                $version = PackageVersion::lockForUpdate()->findOrFail($record->package_version_id);
                 abort_if($version->status !== 'draft', 404);
                 if ($draftRevision !== $version->draft_revision) {
                     throw ValidationException::withMessages(['draft_revision' => 'This draft changed. Reload before reordering.']);
                 }
-                $query = SelectionGroup::where('version_id', $record->version_id);
+                $query = SelectionGroup::where('package_version_id', $record->package_version_id);
             }
             Gate::forUser($actor->fresh())->authorize($record instanceof ProductFamily ? 'manage' : 'update', $record);
             $rows = $query->orderBy('sort_order')->orderBy('id')->lockForUpdate()->get();

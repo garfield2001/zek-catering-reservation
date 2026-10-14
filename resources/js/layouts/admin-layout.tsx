@@ -1,96 +1,56 @@
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import {
-    BookOpen,
     ChefHat,
-    ChevronRight,
     ClipboardList,
     History,
     LayoutDashboard,
     LogOut,
     Users,
-    X,
+    Boxes,
+    Menu,
+    ChevronDown,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import type { LucideIcon } from "lucide-react";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { Modal } from "../components/ui/modal";
+import { useFlashToast } from "../components/ui/notifications";
 import type { SharedProps } from "../types";
 
-type NavigationChild = {
-    label: string;
-    href: string;
-    permission: string;
-    extraPermission: string;
-};
-type NavigationItem = {
-    label: string;
-    icon: LucideIcon;
-    href?: string;
-    permission?: string;
-    extraPermission?: string;
-    children?: NavigationChild[];
-};
-
-const navigation: NavigationItem[] = [
+const navigation = [
     {
-        label: "Overview",
+        label: "Dashboard",
         href: "/admin",
-        permission: "dashboard.view",
-        extraPermission: "dashboard.view",
+        permissions: ["dashboard.view"],
         icon: LayoutDashboard,
     },
     {
         label: "Food Catalog",
+        href: "/admin/food-catalog",
+        permissions: ["catalog.view", "catalog.manage"],
         icon: ChefHat,
-        children: [
-            {
-                label: "Food Items",
-                href: "/admin/catalog/dishes",
-                permission: "catalog.view",
-                extraPermission: "catalog.manage",
-            },
-            {
-                label: "Food Categories",
-                href: "/admin/catalog/categories",
-                permission: "catalog.view",
-                extraPermission: "catalog.manage",
-            },
-            {
-                label: "Collections & availability",
-                href: "/admin/catalog/families",
-                permission: "family.view",
-                extraPermission: "family.manage",
-            },
-        ],
     },
     {
-        label: "Catering Services",
+        label: "Catering Packages",
+        href: "/admin/catering-packages",
+        permissions: ["package.view", "package.manage"],
         icon: ClipboardList,
-        children: [
-            {
-                label: "Main Catering Packages",
-                href: "/admin/packages/products?scope=primary",
-                permission: "package.view",
-                extraPermission: "package.manage",
-            },
-            {
-                label: "Add-on Services",
-                href: "/admin/packages/products?scope=addon",
-                permission: "package.view",
-                extraPermission: "package.manage",
-            },
-        ],
+    },
+    {
+        label: "Add-on Services",
+        href: "/admin/add-on-services",
+        permissions: ["family.view", "family.manage"],
+        icon: Boxes,
     },
     {
         label: "Team & Access",
         href: "/admin/staff",
-        permission: "staff.view",
-        extraPermission: "staff.view",
+        permissions: ["staff.view"],
         icon: Users,
     },
     {
         label: "Activity History",
         href: "/admin/audit",
-        permission: "audit.view",
-        extraPermission: "audit.view",
+        permissions: ["audit.view"],
         icon: History,
     },
 ];
@@ -99,13 +59,25 @@ export default function AdminLayout({
     title,
     description,
     children,
+    section,
 }: {
     title: string;
     description?: string;
     children: ReactNode;
+    section?: "catalog" | "catering" | "services";
 }) {
-    const { auth, flash } = usePage<SharedProps>().props;
+    const { auth, flash, product } = usePage<
+        SharedProps & {
+            product?: {
+                id: number;
+                name: string;
+                family?: { id: number; name: string; is_addon: boolean };
+            };
+        }
+    >().props;
     const { url } = usePage();
+    useFlashToast(flash);
+    const [mobile, setMobile] = useState(false);
     const [loading, setLoading] = useState(false);
     useEffect(() => {
         const start = router.on("start", () => setLoading(true));
@@ -115,12 +87,58 @@ export default function AdminLayout({
             finish();
         };
     }, []);
+    const path = url.split("?")[0];
+    const activeSection =
+        section ??
+        (path.startsWith("/admin/catalog/dishes") ||
+        path.startsWith("/admin/catalog/categories")
+            ? "catalog"
+            : path.startsWith("/admin/packages")
+              ? product?.family?.is_addon
+                  ? "services"
+                  : "catering"
+              : undefined);
+    const sectionPath =
+        activeSection === "catalog"
+            ? "/admin/food-catalog"
+            : activeSection === "services"
+              ? "/admin/add-on-services"
+              : activeSection === "catering"
+                ? "/admin/catering-packages"
+                : path;
+    const parent = navigation.find(
+        (item) => item.href !== "/admin" && sectionPath.startsWith(item.href),
+    );
+    const navItems = navigation
+        .filter((item) =>
+            item.permissions.some((permission) =>
+                auth?.permissions.includes(permission),
+            ),
+        )
+        .map((item) => {
+            const active =
+                item.href === "/admin"
+                    ? path === "/admin"
+                    : sectionPath.startsWith(item.href);
+            return (
+                <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobile(false)}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium ${active ? "bg-emerald-50 text-emerald-900 ring-1 ring-inset ring-emerald-100" : "text-slate-600 hover:bg-slate-50"}`}
+                >
+                    <item.icon size={19} aria-hidden="true" />
+                    {item.label}
+                </Link>
+            );
+        });
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900">
             <Head title={title} />
             <a
                 href="#main"
-                className="sr-only rounded-lg bg-white px-4 py-2 focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50"
+                className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-white focus:p-4"
             >
                 Skip to content
             </a>
@@ -131,150 +149,116 @@ export default function AdminLayout({
                     className="fixed inset-x-0 top-0 z-50 h-1 animate-pulse bg-emerald-500"
                 />
             )}
-            <div className="mx-auto min-h-screen max-w-[1600px] lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
-                <aside className="border-b border-slate-200 bg-white lg:min-h-screen lg:border-b-0 lg:border-r">
-                    <div className="flex items-center justify-between px-6 py-5 lg:py-7">
-                        <Link
-                            href="/admin/home"
-                            className="flex items-center gap-3 text-emerald-950"
-                        >
-                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-900 text-white">
-                                <ChefHat size={23} aria-hidden="true" />
-                            </span>
-                            <span>
-                                <strong className="block text-base leading-5">
-                                    Zek Catering
-                                </strong>
-                                <small className="block text-xs font-medium tracking-wide text-slate-500">
-                                    Administration
-                                </small>
-                            </span>
-                        </Link>
-                        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 lg:hidden">
-                            {auth?.isAdmin ? "Administrator" : "Staff"}
-                        </span>
-                    </div>
-                    <nav
-                        aria-label="Administration"
-                        className="flex gap-1 overflow-x-auto px-4 pb-4 lg:block lg:space-y-1 lg:px-3 lg:pt-6"
+            <div className="mx-auto min-h-screen max-w-[1600px] lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
+                <aside className="hidden border-r border-slate-200 bg-white lg:sticky lg:top-0 lg:block lg:h-screen">
+                    <Link
+                        href="/admin/home"
+                        className="flex items-center gap-3 px-6 py-7 text-emerald-950"
                     >
-                        {navigation.map((item) => {
-                            if (item.children) {
-                                const children = item.children.filter(
-                                    (child) =>
-                                        auth?.permissions.includes(
-                                            child.permission,
-                                        ) ||
-                                        auth?.permissions.includes(
-                                            child.extraPermission,
-                                        ),
-                                );
-                                if (!children.length) return null;
-                                const Icon = item.icon;
-                                return (
-                                    <details
-                                        key={item.label}
-                                        open
-                                        className="group"
-                                    >
-                                        <summary className="flex cursor-pointer list-none items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100">
-                                            <Icon
-                                                size={18}
-                                                aria-hidden="true"
-                                            />
-                                            {item.label}
-                                        </summary>
-                                        <div className="ml-5 mt-1 space-y-1 border-l border-slate-200 pl-3">
-                                            {children.map((child) => (
-                                                <Link
-                                                    key={child.href}
-                                                    href={child.href}
-                                                    className={`block rounded-lg px-3 py-2 text-sm ${url.startsWith(child.href.split("?")[0]) ? "bg-emerald-100 font-semibold text-emerald-950" : "text-slate-600 hover:bg-slate-100"}`}
-                                                >
-                                                    {child.label}
-                                                </Link>
-                                            ))}
-                                        </div>
-                                    </details>
-                                );
-                            }
-                            if (
-                                !item.href ||
-                                !(
-                                    auth?.permissions.includes(
-                                        item.permission ?? "",
-                                    ) ||
-                                    auth?.permissions.includes(
-                                        item.extraPermission ?? "",
-                                    )
-                                )
-                            )
-                                return null;
-                            const active =
-                                item.href === "/admin"
-                                    ? url === "/admin"
-                                    : url.startsWith(item.href);
-                            const Icon = item.icon;
-                            return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    aria-current={active ? "page" : undefined}
-                                    className={`flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${active ? "bg-emerald-100 text-emerald-950" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}
-                                >
-                                    <Icon size={18} aria-hidden="true" />
-                                    {item.label}
-                                </Link>
-                            );
-                        })}
+                        <ChefHat size={30} />
+                        <span>
+                            <strong className="block">Zek Catering</strong>
+                            <small className="text-slate-500">
+                                Administration
+                            </small>
+                        </span>
+                    </Link>
+                    <p className="px-6 pb-3 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+                        Workspace
+                    </p>
+                    <nav aria-label="Administration" className="space-y-1 px-3">
+                        {navItems}
                     </nav>
-                    <div className="hidden px-4 py-6 lg:block">
-                        {auth?.permissions.includes("dashboard.view") && (
-                            <Link
-                                href="/admin/guide"
-                                className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-3 text-sm font-medium text-slate-600 hover:border-emerald-300 hover:text-emerald-900"
-                            >
-                                <BookOpen size={17} aria-hidden="true" /> Admin
-                                guide
-                            </Link>
-                        )}
-                    </div>
                 </aside>
                 <div className="min-w-0">
-                    <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-4 sm:px-8">
-                        <div className="flex min-w-0 items-center gap-2 text-sm text-slate-500">
-                            <span>Workspace</span>
-                            <ChevronRight size={15} aria-hidden="true" />
-                            <span className="truncate font-semibold text-slate-800">
+                    <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b bg-white/95 px-4 py-3 backdrop-blur sm:px-8">
+                        <button
+                            aria-label="Open navigation"
+                            className="rounded-lg p-2 lg:hidden"
+                            onClick={() => setMobile(true)}
+                        >
+                            <Menu size={22} />
+                        </button>
+                        <nav
+                            aria-label="Breadcrumb"
+                            className="min-w-0 flex-1 truncate text-sm text-slate-500"
+                        >
+                            {parent && title !== parent.label ? (
+                                <>
+                                    <Link
+                                        href={parent.href}
+                                        className="text-emerald-800 hover:underline"
+                                    >
+                                        {parent.label}
+                                    </Link>
+                                    <span aria-hidden="true"> / </span>
+                                </>
+                            ) : null}
+                            {product?.family?.is_addon && (
+                                <>
+                                    <Link
+                                        href={`/admin/add-on-services/${product.family.id}`}
+                                        className="text-emerald-800 hover:underline"
+                                    >
+                                        {product.family.name}
+                                    </Link>
+                                    <span aria-hidden="true"> / </span>
+                                </>
+                            )}
+                            {product && title !== product.name && (
+                                <>
+                                    <Link
+                                        href={`/admin/packages/products/${product.id}`}
+                                        className="text-emerald-800 hover:underline"
+                                    >
+                                        {product.name}
+                                    </Link>
+                                    <span aria-hidden="true"> / </span>
+                                </>
+                            )}
+                            <span className="font-medium text-slate-800">
                                 {title}
                             </span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <span className="hidden text-sm font-medium text-slate-700 sm:block">
-                                {auth?.user.name}
-                            </span>
-                            <span
-                                className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-900"
-                                aria-hidden="true"
+                        </nav>
+                        <DropdownMenu.Root>
+                            <DropdownMenu.Trigger
+                                className="flex shrink-0 items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-slate-100"
+                                aria-label="Account menu"
                             >
-                                {auth?.user.name.slice(0, 2).toUpperCase()}
-                            </span>
-                            <Link
-                                href="/logout"
-                                method="post"
-                                as="button"
-                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
-                            >
-                                <LogOut size={16} aria-hidden="true" />
-                                <span className="hidden sm:inline">
-                                    Sign out
+                                <span className="grid size-8 place-items-center rounded-full bg-emerald-100 font-semibold text-emerald-900">
+                                    {auth?.user.name.slice(0, 1)}
                                 </span>
-                            </Link>
-                        </div>
+                                <span className="hidden max-w-40 truncate sm:block">
+                                    {auth?.user.name}
+                                </span>
+                                <ChevronDown size={14} />
+                            </DropdownMenu.Trigger>
+                            <DropdownMenu.Portal>
+                                <DropdownMenu.Content
+                                    sideOffset={8}
+                                    align="end"
+                                    className="z-50 min-w-52 rounded-xl border bg-white p-2 shadow-lg"
+                                >
+                                    <DropdownMenu.Label className="px-3 py-2 text-xs text-slate-500">
+                                        {auth?.isAdmin
+                                            ? "Administrator"
+                                            : "Staff"}
+                                    </DropdownMenu.Label>
+                                    <DropdownMenu.Separator className="my-1 h-px bg-slate-100" />
+                                    <DropdownMenu.Item
+                                        onSelect={() => router.post("/logout")}
+                                        className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm outline-none data-[highlighted]:bg-slate-100"
+                                    >
+                                        <LogOut size={16} />
+                                        Sign out
+                                    </DropdownMenu.Item>
+                                </DropdownMenu.Content>
+                            </DropdownMenu.Portal>
+                        </DropdownMenu.Root>
                     </header>
                     <main
                         id="main"
-                        className="mx-auto max-w-6xl px-5 py-8 sm:px-8"
+                        className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8"
                     >
                         <div className="mb-7">
                             <h1 className="text-3xl font-semibold tracking-tight">
@@ -286,36 +270,20 @@ export default function AdminLayout({
                                 </p>
                             )}
                         </div>
-                        {flash.status && (
-                            <StatusToast
-                                key={`${url}:${flash.status}`}
-                                message={flash.status}
-                            />
-                        )}
                         {children}
                     </main>
                 </div>
             </div>
-        </div>
-    );
-}
-
-function StatusToast({ message }: { message: string }) {
-    const [visible, setVisible] = useState(true);
-    if (!visible) return null;
-    return (
-        <div
-            role="status"
-            className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950"
-        >
-            <span>{message}</span>
-            <button
-                type="button"
-                aria-label="Dismiss notification"
-                onClick={() => setVisible(false)}
+            <Modal
+                open={mobile}
+                onClose={() => setMobile(false)}
+                title="Zek Catering"
+                sheet
             >
-                <X size={16} aria-hidden="true" />
-            </button>
+                <nav aria-label="Mobile administration" className="space-y-1">
+                    {navItems}
+                </nav>
+            </Modal>
         </div>
     );
 }

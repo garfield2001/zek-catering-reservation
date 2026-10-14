@@ -12,14 +12,10 @@ export function ConfigurationSummary({
             <section className="rounded-xl border border-stone-200 bg-white p-5">
                 <h2 className="font-semibold">Commercial terms</h2>
                 <p>
-                    {snapshot.product.name} · {snapshot.variant.name} ·{" "}
-                    {snapshot.collection.name}
+                    {snapshot.product.name} · {snapshot.collection.name}
                 </p>
                 {snapshot.product.description && (
                     <p>{snapshot.product.description}</p>
-                )}
-                {snapshot.variant.description && (
-                    <p>{snapshot.variant.description}</p>
                 )}
                 <p>
                     Base Price: {formatPesos(rules.base_price_minor)}{" "}
@@ -32,13 +28,71 @@ export function ConfigurationSummary({
                         ? "no package-specific maximum"
                         : `maximum ${rules.maximum_quantity}`}
                 </p>
+                {rules.estimated_capacity && (
+                    <p>
+                        Estimated capacity: {rules.estimated_capacity} people
+                        per purchased unit.
+                    </p>
+                )}
                 <p>
                     Selections:{" "}
                     {rules.selection_policy === "split"
-                        ? "split groups permitted"
-                        : "uniform"}
+                        ? "Different meal groups permitted"
+                        : "Same menu for everyone"}
                 </p>
             </section>
+            {snapshot.menu && (
+                <section className="rounded-xl border bg-white p-5">
+                    <h3 className="font-semibold">
+                        Menu: exactly {snapshot.menu.total_selection_count}{" "}
+                        distinct foods
+                    </h3>
+                    <p className="mt-2">
+                        Required categories:{" "}
+                        {snapshot.menu.required_categories
+                            .map((c) => c.name)
+                            .join(", ") || "None"}
+                    </p>
+                    {[
+                        ...new Set(
+                            snapshot.menu.food_items.map(
+                                (food) => food.category_name ?? "Foods",
+                            ),
+                        ),
+                    ].map((category) => (
+                        <section key={category} className="mt-4">
+                            <h4 className="font-medium">{category}</h4>
+                            <ul className="mt-2 list-inside list-disc">
+                                {snapshot
+                                    .menu!.food_items.filter(
+                                        (food) =>
+                                            (food.category_name ?? "Foods") ===
+                                            category,
+                                    )
+                                    .map((food) => (
+                                        <li key={food.id}>
+                                            {food.name}
+                                            {food.category_name &&
+                                                ` · ${food.category_name}`}
+                                            {food.always_include &&
+                                                " · Always Include"}
+                                            {food.is_fixed
+                                                ? " — Fixed inclusion"
+                                                : " — Customer choice"}
+                                            {food.included_quantity &&
+                                                ` · ${food.included_quantity} ${food.included_unit} per purchased unit`}
+                                            {Number(
+                                                food.price_adjustment_minor ??
+                                                    0,
+                                            ) > 0 &&
+                                                ` · +${formatPesos(food.price_adjustment_minor!)} per purchased unit`}
+                                        </li>
+                                    ))}
+                            </ul>
+                        </section>
+                    ))}
+                </section>
+            )}
             {snapshot.groups.map((group) => (
                 <section
                     key={group.group_code}

@@ -2,10 +2,9 @@
 
 namespace App\Actions\Package;
 
+use App\Models\PackageVersion;
 use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\User;
-use App\Models\VariantVersion;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -15,39 +14,27 @@ class ChangePackageAvailability
 {
     public function __construct(private AuditLogger $audit) {}
 
-    public function handle(User $actor, Product|ProductVariant $subject, string $operation): void
+    public function handle(User $actor, Product $subject, string $operation): void
     {
         DB::transaction(function () use ($actor, $subject, $operation) {
             Gate::forUser($actor->fresh())->authorize('lifecycle', $subject);
             if (! in_array($operation, ['disable', 'enable', 'archive'], true)) {
                 throw ValidationException::withMessages(['operation' => 'Unsupported package availability action.']);
             }
-            if ($subject instanceof Product) {
-                $subject = Product::lockForUpdate()->findOrFail($subject->id);
-            } else {
-                Product::lockForUpdate()->findOrFail($subject->product_id);
-                $subject = ProductVariant::lockForUpdate()->findOrFail($subject->id);
-            }
+            $subject = Product::lockForUpdate()->findOrFail($subject->id);
             if ($subject->archived_at !== null) {
                 throw ValidationException::withMessages(['operation' => 'Archived package offerings cannot be reactivated.']);
             }
-            if ($operation === 'enable' && ($subject instanceof Product
-                ? ($subject->family->archived_at !== null || ! $subject->family->active)
-                : ($subject->product->archived_at !== null || ! $subject->product->active))) {
+            if ($operation === 'enable' && ($subject->family->archived_at !== null || ! $subject->family->active)) {
                 throw ValidationException::withMessages(['operation' => 'Enable the parent collection or product first.']);
             }
             $before = $subject->only('active', 'archived_at');
             if ($operation === 'archive') {
                 $subject->forceFill(['active' => false, 'archived_at' => now()])->save();
-                $variantIds = $subject instanceof Product
-                    ? ProductVariant::where('product_id', $subject->id)->orderBy('id')->lockForUpdate()->pluck('id')
-                    : [$subject->id];
-                foreach ($variantIds as $variantId) {
-                    $draft = VariantVersion::where('variant_id', $variantId)->where('status', 'draft')->lockForUpdate()->first();
-                    if ($draft) {
-                        $draft->forceFill(['status' => 'abandoned', 'abandoned_at' => now(), 'abandoned_by' => $actor->id])->save();
-                        $this->audit->record('package.draft_abandoned', $actor, $draft, null, ['archived_with' => $subject->id]);
-                    }
+                $draft = PackageVersion::where('package_product_id', $subject->id)->where('status', 'draft')->lockForUpdate()->first();
+                if ($draft) {
+                    $draft->forceFill(['status' => 'abandoned', 'abandoned_at' => now(), 'abandoned_by' => $actor->id])->save();
+                    $this->audit->record('package.draft_abandoned', $actor, $draft, null, ['archived_with' => $subject->id]);
                 }
             } else {
                 $subject->active = $operation === 'enable';

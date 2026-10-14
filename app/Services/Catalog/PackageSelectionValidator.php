@@ -4,27 +4,27 @@ namespace App\Services\Catalog;
 
 use App\Enums\Catalog\CollectionBehavior;
 use App\Models\GroupOption;
+use App\Models\PackageVersion;
 use App\Models\SelectionGroup;
-use App\Models\VariantVersion;
 use Illuminate\Validation\ValidationException;
 
 class PackageSelectionValidator
 {
     public function __construct(private CatalogAvailability $availability) {}
 
-    public function validate(VariantVersion $version, int $totalQuantity, array $allocations): array
+    public function validate(PackageVersion $version, int $totalQuantity, array $allocations): array
     {
         $version->loadMissing(['family', 'groups.options.offeringOption.offering.dish', 'groups.categoryRules.category', 'groups.dishRules']);
         if ($version->groups->isEmpty()) {
             throw ValidationException::withMessages(['groups' => "Add inclusion groups to {$version->family->name} before previewing."]);
         }
         if ($version->selection_policy === 'uniform' && count($allocations) !== 1) {
-            throw ValidationException::withMessages(['groups' => "{$version->family->name} requires one uniform allocation for this variant."]);
+            throw ValidationException::withMessages(['groups' => "{$version->family->name} requires one uniform allocation for this package."]);
         }
         if ($version->selection_policy !== 'split' && $version->selection_policy !== 'uniform') {
             throw ValidationException::withMessages(['groups' => 'Unsupported selection policy.']);
         }
-        if (! $version->family->behavior()->supportsSplit() && $version->selection_policy === 'split') {
+        if (! $version->behavior()->supportsSplit() && $version->selection_policy === 'split') {
             throw ValidationException::withMessages(['groups' => "Split allocations are unavailable for {$version->family->name}; use one uniform allocation."]);
         }
         if ($allocations === []) {
@@ -70,22 +70,16 @@ class PackageSelectionValidator
         if ($version->selection_policy === 'split') {
             $resolved = $this->mergeIdentical($resolved);
             foreach ($resolved as $index => $allocation) {
-                if ($version->subgroup_minimum !== null
-                    && ($allocation['quantity'] < $version->subgroup_minimum
-                        || ($allocation['quantity'] - $version->subgroup_minimum) % $version->subgroup_step !== 0
-                        || ($version->subgroup_maximum !== null && $allocation['quantity'] > $version->subgroup_maximum))) {
-                    $maximum = $version->subgroup_maximum === null ? 'no maximum' : "maximum {$version->subgroup_maximum}";
-                    throw ValidationException::withMessages(["groups.$index.quantity" => "This allocation must meet minimum {$version->subgroup_minimum}, increment {$version->subgroup_step}, and {$maximum}."]);
-                }
+                app(PackageQuantityRules::class)->validateSubgroup($version, $allocation['quantity'], "groups.$index.quantity");
             }
         }
 
         return $resolved;
     }
 
-    private function validateGroup(VariantVersion $version, SelectionGroup $group, mixed $submitted, string $field): array
+    private function validateGroup(PackageVersion $version, SelectionGroup $group, mixed $submitted, string $field): array
     {
-        if ($version->family->behavior() === CollectionBehavior::FixedBundle && $group->mode !== 'fixed') {
+        if ($version->behavior() === CollectionBehavior::FixedBundle && $group->mode !== 'fixed') {
             throw ValidationException::withMessages([$field => "Inclusions in {$version->family->name} must be fixed."]);
         }
         if ($group->mode === 'fixed') {

@@ -2,9 +2,9 @@
 
 namespace App\Actions\Package;
 
+use App\Models\PackageVersion;
 use App\Models\SelectionGroup;
 use App\Models\User;
-use App\Models\VariantVersion;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -17,7 +17,7 @@ class DeleteSelectionGroup
     public function handle(User $actor, SelectionGroup $group, ?int $draftRevision = null): void
     {
         DB::transaction(function () use ($actor, $group, $draftRevision): void {
-            $version = VariantVersion::lockForUpdate()->findOrFail($group->version_id);
+            $version = PackageVersion::lockForUpdate()->findOrFail($group->package_version_id);
             abort_if($version->status !== 'draft', 404);
             if ($draftRevision !== null && $draftRevision !== $version->draft_revision) {
                 throw ValidationException::withMessages(['draft_revision' => 'This draft changed. Reload and review it before removing the group.']);

@@ -1,6 +1,6 @@
 # Zek Catering — Catalog and Package Administration
 
-Laravel 12 + Inertia 2 + React 19/TypeScript + PostgreSQL + Tailwind 4. Phases 1–4 provide authentication, permission-based Admin/Staff administration, append-only audit history, master catalog administration, package drafts, price previews and package publication with immutable version snapshots. Direct-sale listings, customer reservations, quotations, payments and notifications are not implemented.
+Laravel 12 + Inertia 2 + React 19/TypeScript + PostgreSQL + Tailwind 4. Phases 1–4 provide authentication, permission-based Admin/Staff administration, append-only audit history, master catalog administration, package drafts, price previews and package publication with immutable version snapshots. Milestone B adds Food Item images, cohesive package editing and individual listings with publication snapshots (verified for Admin/Staff milestone testing). Customer reservations, quotations, payments and notifications remain deferred.
 
 ## Prerequisites
 
@@ -8,12 +8,18 @@ Laravel 12 + Inertia 2 + React 19/TypeScript + PostgreSQL + Tailwind 4. Phases 1
 - Node 22.12+ (Node 24 recommended), npm and PostgreSQL (tested with 18).
 - Separate development and test databases. Never point automated tests at production.
 
+## Current architecture and development safety
+
+The current architecture is Collection → Product → Package Version. There is no Variant layer. Catering and add-ons use a shared category menu builder, independent package quantity rules, inline catalog dialogs and a guided setup workspace. Read [the current specification](docs/docs/15-business-workspaces.md) and [owner walkthrough](docs/docs/11-admin-staff-guide.md).
+
+The owner's development database is `zek_reservation`; never refresh or migrate it without separate approval. The consolidated baseline requires either a controlled export/conversion/import or an explicitly authorized reset. [Migration inventory and transition options](docs/docs/14-clean-schema-migration.md).
+
 ## First setup
 
 1. Run `composer install` and `npm ci`.
 2. Copy `.env.example` to `.env`. Set DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME and DB_PASSWORD for your own PostgreSQL database. No credentials are committed.
 3. Run `php artisan key:generate`.
-4. Run `php artisan migrate --seed`. The seeder creates roles/permissions and five catalog families/defaults, not user credentials or commercial packages.
+4. Run `php artisan migrate --seed`. For a BRAND-NEW database only: the seeder creates roles/permissions and the built-in primary Catering service idempotently, not user credentials, demo add-ons or commercial packages. Do not run this against the owner's existing legacy development database; see the transition decision below.
 5. Run `php artisan app:create-admin` and supply the first Admin's name, email and password interactively.
 6. Start two terminals:
 
@@ -55,9 +61,28 @@ npx playwright install chromium
 npm run e2e
 ```
 
-Browser fixtures run `migrate:fresh` only after confirming that the configured database name ends in `_test`; they erase data in that dedicated test database. On this Windows installation, the Playwright-managed PHP server can hang during teardown. A tested workaround is to run a separate testing-only server on port 8011, set `PLAYWRIGHT_REUSE_SERVER=1`, and use `PLAYWRIGHT_CHANNEL=chrome` with locally installed Chrome. Stop that server after the tests.
+Browser fixtures and PHP tests fail closed unless configuration is uncached and the connection is PostgreSQL `zek_catering_test:5432`. Fixtures erase ONLY that test database. Run PHP and browser tests sequentially.
 
-For an installed Edge browser on Windows, use `$env:PLAYWRIGHT_CHANNEL='msedge'` before `npm.cmd run e2e`; no Chromium download is then needed. Browser tests use port 8011, seed random credentials into the test database and verify real CSRF enforcement. Run backend and browser database tests sequentially. If Playwright's managed Laravel server lingers during shutdown on Windows, start `php artisan serve --env=testing --host=127.0.0.1 --port=8011` in a separate terminal, set `$env:PLAYWRIGHT_REUSE_SERVER='1'`, run `npm.cmd run e2e`, then stop that server.
+Installed Chrome is supported: set `PLAYWRIGHT_CHANNEL=chrome`. On Windows where managed-server teardown lingers, use a separate terminal with the guarded router:
+
+```powershell
+$env:APP_ENV='testing'
+$env:DB_CONNECTION='pgsql'
+$env:DB_DATABASE='zek_catering_test'
+$env:DB_PORT='5432'
+php -S 127.0.0.1:8013 -t public tests/Browser/router.php
+```
+
+Then in the test terminal:
+
+```powershell
+$env:PLAYWRIGHT_CHANNEL='chrome'
+$env:PLAYWRIGHT_PORT='8013'
+$env:PLAYWRIGHT_EXTERNAL_SERVER='1'
+npm.cmd run e2e
+```
+
+Global setup verifies the router's test-database response header before executing tests. An ordinary development server is not accepted. Stop the testing server afterward. Use ignored local environment files for credentials; never put passwords in commands.
 
 Formatting: `php vendor/bin/pint` and `npm run format`. CI runs PostgreSQL tests, migration rollback/reapply, static analysis, formatting, lint, type checks, component tests, production build and browser checks.
 
@@ -65,16 +90,16 @@ Formatting: `php vendor/bin/pint` and `npm run format`. CI runs PostgreSQL tests
 
 ```text
 app/
-  Actions/{Auth,Access,Catalog}/
+  Actions/{Auth,Access,Catalog,Package}/
   Console/Commands/CreateAdmin.php
   Http/{Controllers,Middleware,Requests}/
   Models/
   Policies/
-  Queries/{Access,Catalog}/
-  Services/{Access,Audit,Catalog}/
+  Queries/{Access,Catalog,Package}/
+  Services/{Access,Audit,Catalog,Package}/
 resources/js/
   pages/{auth,admin}/
-  features/{auth,access,audit,catalog}/
+  features/{auth,access,audit,catalog,packages}/
   components/ui/
   layouts/
   types/

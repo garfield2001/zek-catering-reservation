@@ -133,7 +133,7 @@ class AccessFoundationTest extends TestCase
         $this->get('/admin')->assertRedirect('/login');
         $this->post('/login', ['email' => $staff->email, 'password' => 'test-password-only'])
             ->assertRedirect('/admin/home');
-        $this->get('/admin/home')->assertRedirect('/admin/catalog/dishes');
+        $this->get('/admin/home')->assertRedirect('/admin/food-catalog');
         $this->get('/admin')->assertForbidden();
         $this->get('/admin/staff')->assertForbidden();
     }
@@ -272,7 +272,7 @@ class AccessFoundationTest extends TestCase
         Log::spy();
         $this->signIn($this->user())->get('/admin/audit')->assertForbidden();
         Log::shouldHaveReceived('warning')->withArgs(fn ($message, $context) => $message === 'Authorization denied' && isset($context['request_id']))->once();
-        $this->assertDatabaseCount('audit_events', 0);
+        $this->assertSame(0, AuditEvent::where('action', '!=', 'catalog.primary_service_provisioned')->count());
     }
 
     public function test_audit_failure_rolls_back_account_mutation(): void

@@ -30,7 +30,7 @@ export function OfferingForm({
         >
             <Field
                 id="family_id"
-                label="Collection"
+                label="Add-on service"
                 error={form.errors.family_id}
             >
                 {offering ? (
@@ -48,7 +48,7 @@ export function OfferingForm({
                         }
                     >
                         {families.length === 0 && (
-                            <option value={0}>No eligible families</option>
+                            <option value={0}>No eligible services</option>
                         )}
                         {families.map((family) => (
                             <option key={family.id} value={family.id}>
@@ -88,14 +88,14 @@ export function OfferingForm({
                     checked={form.data.active}
                     onChange={(e) => form.setData("active", e.target.checked)}
                 />
-                Active offering
+                Active preparation
             </label>
             <Button
                 disabled={
                     form.processing || (!offering && families.length === 0)
                 }
             >
-                {offering ? "Save offering" : "Create offering"}
+                {offering ? "Save preparation" : "Create preparation"}
             </Button>
         </form>
     );

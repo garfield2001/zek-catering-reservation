@@ -4,14 +4,14 @@ import { formatPesos, minorToPesoInput } from "./money";
 import type { PublishedPackageSnapshot } from "./types";
 
 const snapshot: PublishedPackageSnapshot = {
-    schema: 1,
+    schema: 2,
     collection: {
         name: "Catering",
         description: null,
         behavior_type: "main_package",
     },
     product: { name: "Package A", description: null },
-    variant: { name: "Standard", description: null },
+    package: { name: "Package A", description: null },
     version: {
         number: 1,
         base_price_minor: "25050",

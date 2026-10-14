@@ -1,51 +1,64 @@
+import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 
+/** The single Radix-backed dialog/sheet foundation for application forms. */
 export function Modal({
     open,
     onClose,
     title,
     children,
+    sheet = false,
+    wide = false,
 }: {
     open: boolean;
     onClose: () => void;
     title: string;
     children: ReactNode;
+    sheet?: boolean;
+    wide?: boolean;
 }) {
-    const dialog = useRef<HTMLDialogElement>(null);
-    const previousFocus = useRef<HTMLElement | null>(null);
-
-    useEffect(() => {
-        const element = dialog.current;
-        if (!element) return;
-        if (open && !element.open) {
-            previousFocus.current = document.activeElement as HTMLElement;
-            element.showModal();
-        } else if (!open && element.open) {
-            element.close();
-            previousFocus.current?.focus();
-        }
-    }, [open]);
-
+    const restoreFocus = useRef<HTMLElement | null>(null);
     return (
-        <dialog
-            ref={dialog}
-            aria-label={title}
-            onClose={onClose}
-            className="m-auto w-[min(92vw,36rem)] max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/55"
+        <Dialog.Root
+            open={open}
+            onOpenChange={(value) => {
+                if (!value) onClose();
+            }}
         >
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
-                <h2 className="text-lg font-semibold">{title}</h2>
-                <button
-                    type="button"
-                    aria-label="Close dialog"
-                    onClick={onClose}
-                    className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+            <Dialog.Portal>
+                <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-[2px]" />
+                <Dialog.Content
+                    aria-describedby={undefined}
+                    onOpenAutoFocus={() => {
+                        restoreFocus.current =
+                            document.activeElement as HTMLElement;
+                    }}
+                    onCloseAutoFocus={(e) => {
+                        e.preventDefault();
+                        restoreFocus.current?.focus();
+                    }}
+                    onPointerDownOutside={(e) => e.preventDefault()}
+                    className={
+                        sheet
+                            ? "fixed inset-y-0 left-0 z-50 w-[min(86vw,20rem)] overflow-y-auto bg-white p-5 shadow-xl"
+                            : `fixed left-1/2 top-1/2 z-50 max-h-[90dvh] ${wide ? "w-[min(94vw,56rem)]" : "w-[min(94vw,40rem)]"} -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl`
+                    }
                 >
-                    <X size={18} aria-hidden="true" />
-                </button>
-            </div>
-            <div className="p-6">{children}</div>
-        </dialog>
+                    <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-100 bg-white px-6 py-4">
+                        <Dialog.Title className="text-lg font-semibold tracking-tight">
+                            {title}
+                        </Dialog.Title>
+                        <Dialog.Close
+                            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                            aria-label="Close dialog"
+                        >
+                            <X size={18} />
+                        </Dialog.Close>
+                    </div>
+                    <div className="p-6">{children}</div>
+                </Dialog.Content>
+            </Dialog.Portal>
+        </Dialog.Root>
     );
 }

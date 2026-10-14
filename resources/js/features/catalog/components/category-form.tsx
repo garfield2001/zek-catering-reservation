@@ -1,25 +1,46 @@
+import { useId } from "react";
 import { useForm } from "@inertiajs/react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
 import type { FoodCategory } from "../types";
 import { catalogPaths } from "../paths";
-export function CategoryForm({ category }: { category: FoodCategory | null }) {
+export function CategoryForm({
+    category,
+    workspace = false,
+    onSaved,
+    returnProductId,
+}: {
+    category: FoodCategory | null;
+    workspace?: boolean;
+    returnProductId?: number;
+    onSaved?: () => void;
+}) {
+    const prefix = useId();
     const form = useForm({
         name: category?.name ?? "",
         active: category?.active ?? true,
+        workspace,
+        return_product_id: returnProductId,
     });
     return (
         <form
-            className="max-w-xl space-y-5 rounded-xl border border-stone-200 bg-white p-6"
+            className="space-y-5"
             onSubmit={(event) => {
                 event.preventDefault();
-                if (category) form.put(catalogPaths.category(category.id));
-                else form.post(catalogPaths.categories);
+                if (category)
+                    form.put(catalogPaths.category(category.id), {
+                        onSuccess: onSaved,
+                    });
+                else form.post(catalogPaths.categories, { onSuccess: onSaved });
             }}
         >
-            <Field id="name" label="Category name" error={form.errors.name}>
+            <Field
+                id={`${prefix}-name`}
+                label="Category name"
+                error={form.errors.name}
+            >
                 <input
-                    id="name"
+                    id={`${prefix}-name`}
                     value={form.data.name}
                     required
                     maxLength={255}

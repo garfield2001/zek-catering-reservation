@@ -26,11 +26,22 @@ return new class extends Migration
             $table->id();
             $table->string('code')->unique();
             $table->string('name');
+            $table->text('description')->nullable();
+            $table->integer('sort_order')->default(0);
             $table->boolean('is_addon');
             $table->boolean('active')->default(true);
+            $table->string('behavior_type');
+            $table->timestampTz('archived_at')->nullable();
             $table->timestampsTz();
+            $table->index(['behavior_type', 'active']);
+            $table->index(['sort_order', 'id']);
         });
-        DB::statement("ALTER TABLE product_families ADD CONSTRAINT product_families_code_valid CHECK (code IN ('main_catering', 'belly_lechon', 'food_pack', 'food_tray', 'pica_pica'))");
+        DB::statement("ALTER TABLE product_families ADD CONSTRAINT product_families_code_valid CHECK (code ~ '^[a-z0-9]+(_[a-z0-9]+)*$')");
+        DB::statement("ALTER TABLE product_families ADD CONSTRAINT product_families_behavior_valid CHECK ((is_addon = false AND behavior_type = 'main_package') OR (is_addon = true AND behavior_type IN ('package','packed_meal','direct_sale','fixed_bundle')))");
+        DB::statement('ALTER TABLE product_families ADD CONSTRAINT product_families_name_nonempty CHECK (length(btrim(name)) > 0)');
+        DB::statement('ALTER TABLE product_families ADD CONSTRAINT product_families_archive_valid CHECK (archived_at IS NULL OR active = false)');
+        DB::statement('CREATE UNIQUE INDEX product_families_name_key_unique ON product_families (lower(btrim(name))) WHERE archived_at IS NULL');
+        DB::statement('CREATE UNIQUE INDEX product_families_one_current_primary ON product_families (is_addon) WHERE is_addon = false AND archived_at IS NULL');
 
         Schema::create('family_order_defaults', function (Blueprint $table) {
             $table->foreignId('family_id')->primary()->constrained('product_families')->restrictOnDelete();
