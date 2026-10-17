@@ -47,7 +47,8 @@ return [
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
+            // Browser tests must never replace or clean development photographs.
+            'root' => storage_path('app/'.(env('APP_ENV') === 'testing' ? 'testing/' : '').'public'),
             'url' => env('APP_URL').'/storage',
             'visibility' => 'public',
             'throw' => false,

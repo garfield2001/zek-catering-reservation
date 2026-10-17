@@ -13,7 +13,7 @@ class CatalogAvailability
 {
     public function dishEligibleForFamily(Dish $dish, ProductFamily $family): bool
     {
-        return $this->eligiblePairs()
+        return $this->availablePairs()
             ->where('dishes.id', $dish->id)
             ->where('product_families.id', $family->id)
             ->exists();
@@ -24,7 +24,7 @@ class CatalogAvailability
      */
     public function eligibleDishIds(ProductFamily $family, array $ids): array
     {
-        return $this->eligiblePairs()->where('product_families.id', $family->id)
+        return $this->availablePairs()->where('product_families.id', $family->id)
             ->whereIn('dishes.id', $ids)->pluck('dishes.id')
             ->mapWithKeys(fn ($id) => [(int) $id => true])->all();
     }
@@ -62,21 +62,19 @@ class CatalogAvailability
 
     private function availableOfferings(): Builder
     {
-        return $this->eligiblePairs()
+        return $this->availablePairs()
             ->join('dish_offerings', function ($join) {
-                $join->on('dish_offerings.dish_id', '=', 'dish_family_eligibilities.dish_id')
-                    ->on('dish_offerings.family_id', '=', 'dish_family_eligibilities.family_id');
+                $join->on('dish_offerings.dish_id', '=', 'dishes.id')
+                    ->on('dish_offerings.family_id', '=', 'product_families.id');
             })
             ->where('dish_offerings.active', true);
     }
 
-    private function eligiblePairs(): Builder
+    private function availablePairs(): Builder
     {
-        return DB::table('dish_family_eligibilities')
-            ->join('dishes', 'dishes.id', '=', 'dish_family_eligibilities.dish_id')
+        return DB::table('dishes')
             ->join('dish_categories', 'dish_categories.id', '=', 'dishes.category_id')
-            ->join('product_families', 'product_families.id', '=', 'dish_family_eligibilities.family_id')
-            ->where('dish_family_eligibilities.active', true)
+            ->crossJoin('product_families')
             ->where('dishes.active', true)
             ->where('dish_categories.active', true)
             ->where('product_families.active', true)

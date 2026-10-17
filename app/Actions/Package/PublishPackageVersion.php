@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Package\ConfigurationFeasibility;
+use App\Services\Package\PackageFoodSizes;
 use App\Services\Package\PackageMenuConfiguration;
 use App\Services\Package\PublishedSnapshot;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +48,10 @@ class PublishPackageVersion
             }
             $snapshot = $this->snapshots->capture($product, $version);
             $previous = $product->currentVersion?->snapshot();
+            $sizes = app(PackageFoodSizes::class);
+            if ($sizes->commercialPrices($previous['menu']['food_sizes'] ?? []) !== $sizes->commercialPrices($snapshot['menu']['food_sizes'] ?? [])) {
+                Gate::forUser($actor->fresh())->authorize('price', PackageVersion::class);
+            }
             $oldAdjustments = collect($previous['groups'] ?? [])->flatMap(fn ($group) => collect($group['options'])->mapWithKeys(fn ($option) => [$group['group_code'].':'.$option['offering_option_id'] => (string) $option['price_adjustment_minor']]))->filter(fn ($amount) => (int) $amount !== 0)->sortKeys()->all();
             $newAdjustments = collect($snapshot['groups'])->flatMap(fn ($group) => collect($group['options'])->mapWithKeys(fn ($option) => [$group['group_code'].':'.$option['offering_option_id'] => (string) $option['price_adjustment_minor']]))->filter(fn ($amount) => (int) $amount !== 0)->sortKeys()->all();
             if ((string) ($previous['version']['base_price_minor'] ?? '0') !== (string) $snapshot['version']['base_price_minor'] || $oldAdjustments !== $newAdjustments

@@ -1,3 +1,4 @@
+import { useDialogForm } from "../../../components/ui/dialog-form-guard";
 import { useForm } from "@inertiajs/react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
@@ -18,6 +19,7 @@ export function OfferingForm({
         description: offering?.description ?? "",
         active: offering?.active ?? true,
     });
+    useDialogForm(form.isDirty, form.processing);
     return (
         <form
             className="max-w-xl space-y-5 rounded-xl border border-stone-200 bg-white p-6"
@@ -48,7 +50,7 @@ export function OfferingForm({
                         }
                     >
                         {families.length === 0 && (
-                            <option value={0}>No eligible services</option>
+                            <option value={0}>No active services</option>
                         )}
                         {families.map((family) => (
                             <option key={family.id} value={family.id}>
@@ -90,6 +92,19 @@ export function OfferingForm({
                 />
                 Active preparation
             </label>
+            {!form.data.active && (
+                <p
+                    role="status"
+                    className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900"
+                >
+                    Disabling this preparation makes all its Serving Options
+                    unavailable for new selections without changing their
+                    enabled flags. Linked individual listings and required
+                    package choices may become unavailable. Published prices and
+                    history stay unchanged. Re-enable this preparation or revise
+                    affected configurations before offering them again.
+                </p>
+            )}
             <Button
                 disabled={
                     form.processing || (!offering && families.length === 0)

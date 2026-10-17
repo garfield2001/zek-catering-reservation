@@ -1,3 +1,4 @@
+import { useDialogForm } from "../../../components/ui/dialog-form-guard";
 import { useForm, usePage } from "@inertiajs/react";
 import { useState } from "react";
 import { ConfirmDialog } from "../../../components/ui/confirm-dialog";
@@ -38,6 +39,7 @@ export function TeamMemberForm({ staff }: { staff: UserAccount | null }) {
             form.put("/admin/staff/" + staff.id, options);
         } else form.post("/admin/staff", options);
     };
+    useDialogForm(form.isDirty, form.processing);
     return (
         <>
             <form

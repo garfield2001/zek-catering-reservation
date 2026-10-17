@@ -36,7 +36,6 @@ return new class extends Migration
                     IF expected_behavior = 'direct_sale' THEN RAISE EXCEPTION 'Direct sale has no package menu' USING ERRCODE = '23514'; END IF;
                     IF TG_TABLE_NAME = 'package_version_food_items' THEN
                         SELECT family_id INTO expected_family_id FROM package_versions WHERE id = NEW.package_version_id;
-                        IF NOT EXISTS (SELECT 1 FROM dish_family_eligibilities WHERE dish_id = NEW.dish_id AND family_id = expected_family_id) THEN RAISE EXCEPTION 'Food is not eligible for this service' USING ERRCODE = '23514'; END IF;
                         IF expected_behavior = 'main_package' AND (NEW.always_include OR NEW.included_quantity IS NOT NULL OR NEW.included_unit IS NOT NULL OR NEW.price_adjustment_minor <> 0) THEN RAISE EXCEPTION 'Catering foods have no quantities or premiums' USING ERRCODE = '23514'; END IF;
                         IF expected_behavior = 'fixed_bundle' AND (NOT NEW.is_fixed OR NEW.price_adjustment_minor <> 0) THEN RAISE EXCEPTION 'Bundles have fixed foods without premiums' USING ERRCODE = '23514'; END IF;
                     END IF;

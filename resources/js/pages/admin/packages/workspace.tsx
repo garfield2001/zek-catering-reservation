@@ -3,7 +3,12 @@ import { useState } from "react";
 import AdminLayout from "../../../layouts/admin-layout";
 import { ConfirmDialog } from "../../../components/ui/confirm-dialog";
 import { PackageDetails } from "../../../features/packages/components/package-details";
+import { PackageEditorButton } from "../../../features/packages/components/package-editor-modal";
 import { PublicationHistory } from "../../../features/packages/components/publication-history";
+import {
+    CommercialHistory,
+    type CommercialHistoryData,
+} from "../../../features/catalog/components/commercial-history";
 import type {
     PackageProduct,
     PackageVersion,
@@ -13,8 +18,10 @@ export default function PackageWorkspace({
     product,
     draft,
     history,
+    commercialHistory,
     availability,
     canManage,
+    canPrice,
     canPublish,
     canHistory,
     canLifecycle,
@@ -25,8 +32,10 @@ export default function PackageWorkspace({
         "id" | "status" | "draft_revision" | "version_number"
     > | null;
     history: PackageVersion[];
+    commercialHistory: CommercialHistoryData | null;
     availability: { available: boolean; reasons: string[] };
     canManage: boolean;
+    canPrice: boolean;
     canPublish: boolean;
     canHistory: boolean;
     canLifecycle: boolean;
@@ -91,12 +100,30 @@ export default function PackageWorkspace({
                 </p>
                 <div className="mt-4 flex flex-wrap gap-4">
                     {editable && (
-                        <Link
+                        <PackageEditorButton
                             className="text-sm text-emerald-800 underline"
-                            href={`/admin/packages/products/${product.id}/edit`}
+                            url={`/admin/packages/products/${product.id}/edit`}
                         >
                             Edit Package
-                        </Link>
+                        </PackageEditorButton>
+                    )}
+                    {editable && (
+                        <PackageEditorButton
+                            url={`/admin/packages/products/${product.id}/edit`}
+                            initialStep={1}
+                            className="text-sm text-emerald-800 underline"
+                        >
+                            Edit Menu
+                        </PackageEditorButton>
+                    )}
+                    {editable && canPrice && (
+                        <PackageEditorButton
+                            url={`/admin/packages/products/${product.id}/edit`}
+                            initialStep={2}
+                            className="text-sm text-emerald-800 underline"
+                        >
+                            Edit Pricing & Quantity
+                        </PackageEditorButton>
                     )}
                     {draft &&
                         canPublish &&
@@ -132,6 +159,9 @@ export default function PackageWorkspace({
                         history={history}
                         canRevise={editable && !draft}
                     />
+                    {commercialHistory && (
+                        <CommercialHistory data={commercialHistory} />
+                    )}
                 </section>
             )}
             <section className="rounded-xl border bg-white p-6">
@@ -141,6 +171,15 @@ export default function PackageWorkspace({
                         ? "The current publication is available."
                         : availability.reasons.join(" ")}
                 </p>
+                {canLifecycle && !product.archived_at && (
+                    <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                        Disabling stops new selection of this package without
+                        changing its Draft, published history or Food Item
+                        statuses. Re-enable it when ready; its catalog sources
+                        must also remain available. Archiving is permanent and
+                        abandons its open Draft.
+                    </p>
+                )}
                 {canLifecycle && !product.archived_at && (
                     <div className="mt-4 flex gap-5">
                         <button
@@ -153,6 +192,7 @@ export default function PackageWorkspace({
                                             ? "disable"
                                             : "enable",
                                     },
+                                    { preserveScroll: true },
                                 )
                             }
                         >
@@ -178,7 +218,7 @@ export default function PackageWorkspace({
                 open={archive}
                 onClose={() => setArchive(false)}
                 title="Archive Package?"
-                description={`Archive ${product.name}? This is permanent. Published history will be retained.`}
+                description={`Archive ${product.name}? This is permanent and abandons its open Draft. Published history, Food Items and other packages remain unchanged.`}
                 confirmLabel="Confirm Archive"
                 busy={archiving}
                 destructive

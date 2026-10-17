@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Actions\Catalog\CreateCollection;
 use App\Actions\Catalog\EnsurePrimaryService;
+use App\Actions\Package\ClonePackageDraft;
 use App\Actions\Package\PublishPackageVersion;
 use App\Models\AuditEvent;
 use App\Models\Dish;
@@ -13,6 +14,7 @@ use App\Models\Permission;
 use App\Models\Product;
 use App\Models\Role;
 use App\Models\User;
+use App\Queries\Catalog\FoodUsage;
 use App\Services\Package\PackageMenuConfiguration;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,7 +41,6 @@ class CompletePackageSaveTest extends TestCase
         $ids = [];
         foreach (['Fried Rice', 'Steamed Rice'] as $index => $name) {
             $food = Dish::create(['code' => 'rice_'.$index, 'name' => $name, 'category_id' => $category->id, 'active' => true]);
-            $food->eligibleFamilies()->attach($family->id, ['active' => true]);
             $ids[] = $food->id;
         }
         $this->input = ['family_id' => $family->id, 'name' => 'Package B', 'description' => 'Complete saved configuration', 'active' => true,
@@ -47,6 +48,24 @@ class CompletePackageSaveTest extends TestCase
             'required_category_ids' => [$category->id], 'food_details' => [$ids[0] => ['is_fixed' => true]],
             'base_price_pesos' => '850.00', 'price_basis' => 'per_pax', 'selection_policy' => 'uniform',
             'minimum_quantity' => 150, 'quantity_step' => 10, 'maximum_quantity' => 500];
+    }
+
+    public function test_modal_json_editor_and_save_share_permissions_and_persist_complete_configuration(): void
+    {
+        $this->getJson(route('packages.editor', ['service' => $this->input['family_id']]))
+            ->assertOk()->assertJsonPath('canPublish', true)->assertJsonPath('servingDefault', null);
+        $response = $this->postJson(route('packages.configurations.store'), $this->input)->assertCreated();
+        $product = Product::findOrFail($response->json('id'));
+        $this->getJson(route('packages.edit', $product))->assertOk()->assertJsonPath('product.id', $product->id)
+            ->assertJsonPath('version.minimum_quantity', 150);
+        $this->assertSame('85000', (string) $product->versions()->sole()->base_price_minor);
+        $staff = User::factory()->create();
+        $staff->roles()->attach(Role::where('code', 'staff')->sole());
+        $this->actingAs($staff)->withSession(['access_version' => $staff->access_version]);
+        $this->getJson(route('packages.edit', $product))->assertForbidden();
+        $this->getJson(route('packages.editor', ['service' => $product->family_id]))->assertForbidden();
+        $this->postJson(route('packages.configurations.store'), $this->input)->assertForbidden();
+        $this->assertSame(1, Product::count());
     }
 
     public function test_complete_save_is_atomic_unpublished_and_idempotent(): void
@@ -76,6 +95,64 @@ class CompletePackageSaveTest extends TestCase
         $this->assertSame(0, Product::count());
         $this->assertSame(0, PackageVersion::count());
         $this->assertSame($audits, AuditEvent::count());
+    }
+
+    public function test_save_and_publish_is_explicit_atomic_and_idempotent(): void
+    {
+        $data = [...$this->input, 'save_action' => 'publish'];
+        $this->post(route('packages.configurations.store'), $data)->assertSessionHasErrors('confirm_publication');
+        $this->assertSame(0, Product::count());
+        $data['confirm_publication'] = true;
+        $this->post(route('packages.configurations.store'), $data)->assertSessionHasNoErrors();
+        $product = Product::sole();
+        $version = $product->versions()->sole();
+        $this->assertSame('published', $version->status);
+        $this->assertSame($version->id, $product->current_version_id);
+        $this->assertSame($this->admin->id, $version->published_by);
+        $this->assertSame('85000', $version->snapshot()['version']['base_price_minor']);
+        $audits = AuditEvent::count();
+        $this->post(route('packages.configurations.store'), $data)->assertSessionHasNoErrors();
+        $this->assertSame(1, PackageVersion::count());
+        $this->assertSame($audits, AuditEvent::count());
+    }
+
+    public function test_publication_failure_rolls_back_entire_wizard_save(): void
+    {
+        $audits = AuditEvent::count();
+        $this->post(route('packages.configurations.store'), [...$this->input, 'active' => false,
+            'save_action' => 'publish', 'confirm_publication' => true])->assertSessionHasErrors('version');
+        $this->assertSame(0, Product::count());
+        $this->assertSame(0, PackageVersion::count());
+        $this->assertSame($audits, AuditEvent::count());
+    }
+
+    public function test_publish_changes_creates_new_version_without_mutating_published_history(): void
+    {
+        $this->post(route('packages.configurations.store'), [...$this->input, 'save_action' => 'publish', 'confirm_publication' => true])->assertSessionHasNoErrors();
+        $product = Product::sole();
+        $original = $product->currentVersion;
+        $snapshot = $original->snapshot();
+        $data = $this->input;
+        unset($data['creation_token']);
+        $this->put(route('packages.configurations.update', $product), [...$data, 'version_id' => $original->id,
+            'draft_revision' => $original->draft_revision, 'base_price_pesos' => '900.00',
+            'save_action' => 'publish', 'confirm_publication' => true])->assertSessionHasNoErrors();
+        $this->assertSame($snapshot, $original->fresh()->snapshot());
+        $this->assertNotSame($original->id, $product->fresh()->current_version_id);
+        $this->assertSame('90000', $product->fresh()->currentVersion->snapshot()['version']['base_price_minor']);
+        $this->assertSame(0, $product->versions()->where('status', 'draft')->count());
+    }
+
+    public function test_edit_and_price_permissions_do_not_allow_forged_save_and_publish(): void
+    {
+        $staff = User::factory()->create();
+        $staff->roles()->attach(Role::where('code', 'staff')->sole());
+        foreach (['package.manage', 'package.pricing.manage'] as $code) {
+            $staff->permissionOverrides()->attach(Permission::where('code', $code)->sole(), ['effect' => 'allow']);
+        }
+        $this->actingAs($staff)->withSession(['access_version' => $staff->access_version]);
+        $this->post(route('packages.configurations.store'), [...$this->input, 'save_action' => 'publish', 'confirm_publication' => true])->assertForbidden();
+        $this->assertSame(0, Product::count());
     }
 
     public function test_published_edit_creates_one_draft_and_preserves_snapshot(): void
@@ -147,9 +224,6 @@ class CompletePackageSaveTest extends TestCase
     public function test_generic_package_supports_packed_mode_without_name_based_behavior(): void
     {
         $family = app(CreateCollection::class)->handle($this->admin, ['kind' => 'addon', 'behavior_type' => 'package', 'name' => 'Any Meal Name', 'active' => true]);
-        foreach (Dish::all() as $food) {
-            $food->eligibleFamilies()->attach($family->id, ['active' => true]);
-        }
         $this->post(route('packages.configurations.store'), [...$this->input, 'family_id' => $family->id, 'price_basis' => 'per_pack', 'selection_policy' => 'split', 'minimum_quantity' => 50])->assertSessionHasNoErrors();
         $version = PackageVersion::sole();
         $this->assertTrue($version->behavior()->supportsSplit());
@@ -157,5 +231,32 @@ class CompletePackageSaveTest extends TestCase
         $family->forceFill(['name' => 'Renamed Lunch Service'])->save();
         app(PublishPackageVersion::class)->handle($this->admin, $version, $version->draft_revision);
         $this->assertSame('split', $version->fresh()->published_snapshot['version']['selection_policy']);
+    }
+
+    public function test_food_usage_only_exposes_versions_permitted_to_the_current_user(): void
+    {
+        $this->post(route('packages.configurations.store'), $this->input)->assertSessionHasNoErrors();
+        $product = Product::sole();
+        $original = $product->versions()->sole();
+        app(PublishPackageVersion::class)->handle($this->admin, $original, $original->draft_revision);
+        $second = app(ClonePackageDraft::class)->handle($this->admin, $product, $original->fresh());
+        app(PublishPackageVersion::class)->handle($this->admin, $second, $second->draft_revision);
+        app(ClonePackageDraft::class)->handle($this->admin, $product->fresh(), $second->fresh());
+        $foodId = $this->input['food_item_ids'][0];
+        $usage = app(FoodUsage::class);
+        $this->assertCount(3, $usage->forIds([$foodId])[$foodId]);
+        $staff = User::factory()->create();
+        $staff->roles()->attach(Role::where('code', 'staff')->sole());
+        $staff->permissionOverrides()->attach(Permission::where('code', 'package.view')->sole(), ['effect' => 'allow']);
+        $this->actingAs($staff);
+        $rows = $usage->forIds([$foodId])[$foodId];
+        $this->assertCount(1, $rows);
+        $this->assertSame($second->id, $rows[0]['version_id']);
+        $staff->permissionOverrides()->attach(Permission::where('code', 'package.history.view')->sole(), ['effect' => 'allow']);
+        $this->actingAs($staff->fresh());
+        $this->assertCount(2, $usage->forIds([$foodId])[$foodId]);
+        $staff->permissionOverrides()->attach(Permission::where('code', 'package.manage')->sole(), ['effect' => 'allow']);
+        $this->actingAs($staff->fresh());
+        $this->assertCount(3, $usage->forIds([$foodId])[$foodId]);
     }
 }

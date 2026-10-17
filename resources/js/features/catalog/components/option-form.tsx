@@ -1,3 +1,4 @@
+import { useDialogForm } from "../../../components/ui/dialog-form-guard";
 import { useForm } from "@inertiajs/react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
@@ -28,6 +29,7 @@ export function OptionForm({
         serving_claim: option?.serving_claim ?? "",
         active: option?.active ?? true,
     });
+    useDialogForm(form.isDirty, form.processing);
     return (
         <form
             className="max-w-xl space-y-5 rounded-xl border border-stone-200 bg-white p-6"
@@ -136,6 +138,19 @@ export function OptionForm({
                 />
                 Active option
             </label>
+            {!form.data.active && (
+                <p
+                    role="status"
+                    className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900"
+                >
+                    This Serving Option will be unavailable for new selections.
+                    Linked individual listings and packages that require it may
+                    become unavailable; other options keep their enabled flags.
+                    Published measurements, prices and history remain unchanged.
+                    Re-enable this option or revise affected configurations
+                    before offering them again.
+                </p>
+            )}
             <Button disabled={form.processing}>
                 {option ? "Save serving option" : "Create serving option"}
             </Button>

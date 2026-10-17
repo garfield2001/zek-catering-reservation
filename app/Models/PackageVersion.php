@@ -15,11 +15,12 @@ class PackageVersion extends Model
     protected $fillable = ['package_product_id', 'family_id', 'version_number', 'status', 'draft_revision',
         'base_price_minor', 'currency', 'price_basis', 'selection_policy', 'minimum_quantity', 'quantity_step', 'maximum_quantity',
         'total_selection_count', 'estimated_capacity', 'subgroup_minimum', 'subgroup_step', 'subgroup_maximum', 'created_by',
+        'default_serving_quantity', 'default_serving_unit_id', 'default_serving_size_label',
         'cloned_from_id', 'published_snapshot', 'published_at', 'published_by', 'abandoned_at', 'abandoned_by'];
 
     protected function casts(): array
     {
-        return ['draft_revision' => 'integer', 'minimum_quantity' => 'integer',
+        return ['default_serving_quantity' => 'decimal:3', 'default_serving_unit_id' => 'integer', 'draft_revision' => 'integer', 'minimum_quantity' => 'integer',
             'quantity_step' => 'integer', 'maximum_quantity' => 'integer', 'total_selection_count' => 'integer', 'estimated_capacity' => 'integer',
             'subgroup_minimum' => 'integer', 'subgroup_step' => 'integer', 'subgroup_maximum' => 'integer',
             'published_snapshot' => 'array', 'published_at' => 'immutable_datetime', 'abandoned_at' => 'immutable_datetime'];
@@ -64,6 +65,12 @@ class PackageVersion extends Model
     public function groups(): HasMany
     {
         return $this->hasMany(SelectionGroup::class, 'package_version_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    /** @return HasMany<PackageFoodSizeGroup, $this> */
+    public function sizeGroups(): HasMany
+    {
+        return $this->hasMany(PackageFoodSizeGroup::class, 'package_version_id')->orderBy('dish_id');
     }
 
     /** @return BelongsToMany<Dish, $this> */

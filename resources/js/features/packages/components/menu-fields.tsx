@@ -4,6 +4,7 @@ import type { MenuFood, MenuCategory } from "./package-menu-form";
 import type { MenuData } from "../menu-state";
 import { emptyFoodDetail, menuSummary } from "../menu-state";
 import { MenuFoodDetails } from "./menu-food-details";
+import type { ReactNode } from "react";
 
 export function MenuFields({
     data,
@@ -15,6 +16,7 @@ export function MenuFields({
     packed,
     canPrice,
     onAddFood,
+    renderFoodConfiguration,
 }: {
     data: MenuData;
     onChange: (values: Partial<MenuData>) => void;
@@ -25,6 +27,7 @@ export function MenuFields({
     packed: boolean;
     canPrice: boolean;
     onAddFood?: (category?: number) => void;
+    renderFoodConfiguration?: (food: MenuFood, fixed: boolean) => ReactNode;
 }) {
     const { allowed, fixed, total, requiredChoices, impossible } = menuSummary(
         data,
@@ -70,7 +73,7 @@ export function MenuFields({
             )}
             {allowed.length !== data.food_item_ids.length && (
                 <p className="rounded bg-amber-50 p-3 text-sm">
-                    Some saved foods are no longer eligible or active.{" "}
+                    Some saved foods are no longer available.{" "}
                     <button
                         type="button"
                         className="underline"
@@ -244,37 +247,49 @@ export function MenuFields({
                                                     required category.
                                                 </p>
                                             )}
-                                            {selected && !main && (
-                                                <MenuFoodDetails
-                                                    food={food}
-                                                    value={detail(food.id)}
-                                                    onChange={(values) =>
-                                                        onChange({
-                                                            food_details: {
-                                                                ...data.food_details,
-                                                                [food.id]: {
-                                                                    ...detail(
-                                                                        food.id,
-                                                                    ),
-                                                                    ...values,
+                                            {selected &&
+                                                !main &&
+                                                renderFoodConfiguration?.(
+                                                    food,
+                                                    fixed.some(
+                                                        (item) =>
+                                                            item.id === food.id,
+                                                    ),
+                                                )}
+                                            {selected &&
+                                                !main &&
+                                                !renderFoodConfiguration && (
+                                                    <MenuFoodDetails
+                                                        food={food}
+                                                        value={detail(food.id)}
+                                                        onChange={(values) =>
+                                                            onChange({
+                                                                food_details: {
+                                                                    ...data.food_details,
+                                                                    [food.id]: {
+                                                                        ...detail(
+                                                                            food.id,
+                                                                        ),
+                                                                        ...values,
+                                                                    },
                                                                 },
-                                                            },
-                                                        })
-                                                    }
-                                                    bundle={bundle}
-                                                    packed={packed}
-                                                    canPrice={canPrice}
-                                                    showFixed={false}
-                                                />
-                                            )}
+                                                            })
+                                                        }
+                                                        bundle={bundle}
+                                                        packed={packed}
+                                                        canPrice={canPrice}
+                                                        showFixed={false}
+                                                    />
+                                                )}
                                         </div>
                                     );
                                 })}
                             </div>
                             {!choices.length && (
                                 <p className="text-sm text-stone-500">
-                                    No eligible foods. Add a food here or enable
-                                    its service eligibility in Food Catalog.
+                                    No available foods. Add a food here or
+                                    enable the food and its category in Food
+                                    Catalog.
                                 </p>
                             )}
                         </fieldset>
@@ -301,7 +316,7 @@ export function MenuFields({
                     <p role="status" className="mt-2 text-amber-900">
                         Check your menu: every required category needs an
                         allowed food, and fixed foods plus required choices must
-                        fit the total. Allow at least {total} eligible foods.
+                        fit the total. Allow at least {total} available foods.
                     </p>
                 )}
             </aside>

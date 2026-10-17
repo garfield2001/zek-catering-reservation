@@ -3,8 +3,9 @@ import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
-import { Modal } from "../../../components/ui/modal";
+import { Modal, ModalClose } from "../../../components/ui/modal";
 import type { Collection } from "../types";
+import { DeactivationImpact } from "./deactivation-impact";
 
 export function CollectionPresentationForm({
     family,
@@ -31,7 +32,12 @@ export function CollectionPresentationForm({
             </button>
             <Modal
                 open={open}
-                onClose={() => setOpen(false)}
+                dirty={form.isDirty}
+                busy={form.processing}
+                onClose={() => {
+                    form.reset();
+                    setOpen(false);
+                }}
                 title={`Edit ${family.name}`}
             >
                 <form
@@ -39,7 +45,11 @@ export function CollectionPresentationForm({
                     onSubmit={(event) => {
                         event.preventDefault();
                         form.put(`/admin/catalog/families/${family.id}`, {
-                            onSuccess: () => setOpen(false),
+                            preserveScroll: true,
+                            onSuccess: () => {
+                                form.setDefaults(form.data);
+                                setOpen(false);
+                            },
                         });
                     }}
                 >
@@ -57,21 +67,28 @@ export function CollectionPresentationForm({
                         . Renaming does not change pricing, eligibility or
                         existing links.
                     </p>
-                    <Field
-                        id={`family-name-${family.id}`}
-                        label="Customer-facing name"
-                        error={form.errors.name}
-                    >
-                        <input
+                    {family.is_addon ? (
+                        <Field
                             id={`family-name-${family.id}`}
-                            required
-                            maxLength={255}
-                            value={form.data.name}
-                            onChange={(event) =>
-                                form.setData("name", event.target.value)
-                            }
-                        />
-                    </Field>
+                            label="Customer-facing name"
+                            error={form.errors.name}
+                        >
+                            <input
+                                id={`family-name-${family.id}`}
+                                required
+                                maxLength={255}
+                                value={form.data.name}
+                                onChange={(event) =>
+                                    form.setData("name", event.target.value)
+                                }
+                            />
+                        </Field>
+                    ) : (
+                        <p className="text-sm">
+                            Catering Packages is system-managed. Its name cannot
+                            be edited.
+                        </p>
+                    )}
                     <Field
                         id={`family-description-${family.id}`}
                         label="Description"
@@ -96,14 +113,16 @@ export function CollectionPresentationForm({
                         />{" "}
                         Enabled for new configuration and selection
                     </label>
+                    {!form.data.active && (
+                        <DeactivationImpact kind="service" id={family.id} />
+                    )}
                     <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
-                        <button
+                        <ModalClose
                             type="button"
-                            onClick={() => setOpen(false)}
                             className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
                         >
                             Cancel
-                        </button>
+                        </ModalClose>
                         <Button disabled={form.processing}>Save changes</Button>
                     </div>
                 </form>

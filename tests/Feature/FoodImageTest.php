@@ -24,7 +24,7 @@ class FoodImageTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Storage::fake('catalog');
+        Storage::fake('public');
         $this->seed(DatabaseSeeder::class);
         $this->admin = User::factory()->create();
         $this->admin->roles()->attach(Role::where('code', 'admin')->sole());
@@ -40,18 +40,51 @@ class FoodImageTest extends TestCase
     {
         $this->post(route('catalog.dishes.store'), $this->data())->assertSessionHasNoErrors();
         $food = Dish::sole();
+        $this->assertSame('public', $food->image_disk);
         $this->assertSame(1600, $food->image_width);
         $this->assertSame(1067, $food->image_height);
         $this->assertMatchesRegularExpression('/^foods\/[a-z0-9]+\.jpg$/', $food->image_path);
-        Storage::disk('catalog')->assertExists([$food->image_path, $food->image_thumbnail_path]);
-        $thumb = getimagesizefromstring(Storage::disk('catalog')->get($food->image_thumbnail_path));
+        Storage::disk('public')->assertExists([$food->image_path, $food->image_thumbnail_path]);
+        $thumb = getimagesizefromstring(Storage::disk('public')->get($food->image_thumbnail_path));
         $this->assertSame(360, $thumb[0]);
         $this->assertSame('image/jpeg', $thumb['mime']);
         $this->assertArrayNotHasKey('image_path', $food->toArray());
         $this->get($food->image_url)->assertOk()->assertHeader('Content-Type', 'image/jpeg')->assertHeader('X-Content-Type-Options', 'nosniff');
         $this->get('/media/foods/'.$food->id.'/invalid')->assertNotFound();
-        Storage::disk('catalog')->delete($food->image_path);
+        Storage::disk('public')->delete($food->image_path);
         $this->get($food->image_url)->assertNotFound();
+    }
+
+    public function test_existing_private_photographs_remain_readable_and_replacement_moves_only_that_food_to_public_storage(): void
+    {
+        Storage::fake('catalog');
+        $this->post(route('catalog.dishes.store'), $this->data())->assertSessionHasNoErrors();
+        $food = Dish::sole();
+        $paths = [$food->image_path, $food->image_thumbnail_path];
+        foreach ($paths as $path) {
+            Storage::disk('catalog')->put($path, Storage::disk('public')->get($path));
+        }
+        Storage::disk('public')->delete($paths);
+        $food->forceFill(['image_disk' => 'catalog'])->save();
+        $this->get($food->image_url)->assertOk();
+        $this->get($food->thumbnail_url)->assertOk();
+        $this->post(route('catalog.dishes.update', $food), [
+            '_method' => 'put', 'name' => $food->name, 'category_id' => $food->category_id,
+            'active' => true, 'image' => UploadedFile::fake()->image('replacement.jpg'),
+        ])->assertSessionHasNoErrors();
+        $food->refresh();
+        $this->assertSame('public', $food->image_disk);
+        Storage::disk('public')->assertExists([$food->image_path, $food->image_thumbnail_path]);
+        Storage::disk('catalog')->assertMissing($paths);
+    }
+
+    public function test_failed_public_disk_write_does_not_commit_food_or_orphan_thumbnail(): void
+    {
+        Storage::shouldReceive('disk')->with('public')->andReturnSelf();
+        Storage::shouldReceive('put')->once()->andReturn(false);
+        Storage::shouldReceive('delete')->once()->andReturn(true);
+        $this->post(route('catalog.dishes.store'), $this->data())->assertSessionHasErrors('image');
+        $this->assertSame(0, Dish::count());
     }
 
     public function test_invalid_and_unauthorized_uploads_do_not_store_files(): void
@@ -62,7 +95,7 @@ class FoodImageTest extends TestCase
         $staff = User::factory()->create();
         $staff->roles()->attach(Role::where('code', 'staff')->sole());
         $this->actingAs($staff)->withSession(['access_version' => $staff->access_version])->post(route('catalog.dishes.store'), $this->data())->assertForbidden();
-        $this->assertSame([], Storage::disk('catalog')->allFiles());
+        $this->assertSame([], Storage::disk('public')->allFiles());
         $this->assertSame(0, Dish::count());
     }
 
@@ -71,9 +104,9 @@ class FoodImageTest extends TestCase
         $data = $this->data();
         DB::beginTransaction();
         app(SaveDish::class)->handle($this->admin, $data);
-        $this->assertCount(2, Storage::disk('catalog')->allFiles());
+        $this->assertCount(2, Storage::disk('public')->allFiles());
         DB::rollBack();
-        $this->assertSame([], Storage::disk('catalog')->allFiles());
+        $this->assertSame([], Storage::disk('public')->allFiles());
         $this->mock(AuditLogger::class)->shouldReceive('record')->andReturnUsing(function ($action) {
             if ($action === 'catalog.dish_created') {
                 throw new \RuntimeException('Simulated audit failure.');
@@ -87,7 +120,7 @@ class FoodImageTest extends TestCase
         } catch (\RuntimeException $exception) {
             $this->assertSame('Simulated audit failure.', $exception->getMessage());
         }
-        $this->assertSame([], Storage::disk('catalog')->allFiles());
+        $this->assertSame([], Storage::disk('public')->allFiles());
         $this->assertSame(0, Dish::count());
     }
 
@@ -100,17 +133,17 @@ class FoodImageTest extends TestCase
         DB::beginTransaction();
         $pending = app(SaveDish::class)->handle($this->admin, [...$data, 'image' => UploadedFile::fake()->image('rollback.jpg')], $food);
         $pendingPath = $pending->image_path;
-        Storage::disk('catalog')->assertExists($old);
+        Storage::disk('public')->assertExists($old);
         DB::rollBack();
-        Storage::disk('catalog')->assertMissing($pendingPath);
-        Storage::disk('catalog')->assertExists($old);
+        Storage::disk('public')->assertMissing($pendingPath);
+        Storage::disk('public')->assertExists($old);
         $this->assertSame($old, $food->fresh()->image_path);
         $this->post(route('catalog.dishes.update', $food), [...$data, '_method' => 'put', 'image' => UploadedFile::fake()->image('new.jpg')])->assertSessionHasNoErrors();
         $food->refresh();
         $this->assertNotSame($old, $food->image_path);
         // Laravel's test manager treats the enclosing RefreshDatabase transaction
         // as committed for callbacks; a completed request cleans the replaced file.
-        Storage::disk('catalog')->assertMissing($old);
+        Storage::disk('public')->assertMissing($old);
         $this->post(route('catalog.dishes.update', $food), [...$data, '_method' => 'put', 'remove_image' => true])->assertSessionHasNoErrors();
         $this->assertNull($food->fresh()->image_url);
         $staff = User::factory()->create();

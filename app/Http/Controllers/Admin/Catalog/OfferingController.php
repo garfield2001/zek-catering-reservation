@@ -20,7 +20,7 @@ class OfferingController extends Controller
         Gate::authorize('create', DishOffering::class);
 
         return Inertia::render('admin/catalog/offerings/edit', [
-            'dish' => $dish, 'offering' => null, 'families' => array_values(array_filter($lookups->eligibleFamilies($dish), fn (array $family): bool => $family['is_addon'])),
+            'dish' => $dish, 'offering' => null, 'families' => array_values(array_filter($lookups->availableFamilies($dish), fn (array $family): bool => $family['is_addon'])),
         ]);
     }
 

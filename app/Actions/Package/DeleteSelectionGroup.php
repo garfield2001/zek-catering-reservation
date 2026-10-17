@@ -25,7 +25,7 @@ class DeleteSelectionGroup
             $group = SelectionGroup::with('version')->lockForUpdate()->findOrFail($group->id);
             abort_if($group->version->status !== 'draft', 404);
             Gate::forUser($actor->fresh())->authorize('update', $group);
-            $before = [...$group->only('group_code', 'name', 'mode', 'slot_kind', 'minimum_count',
+            $before = [...$group->only('package_version_id', 'group_code', 'name', 'mode', 'slot_kind', 'minimum_count',
                 'maximum_count', 'unique_dishes', 'category_mode', 'inclusion_count', 'sort_order'),
                 'options' => DB::table('group_options')->where('group_id', $group->id)->get()->map(fn ($row) => (array) $row)->all(),
                 'category_rules' => DB::table('group_category_rules')->where('group_id', $group->id)->get()->map(fn ($row) => (array) $row)->all(),

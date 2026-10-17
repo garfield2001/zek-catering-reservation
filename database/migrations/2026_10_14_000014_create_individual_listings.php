@@ -25,7 +25,6 @@ return new class extends Migration
             $table->index(['dish_id', 'family_id']);
             $table->index('offering_option_id');
             $table->index('current_version_id');
-            $table->foreign(['dish_id', 'family_id'])->references(['dish_id', 'family_id'])->on('dish_family_eligibilities')->restrictOnDelete();
         });
         Schema::create('listing_versions', function (Blueprint $table) {
             $table->id();

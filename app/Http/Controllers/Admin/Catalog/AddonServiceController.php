@@ -10,6 +10,8 @@ use App\Models\IndividualListing;
 use App\Models\PackageVersion;
 use App\Models\Product;
 use App\Models\ProductFamily;
+use App\Queries\Package\PackageDirectory;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -32,22 +34,27 @@ class AddonServiceController extends Controller
         ]);
     }
 
-    public function store(CreateCollectionRequest $request, CreateCollection $create): RedirectResponse
+    public function store(CreateCollectionRequest $request, CreateCollection $create): RedirectResponse|JsonResponse
     {
         abort_unless($request->validated('kind') === 'addon', 422);
         $family = $create->handle($request->user(), $request->validated());
+        if ($request->expectsJson()) {
+            return response()->json(['service' => $family->only('id', 'name')], 201);
+        }
 
         return redirect()->route('services.show', $family)->with('status', 'Add-on service created. Set up its foods and packages below.');
     }
 
-    public function show(ProductFamily $family): Response
+    public function show(Request $request, ProductFamily $family, PackageDirectory $directory): Response
     {
         Gate::authorize('viewAny', ProductFamily::class);
         abort_unless($family->is_addon, 404);
+        $filters = $request->validate(['q' => ['nullable', 'string', 'max:100'], 'status' => ['nullable', 'in:all,active,inactive,archived']]);
 
         return Inertia::render('admin/services/show', [
             'family' => $family->load('orderDefault'),
-            'products' => Gate::allows('viewAny', Product::class) ? $family->products()->with(['currentVersion:id,package_product_id,status,version_number,price_basis,base_price_minor,minimum_quantity,total_selection_count', 'versions' => fn ($q) => $q->where('status', 'draft')])->orderBy('sort_order')->get() : [],
+            'products' => Gate::allows('viewAny', Product::class) ? $directory->query($family, $filters)->get() : [],
+            'filters' => $filters,
             'canManage' => Gate::allows('manage', ProductFamily::class),
             'canDefaults' => Gate::allows('viewAny', FamilyOrderDefault::class),
             'canPackages' => Gate::allows('create', Product::class),

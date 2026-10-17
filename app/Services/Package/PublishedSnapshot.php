@@ -27,7 +27,7 @@ class PublishedSnapshot
             ->pluck('is_fixed', 'dish_id');
 
         return [
-            'schema' => 3,
+            'schema' => 4,
             'collection' => $version->family->only('id', 'code', 'name', 'description', 'behavior_type'),
             'product' => $product->only('id', 'code', 'name', 'description'),
             'package' => $product->only('id', 'code', 'name', 'description'),
@@ -42,6 +42,8 @@ class PublishedSnapshot
                 'total_selection_count' => $version->total_selection_count,
             ],
             'menu' => $version->usesFoodMenu() ? [
+                'food_sizes' => app(PackageFoodSizes::class)->snapshot($version),
+                'serving_default' => app(PackageServingDefaults::class)->snapshot($version),
                 'total_selection_count' => $version->total_selection_count,
                 'food_items' => $version->foodItems->map(fn (Dish $dish): array => [
                     'id' => $dish->id, 'name' => $dish->name, 'code' => $dish->code,

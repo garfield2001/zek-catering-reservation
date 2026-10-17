@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductFamily;
 use App\Queries\Package\PackageEditor;
 use App\Queries\Package\PackageWorkspace;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -71,11 +72,13 @@ class ProductController extends Controller
         return Inertia::render('admin/packages/workspace', $workspace->data($product));
     }
 
-    public function edit(Product $product, PackageEditor $editor): Response
+    public function edit(Request $request, Product $product, PackageEditor $editor): Response|JsonResponse
     {
         Gate::authorize('update', $product);
 
-        return Inertia::render('admin/packages/editor', $editor->data($product->family, $product));
+        $props = $editor->data($product->family, $product);
+
+        return $request->expectsJson() ? response()->json($props) : Inertia::render('admin/packages/editor', $props);
     }
 
     public function update(SaveProductRequest $request, Product $product, SaveProduct $action): RedirectResponse

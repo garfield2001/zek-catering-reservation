@@ -1,16 +1,16 @@
-import { useState } from "react";
-import { Plus, Search, Pencil, FolderOpen, ChevronDown } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, router } from "@inertiajs/react";
+import { toast } from "sonner";
+import { Plus, Pencil, Search, X } from "lucide-react";
 import AdminLayout from "../../../layouts/admin-layout";
 import { Modal } from "../../../components/ui/modal";
 import { Button } from "../../../components/ui/button";
 import { CategoryForm } from "../../../features/catalog/components/category-form";
 import { FoodItemForm } from "../../../features/catalog/components/food-item-form";
 import { FoodCard } from "../../../features/catalog/components/food-card";
-import type {
-    FoodCategory,
-    FoodItem,
-    Collection,
-} from "../../../features/catalog/types";
+import type { FoodUsageRow } from "../../../features/catalog/components/food-usage";
+import { useLiveFilters } from "../../../features/catalog/use-live-filters";
+import type { FoodCategory, FoodItem } from "../../../features/catalog/types";
 import { PaginationControls } from "../../../components/ui/pagination";
 import type { Pagination } from "../../../types";
 
@@ -21,35 +21,59 @@ type CatalogEditor =
 export default function FoodCatalog({
     items,
     categories,
-    families,
-    filters,
+    filters: initial,
     canManage,
     initialEditor,
+    usedIn,
 }: {
     items: Pagination<FoodItem>;
     categories: FoodCategory[];
-    families: Collection[];
-    filters: { q?: string; category?: string; service?: string };
+    filters: { q?: string; category?: string; status?: string };
     canManage: boolean;
     initialEditor: CatalogEditor;
+    usedIn: Record<number, FoodUsageRow[]>;
 }) {
     const [editor, setEditor] = useState<CatalogEditor>(initialEditor);
+    const [savedFood, setSavedFood] = useState<FoodItem | null>(null);
+    const [highlighted, setHighlighted] = useState<number | null>(null);
+    useEffect(() => {
+        if (highlighted === null) return;
+        const timeout = window.setTimeout(() => setHighlighted(null), 3000);
+        return () => window.clearTimeout(timeout);
+    }, [highlighted]);
+    const foodPersisted = (food: FoodItem) => {
+        setSavedFood(food);
+        toast.success("Food item saved.");
+        // Let the child close/reset its dirty form before refreshing this exact URL.
+        setTimeout(
+            () =>
+                router.reload({
+                    only: ["items", "categories", "usedIn"],
+                    onSuccess: () => setHighlighted(food.id),
+                }),
+            0,
+        );
+    };
     const close = () => setEditor(null);
-    const visibleCategories = categories.filter(
-        (category) =>
-            (!filters.category || category.id === Number(filters.category)) &&
-            (!(filters.q || filters.service) ||
-                items.data.some((item) => item.category_id === category.id)),
+    const { filters, setFilters, pending } = useLiveFilters(
+        "/admin/food-catalog",
+        {
+            q: initial.q ?? "",
+            category: String(initial.category ?? ""),
+            status: initial.status ?? "",
+        },
     );
     return (
         <AdminLayout
             title="Food Catalog"
-            description="Your shared food library. Organize foods by category and choose the services that can offer them."
+            description="Your shared food library. Packages and individual products decide how each food is offered."
             section="catalog"
         >
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-slate-500">
-                    {items.total} foods · {categories.length} categories
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <p role="status" className="text-sm text-slate-500">
+                    {pending
+                        ? "Updating results…"
+                        : `${items.total} matching foods`}
                 </p>
                 {canManage ? (
                     <div className="flex gap-2">
@@ -64,7 +88,13 @@ export default function FoodCatalog({
                         </Button>
                         <Button
                             onClick={() =>
-                                setEditor({ kind: "food", item: null })
+                                setEditor({
+                                    kind: "food",
+                                    item: null,
+                                    categoryId: filters.category
+                                        ? Number(filters.category)
+                                        : undefined,
+                                })
                             }
                         >
                             <Plus size={16} />
@@ -78,161 +108,162 @@ export default function FoodCatalog({
                     </p>
                 )}
             </div>
-            <form
-                method="get"
-                action="/admin/food-catalog"
-                className="mb-6 grid items-end gap-3 rounded-xl border bg-white p-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_auto]"
+            <section
+                className="mb-6 grid gap-3 rounded-xl border bg-white p-4 sm:grid-cols-[minmax(0,2fr)_1fr_1fr_auto]"
+                aria-label="Food filters"
             >
                 <label className="text-xs font-medium text-slate-600">
-                    Search foods
+                    Search foods or categories
                     <div className="relative mt-1">
                         <Search
-                            className="absolute left-3 top-3 text-slate-400"
                             size={16}
+                            className="absolute left-3 top-3 text-slate-400"
                         />
                         <input
-                            name="q"
-                            defaultValue={filters.q}
-                            placeholder="Find a food…"
+                            type="search"
                             className="pl-9"
+                            value={filters.q}
+                            onChange={(event) =>
+                                setFilters({
+                                    ...filters,
+                                    q: event.target.value,
+                                })
+                            }
+                            placeholder="Start typing…"
                         />
                     </div>
                 </label>
                 <label className="text-xs font-medium text-slate-600">
-                    Filter category
+                    Category
                     <select
                         className="mt-1"
-                        name="category"
-                        defaultValue={filters.category ?? ""}
+                        value={filters.category}
+                        onChange={(event) =>
+                            setFilters({
+                                ...filters,
+                                category: event.target.value,
+                            })
+                        }
                     >
-                        <option value="">All categories</option>
-                        {categories.map((c) => (
-                            <option key={c.id} value={c.id}>
-                                {c.name}
+                        <option value="">All Foods</option>
+                        {categories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                                {category.name} ({category.dishes_count ?? 0})
+                                {!category.active ? " · Inactive" : ""}
                             </option>
                         ))}
                     </select>
                 </label>
                 <label className="text-xs font-medium text-slate-600">
-                    Filter service
+                    Availability
                     <select
                         className="mt-1"
-                        name="service"
-                        defaultValue={filters.service ?? ""}
+                        value={filters.status}
+                        onChange={(event) =>
+                            setFilters({
+                                ...filters,
+                                status: event.target.value,
+                            })
+                        }
                     >
-                        <option value="">All services</option>
-                        {families.map((f) => (
-                            <option key={f.id} value={f.id}>
-                                {f.is_addon ? f.name : "Catering Packages"}
-                            </option>
-                        ))}
+                        <option value="">All statuses</option>
+                        <option value="active">Available foods</option>
+                        <option value="inactive">
+                            Inactive food or category
+                        </option>
                     </select>
                 </label>
-                <Button variant="secondary">Search</Button>
-            </form>
-            <div className="space-y-5">
-                {visibleCategories.map((category) => {
-                    const foods = items.data.filter(
-                        (food) => food.category_id === category.id,
-                    );
-                    return (
-                        <section
-                            key={category.id}
-                            className="rounded-2xl border bg-white p-4 sm:p-5"
-                            aria-label={category.name}
+                <Button
+                    className="self-end"
+                    variant="ghost"
+                    onClick={() =>
+                        setFilters({ q: "", category: "", status: "" })
+                    }
+                >
+                    <X size={14} />
+                    Clear filters
+                </Button>
+            </section>
+            {items.data.length ? (
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),280px))] gap-5">
+                    {items.data.map((food) => (
+                        <FoodCard
+                            key={food.id}
+                            item={food}
+                            highlighted={highlighted === food.id}
+                            usage={usedIn[food.id] ?? []}
+                            canManage={canManage}
+                            onEdit={() =>
+                                setEditor({ kind: "food", item: food })
+                            }
+                        />
+                    ))}
+                </div>
+            ) : (
+                <div className="rounded-xl border border-dashed bg-white p-10 text-center">
+                    <h2 className="font-semibold">No matching foods</h2>
+                    <p className="mt-2 text-sm text-slate-500">
+                        Clear filters, choose another category, or add your
+                        first food.
+                    </p>
+                </div>
+            )}
+            {savedFood &&
+                !items.data.some((food) => food.id === savedFood.id) && (
+                    <p
+                        role="status"
+                        className="my-4 rounded-lg border bg-emerald-50 p-3 text-sm"
+                    >
+                        {savedFood.name} was saved outside the current filters
+                        or page.{" "}
+                        <Link
+                            href={`/admin/catalog/dishes/${savedFood.id}`}
+                            className="underline"
                         >
-                            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                                <div>
-                                    <h2 className="flex items-center gap-2 font-semibold">
-                                        <FolderOpen
-                                            size={18}
-                                            className="text-emerald-700"
-                                        />
-                                        {category.name}
-                                        <span className="rounded-full bg-slate-100 px-2 text-xs text-slate-600">
-                                            {category.dishes_count ?? 0}
-                                        </span>
-                                    </h2>
-                                    {!category.active && (
-                                        <p className="mt-1 text-xs text-amber-800">
-                                            Inactive category
-                                        </p>
-                                    )}
-                                </div>
+                            View Newly Added or Updated Food
+                        </Link>
+                    </p>
+                )}
+            <PaginationControls {...items} />
+            <details className="mt-8 rounded-xl border bg-white p-4">
+                <summary className="cursor-pointer font-medium">
+                    Catalog Settings
+                </summary>
+                <div className="mt-4 space-y-4">
+                    <Link
+                        href="/admin/catalog/measurement-units"
+                        className="text-sm text-emerald-800 underline"
+                    >
+                        Measurement Units
+                    </Link>
+                    <div className="flex flex-wrap gap-2">
+                        {categories.map((category) => (
+                            <div
+                                key={category.id}
+                                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+                            >
+                                <span>
+                                    {category.name}
+                                    {!category.active && " · Inactive"}
+                                </span>
                                 {canManage && (
-                                    <div className="flex gap-2">
-                                        <button
-                                            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
-                                            aria-label={`Edit category ${category.name}`}
-                                            onClick={() =>
-                                                setEditor({
-                                                    kind: "category",
-                                                    item: category,
-                                                })
-                                            }
-                                        >
-                                            <Pencil size={16} />
-                                        </button>
-                                        <Button
-                                            variant="ghost"
-                                            aria-label={`Add Food to ${category.name}`}
-                                            onClick={() =>
-                                                setEditor({
-                                                    kind: "food",
-                                                    item: null,
-                                                    categoryId: category.id,
-                                                })
-                                            }
-                                        >
-                                            <Plus size={16} />
-                                            Add Food
-                                        </Button>
-                                    </div>
+                                    <button
+                                        aria-label={`Edit category ${category.name}`}
+                                        onClick={() =>
+                                            setEditor({
+                                                kind: "category",
+                                                item: category,
+                                            })
+                                        }
+                                    >
+                                        <Pencil size={14} />
+                                    </button>
                                 )}
                             </div>
-                            <details open className="group">
-                                <summary className="mb-3 flex w-fit items-center gap-1 text-xs text-slate-500">
-                                    <ChevronDown size={14} />
-                                    {foods.length} foods on this page
-                                </summary>
-                                <div className="grid gap-3 xl:grid-cols-2">
-                                    {foods.map((food) => (
-                                        <FoodCard
-                                            key={food.id}
-                                            item={food}
-                                            canManage={canManage}
-                                            onEdit={() =>
-                                                setEditor({
-                                                    kind: "food",
-                                                    item: food,
-                                                })
-                                            }
-                                        />
-                                    ))}
-                                </div>
-                                {!foods.length && (
-                                    <p className="rounded-lg border border-dashed p-5 text-sm text-slate-500">
-                                        {category.dishes_count
-                                            ? "No foods from this category on this page. Filter by this category to browse it."
-                                            : "No foods yet. Add your first food to this category."}
-                                    </p>
-                                )}
-                            </details>
-                        </section>
-                    );
-                })}
-                {!visibleCategories.length && (
-                    <div className="rounded-2xl border border-dashed bg-white p-10 text-center">
-                        <FolderOpen className="mx-auto mb-3 text-slate-400" />
-                        <h2 className="font-semibold">No matching foods</h2>
-                        <p className="mt-2 text-sm text-slate-500">
-                            Adjust the filters, add a category, or create a food
-                            with its new category.
-                        </p>
+                        ))}
                     </div>
-                )}
-            </div>
-            <PaginationControls {...items} />
+                </div>
+            </details>
             <Modal
                 open={editor !== null}
                 onClose={close}
@@ -256,10 +287,10 @@ export default function FoodCatalog({
                     <FoodItemForm
                         dish={editor.item}
                         categories={categories}
-                        families={families}
                         initialCategoryId={editor.categoryId}
                         workspace
                         onSaved={close}
+                        onPersisted={foodPersisted}
                     />
                 ) : null}
             </Modal>

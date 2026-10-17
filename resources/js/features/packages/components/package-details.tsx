@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Modal } from "../../../components/ui/modal";
 import type { PublishedPackageSnapshot } from "../types";
 import { ConfigurationSummary } from "./configuration-summary";
+import { PackageEditorButton } from "./package-editor-modal";
 
 type Details = {
     snapshot: PublishedPackageSnapshot;
@@ -134,13 +135,20 @@ export function PackageDetails({
                         </button>
                     )}
                     <ConfigurationSummary snapshot={data.snapshot} />
+                    <Link
+                        href={`/admin/packages/products/${productId}`}
+                        className="text-sm text-slate-600 underline"
+                    >
+                        Publication & Version History
+                    </Link>
                     {data.can_edit && (
-                        <Link
-                            href={`/admin/packages/products/${productId}/edit`}
+                        <PackageEditorButton
+                            url={`/admin/packages/products/${productId}/edit`}
+                            onClosed={() => setRetry((value) => value + 1)}
                             className="inline-block text-sm text-emerald-800 underline"
                         >
                             Edit Package
-                        </Link>
+                        </PackageEditorButton>
                     )}
                 </div>
             )}

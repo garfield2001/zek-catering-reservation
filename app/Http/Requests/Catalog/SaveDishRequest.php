@@ -63,8 +63,6 @@ class SaveDishRequest extends FormRequest
             'category_id' => ['nullable', 'required_without:new_category_name', Rule::prohibitedIf(fn () => $this->filled('new_category_name')), 'integer', Rule::exists('dish_categories', 'id')],
             'new_category_name' => ['bail', 'nullable', 'required_without:category_id', 'string', 'max:255', new AvailableCategoryName],
             'active' => ['required', 'boolean'],
-            'family_ids' => ['present', 'array'],
-            'family_ids.*' => ['required', 'integer', 'distinct', Rule::exists('product_families', 'id')->where('active', true)],
         ];
     }
 }

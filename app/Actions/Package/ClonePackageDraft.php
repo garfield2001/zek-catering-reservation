@@ -56,6 +56,12 @@ class ClonePackageDraft
             foreach ($source->requiredCategories as $category) {
                 DB::table('package_version_required_categories')->insert(['package_version_id' => $draft->id, 'category_id' => $category->id, 'created_at' => now(), 'updated_at' => now()]);
             }
+            foreach ($source->sizeGroups()->with('choices')->get() as $group) {
+                $copy = $draft->sizeGroups()->create($group->only('dish_id', 'measurement_unit_id'));
+                foreach ($group->choices as $choice) {
+                    $copy->choices()->create($choice->only('quantity', 'size_label', 'extra_price_minor', 'is_default'));
+                }
+            }
             $this->audit->record('package.draft_cloned', $actor, $draft, null, ['cloned_from_id' => $source->id, 'version_number' => $draft->version_number]);
 
             return $draft;

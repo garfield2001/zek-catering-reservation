@@ -47,6 +47,18 @@ export function ConfigurationSummary({
                         Menu: exactly {snapshot.menu.total_selection_count}{" "}
                         distinct foods
                     </h3>
+                    {snapshot.menu.serving_default && (
+                        <p className="mt-2">
+                            Default per food without a custom serving:{" "}
+                            {snapshot.menu.serving_default.quantity}{" "}
+                            {snapshot.menu.serving_default.size_label}{" "}
+                            {
+                                snapshot.menu.serving_default.measurement_unit
+                                    .abbreviation
+                            }
+                            .
+                        </p>
+                    )}
                     <p className="mt-2">
                         Required categories:{" "}
                         {snapshot.menu.required_categories
@@ -79,6 +91,32 @@ export function ConfigurationSummary({
                                             {food.is_fixed
                                                 ? " — Fixed inclusion"
                                                 : " — Customer choice"}
+                                            {snapshot.menu?.food_sizes?.[
+                                                food.id
+                                            ] && (
+                                                <ul className="ml-5 list-disc text-slate-600">
+                                                    {snapshot.menu.food_sizes[
+                                                        food.id
+                                                    ].choices.map((choice) => (
+                                                        <li key={choice.id}>
+                                                            {choice.quantity}{" "}
+                                                            {choice.size_label}{" "}
+                                                            {
+                                                                snapshot.menu!
+                                                                    .food_sizes![
+                                                                    food.id
+                                                                ]
+                                                                    .measurement_unit
+                                                                    .abbreviation
+                                                            }{" "}
+                                                            —{" "}
+                                                            {choice.is_default
+                                                                ? "Included default"
+                                                                : `+${formatPesos(choice.extra_price_minor)} per purchased package`}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
                                             {food.included_quantity &&
                                                 ` · ${food.included_quantity} ${food.included_unit} per purchased unit`}
                                             {Number(

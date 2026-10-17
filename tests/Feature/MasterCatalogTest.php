@@ -17,6 +17,7 @@ use Database\Seeders\DatabaseSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 use Tests\Support\LegacyCollections;
 use Tests\TestCase;
@@ -114,49 +115,28 @@ class MasterCatalogTest extends TestCase
         $this->assertDatabaseHas('audit_events', ['action' => 'catalog.category_updated', 'subject_id' => $category->id]);
     }
 
-    public function test_food_item_detail_exposes_a_clear_setup_readiness_summary(): void
+    public function test_food_item_detail_exposes_actual_usage_without_assignment_or_preparation_steps(): void
     {
         $admin = $this->user();
         $category = $this->category('setup', 'Setup foods');
         $dish = Dish::create(['code' => 'setup_food', 'category_id' => $category->id, 'name' => 'Setup Food', 'active' => true]);
 
         $this->signIn($admin)->get(route('catalog.dishes.show', $dish))
-            ->assertInertia(fn ($page) => $page->where('setup.hasCategory', true)
-                ->where('setup.eligibleCollections', 0)
-                ->where('setup.activeOfferings', 0)
-                ->where('setup.activeServingOptions', 0));
+            ->assertInertia(fn ($page) => $page->where('dish.category.active', true)
+                ->where('usedIn', [])->missing('setup')->missing('dish.eligible_families'));
     }
 
-    public function test_canonical_dish_can_serve_multiple_families_and_eligibility_history_is_retained(): void
+    public function test_canonical_food_is_globally_available_without_assignment_rows(): void
     {
-        $admin = $this->user();
+        $this->signIn($this->user());
         $category = $this->category();
-        $main = ProductFamily::where('code', 'main_catering')->sole();
-        $tray = ProductFamily::where('code', 'food_tray')->sole();
-        $this->signIn($admin)->post(route('catalog.dishes.store'), $this->dishData($category, [
-            'family_ids' => [$main->id, $tray->id],
-        ]))->assertRedirect();
+        $this->post(route('catalog.dishes.store'), $this->dishData($category))->assertSessionHasNoErrors();
         $dish = Dish::where('name', 'Roast Chicken')->sole();
-        $this->assertSame(2, DB::table('dish_family_eligibilities')->where('dish_id', $dish->id)->count());
-        $this->post(route('catalog.offerings.store', $dish), $this->offeringData($tray))->assertRedirect();
-        $offering = DishOffering::where('dish_id', $dish->id)->sole();
-        $this->put(route('catalog.dishes.update', $dish), $this->dishData($category, [
-            'family_ids' => [$main->id],
-        ]))->assertRedirect();
-        $this->assertDatabaseHas('dish_family_eligibilities', [
-            'dish_id' => $dish->id, 'family_id' => $tray->id, 'active' => false,
-        ]);
-        $this->assertDatabaseHas('dish_offerings', ['id' => $offering->id]);
-        $this->post(route('catalog.offerings.store', $dish), $this->offeringData($tray, [
-            'code' => 'premium',
-        ]))->assertSessionHasErrors('family_id');
-        $this->put(route('catalog.dishes.update', $dish), $this->dishData($category, [
-            'family_ids' => [$main->id, $tray->id],
-        ]))->assertRedirect();
-        $this->assertSame(2, DB::table('dish_family_eligibilities')->where('dish_id', $dish->id)->count());
-        $this->assertDatabaseHas('dish_family_eligibilities', [
-            'dish_id' => $dish->id, 'family_id' => $tray->id, 'active' => true,
-        ]);
+        foreach (ProductFamily::all() as $family) {
+            $this->assertTrue(app(CatalogAvailability::class)->dishEligibleForFamily($dish, $family));
+        }
+        $this->assertFalse(Schema::hasTable('dish_family_eligibilities'));
+        $this->assertSame(1, Dish::count());
     }
 
     public function test_dish_duplicate_name_is_category_scoped_and_availability_is_checked(): void
@@ -177,7 +157,7 @@ class MasterCatalogTest extends TestCase
         ]))->assertSessionHasErrors('category_id');
         $this->post(route('catalog.dishes.store'), $this->dishData($second, [
             'code' => 'bad_family', 'name' => 'Bad family', 'family_ids' => [999999],
-        ]))->assertSessionHasErrors('family_ids.0');
+        ]))->assertSessionHasNoErrors();
     }
 
     public function test_offerings_and_options_are_family_specific_and_support_variable_sizes(): void
@@ -219,9 +199,10 @@ class MasterCatalogTest extends TestCase
         $category = $this->category();
         $family = ProductFamily::where('code', 'food_tray')->sole();
         $dish = Dish::create(['code' => 'chicken', 'name' => 'Chicken', 'category_id' => $category->id, 'active' => true]);
+        $dish->update(['active' => false]);
         $this->post(route('catalog.offerings.store', $dish), $this->offeringData($family))
             ->assertSessionHasErrors('family_id');
-        $dish->eligibleFamilies()->attach($family->id, ['active' => true]);
+        $dish->update(['active' => true]);
         $this->post(route('catalog.offerings.store', $dish), $this->offeringData($family))->assertRedirect();
         $offering = DishOffering::where('dish_id', $dish->id)->sole();
         foreach ([['unit' => 'bucket'], ['quantity' => '0'], ['quantity' => '1.1234'], ['serving_pax' => 0]] as $changes) {
@@ -233,7 +214,7 @@ class MasterCatalogTest extends TestCase
             ->assertRedirect();
         $this->assertSame(2, $offering->options()->count());
         $this->assertSame(2, $offering->options()->distinct('option_code')->count('option_code'));
-        $dish->eligibleFamilies()->updateExistingPivot($family->id, ['active' => false]);
+        $dish->update(['active' => false]);
         $this->post(route('catalog.options.store', [$dish, $offering]), $this->optionData([
             'option_code' => 'large',
         ]))->assertSessionHasErrors('family_id');
@@ -274,16 +255,15 @@ class MasterCatalogTest extends TestCase
         $family = ProductFamily::where('code', 'food_tray')->sole();
         $dish = Dish::create(['code' => 'chicken', 'name' => 'Chicken', 'category_id' => $category->id, 'active' => true]);
         $other = Dish::create(['code' => 'beef', 'name' => 'Beef', 'category_id' => $category->id, 'active' => true]);
-        $dish->eligibleFamilies()->attach($family->id, ['active' => true]);
         $offering = DishOffering::create(['dish_id' => $dish->id, 'family_id' => $family->id,
             'code' => 'classic', 'name' => 'Classic', 'active' => true]);
         $this->get(route('catalog.offerings.show', [$other, $offering]))->assertNotFound();
         try {
             DB::transaction(fn () => DB::table('dish_offerings')->insert([
-                'dish_id' => $other->id, 'family_id' => $family->id,
+                'dish_id' => 999999, 'family_id' => $family->id,
                 'code' => 'invalid', 'name' => 'Invalid', 'active' => true,
             ]));
-            $this->fail('Expected composite foreign key violation.');
+            $this->fail('Expected Food Item foreign key violation.');
         } catch (QueryException) {
             // The nested transaction rolls back to its savepoint on PostgreSQL.
         }
@@ -322,7 +302,6 @@ class MasterCatalogTest extends TestCase
         $this->assertDatabaseMissing('dishes', ['name' => 'Array']);
 
         $dish = Dish::create(['code' => 'chicken', 'name' => 'Chicken', 'category_id' => $category->id, 'active' => true]);
-        $dish->eligibleFamilies()->attach($family->id, ['active' => true]);
         $this->post(route('catalog.offerings.store', $dish), $this->offeringData($family, [
             'code' => ['classic'], 'name' => ['Classic'],
         ]))->assertSessionHasErrors(['code', 'name']);
@@ -349,25 +328,22 @@ class MasterCatalogTest extends TestCase
         $this->assertDatabaseHas('family_order_defaults', ['family_id' => $family->id]);
     }
 
-    public function test_exclusive_and_all_family_eligibility_preserves_canonical_identity(): void
+    public function test_category_deactivation_preserves_food_flags_and_restores_global_availability(): void
     {
         $this->signIn($this->user());
         $category = $this->category();
-        $pack = ProductFamily::where('code', 'food_pack')->sole();
-        $allIds = ProductFamily::orderBy('id')->pluck('id')->all();
-        $this->post(route('catalog.dishes.store'), $this->dishData($category, [
-            'family_ids' => [$pack->id],
-        ]))->assertRedirect();
+        $this->post(route('catalog.dishes.store'), $this->dishData($category))->assertSessionHasNoErrors();
         $dish = Dish::where('name', 'Roast Chicken')->sole();
-        $this->assertSame([$pack->id], $dish->eligibleFamilies()->wherePivot('active', true)->pluck('product_families.id')->all());
-        $this->put(route('catalog.dishes.update', $dish), $this->dishData($category, [
-            'family_ids' => $allIds,
-        ]))->assertRedirect();
-        $this->assertSame(5, $dish->eligibleFamilies()->wherePivot('active', true)->count());
-        $this->put(route('catalog.dishes.update', $dish), $this->dishData($category))->assertRedirect();
-        $this->assertSame(0, $dish->eligibleFamilies()->wherePivot('active', true)->count());
-        $this->assertSame(5, $dish->eligibleFamilies()->count());
-        $this->assertSame(1, Dish::where('name', 'Roast Chicken')->count());
+        $category->update(['active' => false]);
+        $this->assertTrue($dish->fresh()->active);
+        foreach (ProductFamily::all() as $family) {
+            $this->assertFalse(app(CatalogAvailability::class)->dishEligibleForFamily($dish, $family));
+        }
+        $category->update(['active' => true]);
+        foreach (ProductFamily::all() as $family) {
+            $this->assertTrue(app(CatalogAvailability::class)->dishEligibleForFamily($dish, $family));
+        }
+        $this->assertSame(1, Dish::count());
     }
 
     public function test_deactivation_retains_records_and_combined_availability_fails_closed(): void
@@ -415,9 +391,9 @@ class MasterCatalogTest extends TestCase
         $family->forceFill(['active' => false])->save();
         $this->assertFalse($availability->optionAvailable($option));
         $family->forceFill(['active' => true])->save();
-        $dish->eligibleFamilies()->updateExistingPivot($family->id, ['active' => false]);
+        $dish->update(['active' => false]);
         $this->assertFalse($availability->optionAvailable($option));
-        $dish->eligibleFamilies()->updateExistingPivot($family->id, ['active' => true]);
+        $dish->update(['active' => true]);
         $this->assertTrue($availability->optionAvailable($option));
     }
 
@@ -426,7 +402,6 @@ class MasterCatalogTest extends TestCase
         $category = $this->category();
         $family = ProductFamily::where('code', 'food_tray')->sole();
         $dish = Dish::create(['code' => 'chicken', 'name' => 'Chicken', 'category_id' => $category->id, 'active' => true]);
-        $dish->eligibleFamilies()->attach($family->id, ['active' => true]);
         $offering = DishOffering::create(['dish_id' => $dish->id, 'family_id' => $family->id,
             'code' => 'classic', 'name' => 'Classic', 'active' => true]);
 
@@ -436,9 +411,7 @@ class MasterCatalogTest extends TestCase
         $this->assertSqlRejected(fn () => DB::table('dishes')->insert([
             'code' => 'another', 'name' => 'CHICKEN', 'category_id' => $category->id,
         ]));
-        $this->assertSqlRejected(fn () => DB::table('dish_family_eligibilities')->insert([
-            'dish_id' => $dish->id, 'family_id' => $family->id,
-        ]));
+        $this->assertSqlRejected(fn () => DB::table('dish_offerings')->insert(['dish_id' => $dish->id, 'family_id' => $family->id, 'code' => 'classic', 'name' => 'Duplicate']));
         foreach ([
             ['unit' => 'bucket', 'quantity' => '1.000', 'serving_pax' => null],
             ['unit' => 'tray', 'quantity' => '0.000', 'serving_pax' => null],
@@ -449,8 +422,7 @@ class MasterCatalogTest extends TestCase
             ]));
         }
         $this->assertSqlRejected(fn () => DB::table('dish_categories')->where('id', $category->id)->delete());
-        $this->assertSqlRejected(fn () => DB::table('dish_family_eligibilities')->where('dish_id', $dish->id)
-            ->where('family_id', $family->id)->delete());
+        $this->assertSqlRejected(fn () => DB::table('dishes')->where('id', $dish->id)->delete());
         $this->assertDatabaseHas('dish_offerings', ['id' => $offering->id]);
     }
 

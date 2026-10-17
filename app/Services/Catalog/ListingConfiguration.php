@@ -35,7 +35,7 @@ class ListingConfiguration
             $reasons[] = 'The published food category is unavailable.';
         }
         if (! $this->sourceAvailable($listing)) {
-            $reasons[] = 'Enable the service, Food Item, category, eligibility and any selected Serving Option.';
+            $reasons[] = 'Enable the service, Food Item, category and any selected Serving Option.';
         }
 
         return ['available' => $reasons === [], 'reasons' => $reasons];
@@ -43,7 +43,8 @@ class ListingConfiguration
 
     public function snapshot(IndividualListing $listing, ListingVersion $version): array
     {
-        return ['schema' => 1, 'listing_id' => $listing->id, 'version_number' => $version->version_number,
+        return ['schema' => 2, 'listing_id' => $listing->id, 'version_number' => $version->version_number,
+            'selling_options' => $version->sellingOptions()->get()->map(fn ($option) => $option->only(['id', 'label', 'price_minor', 'sort_order']))->all(),
             'service' => $listing->family->only('id', 'code', 'name', 'description'),
             'food' => $listing->dish->only('id', 'name', 'description', 'category_id'),
             'category' => $listing->dish->category->only('id', 'name'),
@@ -52,14 +53,27 @@ class ListingConfiguration
     }
 
     /** Administration-only calculation: never creates a customer transaction. */
-    public function preview(IndividualListing $listing, ListingVersion $version, int $quantity): array
+    public function preview(IndividualListing $listing, ListingVersion $version, int $quantity, ?int $sellingOptionId = null): array
     {
         abort_unless($version->listing_id === $listing->id, 404);
+        $version = $listing->versions()->findOrFail($version->id);
         $facts = $version->status === 'published' ? $version->snapshot() : $this->snapshot($listing, $version);
         if ($quantity < $facts['minimum_quantity'] || ($facts['maximum_quantity'] !== null && $quantity > $facts['maximum_quantity']) || ($quantity - $facts['minimum_quantity']) % $facts['quantity_step'] !== 0) {
             throw ValidationException::withMessages(['quantity' => "{$facts['name']} requires at least {$facts['minimum_quantity']} {$facts['selling_unit']} units, increasing by {$facts['quantity_step']}".($facts['maximum_quantity'] !== null ? ", up to {$facts['maximum_quantity']}." : '.')]);
         }
 
-        return ['quantity' => $quantity, 'unit_price_minor' => (string) $facts['price_minor'], 'total_minor' => (string) $this->money->multiply($this->money->parse($facts['price_minor']), $quantity), 'currency' => 'PHP'];
+        $options = collect($facts['selling_options'] ?? []);
+        $price = $facts['price_minor'];
+        if ($options->isNotEmpty()) {
+            $option = $sellingOptionId !== null ? $options->firstWhere('id', $sellingOptionId) : ($options->count() === 1 ? $options->first() : null);
+            if ($option === null) {
+                throw ValidationException::withMessages(['selling_option_id' => "Choose a selling option for {$facts['name']}."]);
+            }
+            $price = $option['price_minor'];
+        } elseif ($sellingOptionId !== null) {
+            throw ValidationException::withMessages(['selling_option_id' => 'This version has no matching selling option.']);
+        }
+
+        return ['quantity' => $quantity, 'unit_price_minor' => (string) $price, 'total_minor' => (string) $this->money->multiply($this->money->parse($price), $quantity), 'currency' => 'PHP'];
     }
 }

@@ -1,3 +1,4 @@
+import { useDialogForm } from "../../../components/ui/dialog-form-guard";
 import { useForm } from "@inertiajs/react";
 import { UnsavedChanges } from "../../../components/ui/unsaved-changes";
 import { Button } from "../../../components/ui/button";
@@ -5,6 +6,8 @@ import { Field } from "../../../components/ui/field";
 import { FoodImage } from "../../../components/ui/food-image";
 import { minorToPesoInput } from "../../packages/money";
 import type { ListingEditorProps } from "../types";
+import { SellingOptionFields } from "./selling-option-fields";
+import { useJsonSave } from "../../catalog/use-json-save";
 
 export function ListingForm({
     family,
@@ -12,7 +15,9 @@ export function ListingForm({
     version,
     foods,
     canPrice,
-}: ListingEditorProps) {
+    onSaved,
+}: ListingEditorProps & { onSaved?: (id: number) => void }) {
+    const request = useJsonSave<{ id: number }>();
     const form = useForm({
         family_id: family.id,
         dish_id: listing?.dish_id ?? "",
@@ -20,21 +25,54 @@ export function ListingForm({
         creation_token: listing ? undefined : crypto.randomUUID(),
         version_id: version?.id,
         draft_revision: version?.draft_revision,
-        name: version?.name ?? "",
+        name: version?.uses_food_name ? "" : (version?.name ?? ""),
         description: version?.description ?? "",
         selling_unit: version?.selling_unit ?? "item",
-        price_pesos: version ? minorToPesoInput(version.price_minor) : "",
+        selling_options: version?.selling_options?.length
+            ? version.selling_options.map((option) => ({
+                  label: option.label,
+                  price_pesos: minorToPesoInput(option.price_minor),
+              }))
+            : [
+                  {
+                      label: "Standard",
+                      price_pesos: version
+                          ? minorToPesoInput(version.price_minor)
+                          : "",
+                  },
+              ],
         minimum_quantity: String(version?.minimum_quantity ?? 1),
         quantity_step: String(version?.quantity_step ?? 1),
         maximum_quantity: version?.maximum_quantity?.toString() ?? "",
     });
     const food = foods.find((f) => f.id === Number(form.data.dish_id));
-    const options = food?.offerings.flatMap((o) => o.options) ?? [];
+    useDialogForm(form.isDirty, form.processing || request.saving);
     return (
         <form
             className="max-w-3xl space-y-5 rounded-2xl border bg-white p-6"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
                 e.preventDefault();
+                if (request.saving) return;
+                if (onSaved) {
+                    form.clearErrors();
+                    const result = await request.save(
+                        listing ? `/admin/items/${listing.id}` : "/admin/items",
+                        listing ? "PUT" : "POST",
+                        {
+                            ...form.data,
+                            offering_option_id:
+                                form.data.offering_option_id || null,
+                            maximum_quantity:
+                                form.data.maximum_quantity || null,
+                        },
+                        form.setError,
+                    );
+                    if (result) {
+                        form.setDefaults(form.data);
+                        onSaved(result.id);
+                    }
+                    return;
+                }
                 form.transform((data) => ({
                     ...data,
                     offering_option_id: data.offering_option_id || null,
@@ -45,8 +83,9 @@ export function ListingForm({
             }}
         >
             <UnsavedChanges dirty={form.isDirty} />
+            {request.error && <p role="alert">{request.error}</p>}
             <p className="text-sm text-stone-500">
-                Each food and size is an independently priced item. Saving
+                One Food Item can have multiple selling sizes and prices. Saving
                 creates or updates a Draft; publication is separate.
             </p>
             {listing?.current_version_id && (
@@ -74,7 +113,7 @@ export function ListingForm({
                         }))
                     }
                 >
-                    <option value="">Choose an eligible food</option>
+                    <option value="">Choose an available food</option>
                     {foods.map((f) => (
                         <option key={f.id} value={f.id}>
                             {f.name}
@@ -87,37 +126,21 @@ export function ListingForm({
             )}
             {!foods.length && (
                 <p className="rounded bg-amber-50 p-3 text-sm">
-                    Prepare an active food eligible for {family.name} in Food
-                    Catalog before creating an item.
+                    Prepare an active food for {family.name} in Food Catalog
+                    before creating an item.
                 </p>
             )}
-            <Field id="listing-size" label="Serving size (optional)">
-                <select
-                    id="listing-size"
-                    disabled={!!listing}
-                    value={form.data.offering_option_id}
-                    onChange={(e) =>
-                        form.setData("offering_option_id", e.target.value)
-                    }
-                >
-                    <option value="">No separate size</option>
-                    {options.map((o) => (
-                        <option key={o.id} value={o.id}>
-                            {o.label} · {o.quantity} {o.unit}
-                        </option>
-                    ))}
-                </select>
-                <p className="mt-1 text-xs text-stone-500">
-                    Set up additional sizes in Food Catalog. The food and size
-                    cannot change after creation; create another listing for a
-                    different size.
+            {listing?.offering_option_id && (
+                <p className="text-sm text-slate-600">
+                    This existing listing retains its original catalog Serving
+                    Option reference. Its historical source is unchanged.
                 </p>
-            </Field>
-            <Field id="listing-name" label="Item Name">
+            )}
+            <Field id="listing-name" label="Item Name (optional override)">
                 <input
                     id="listing-name"
-                    required
                     maxLength={255}
+                    placeholder={food?.name ?? "Uses the Food Item name"}
                     value={form.data.name}
                     onChange={(e) => form.setData("name", e.target.value)}
                 />
@@ -157,20 +180,11 @@ export function ListingForm({
                         )}
                     </select>
                 </Field>
-                <Field
-                    id="listing-price"
-                    label={`Price per ${form.data.selling_unit} (PHP)`}
-                >
-                    <input
-                        id="listing-price"
-                        required
-                        inputMode="decimal"
-                        value={form.data.price_pesos}
-                        onChange={(e) =>
-                            form.setData("price_pesos", e.target.value)
-                        }
-                    />
-                </Field>
+                <SellingOptionFields
+                    value={form.data.selling_options}
+                    unit={form.data.selling_unit}
+                    onChange={(value) => form.setData("selling_options", value)}
+                />
                 <Field id="listing-minimum" label="Minimum Purchase">
                     <input
                         id="listing-minimum"
@@ -207,7 +221,13 @@ export function ListingForm({
                     />
                 </Field>
             </fieldset>
-            <Button disabled={form.processing || (!listing && !foods.length)}>
+            <Button
+                disabled={
+                    form.processing ||
+                    request.saving ||
+                    (!listing && !foods.length)
+                }
+            >
                 {form.processing ? "Saving…" : "Save Item Draft"}
             </Button>
         </form>

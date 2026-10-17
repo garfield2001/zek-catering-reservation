@@ -21,6 +21,15 @@ export type ListingVersion = {
     quantity_step: number;
     maximum_quantity: number | null;
     published_at: string | null;
+    uses_food_name?: boolean;
+    has_selling_options?: boolean;
+    selling_options?: ListingSellingOption[];
+};
+export type ListingSellingOption = {
+    id: number;
+    label: string;
+    price_minor: string;
+    sort_order: number;
 };
 export type ListingFood = Omit<FoodItem, "offerings"> & {
     offerings: {
@@ -50,6 +59,7 @@ export type ListingSnapshot = Pick<
     | "quantity_step"
     | "maximum_quantity"
 > & {
+    selling_options?: ListingSellingOption[];
     service: { name: string };
     food: { name: string };
     category: { name: string };
@@ -62,6 +72,9 @@ export type ListingSnapshot = Pick<
     } | null;
 };
 export type ListingDetailsProps = {
+    commercialHistory:
+        | import("../catalog/components/commercial-history").CommercialHistoryData
+        | null;
     listing: Listing;
     snapshot: ListingSnapshot;
     version: Pick<
@@ -69,6 +82,7 @@ export type ListingDetailsProps = {
         "id" | "version_number" | "status" | "draft_revision" | "published_at"
     >;
     image_url: string | null;
+    thumbnail_url: string | null;
     availability: { available: boolean; reasons: string[] };
     draft_id: number | null;
     history: Pick<

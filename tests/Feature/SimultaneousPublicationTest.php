@@ -14,7 +14,6 @@ use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
 use Symfony\Component\Process\Process;
 use Tests\Support\LegacyCollections;
 use Tests\TestCase;
@@ -41,7 +40,6 @@ class SimultaneousPublicationTest extends TestCase
         $version = $product->versions()->sole();
         $category = DishCategory::create(['code' => 'concurrent', 'name' => 'Concurrent', 'sort_order' => 1, 'active' => true]);
         $dish = Dish::create(['code' => 'concurrent_dish', 'category_id' => $category->id, 'name' => 'Concurrent Dish', 'active' => true]);
-        DB::table('dish_family_eligibilities')->insert(['dish_id' => $dish->id, 'family_id' => $family->id, 'active' => true, 'created_at' => now(), 'updated_at' => now()]);
         $offering = DishOffering::create(['dish_id' => $dish->id, 'family_id' => $family->id, 'code' => 'standard', 'name' => 'Standard', 'active' => true]);
         $option = OfferingOption::create(['offering_id' => $offering->id, 'option_code' => 'regular', 'label' => 'Regular', 'unit' => 'tray', 'quantity' => '1.000', 'active' => true]);
         app(SaveSelectionGroup::class)->handle($admin, $version, [

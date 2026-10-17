@@ -1,5 +1,8 @@
 import { defineConfig } from "@playwright/test";
+import { resolve } from "node:path";
 const port = process.env.PLAYWRIGHT_PORT || "8011";
+// Keep multipart temp files in the writable workspace, not a machine-specific php.ini path.
+const uploadTemporaryDirectory = resolve("storage/framework/cache");
 export default defineConfig({
     globalSetup: "./tests/Browser/global-setup.ts",
     testDir: "./tests/Browser",
@@ -13,7 +16,7 @@ export default defineConfig({
         process.env.PLAYWRIGHT_EXTERNAL_SERVER === "1"
             ? undefined
             : {
-                  command: `php -S 127.0.0.1:${port} -t public tests/Browser/router.php`,
+                  command: `php -d "upload_tmp_dir=${uploadTemporaryDirectory}" -S 127.0.0.1:${port} -t public tests/Browser/router.php`,
                   env: {
                       APP_ENV: "testing",
                       DB_CONNECTION: "pgsql",

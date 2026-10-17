@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ListingVersion extends Model
 {
@@ -11,7 +12,13 @@ class ListingVersion extends Model
 
     protected function casts(): array
     {
-        return ['price_minor' => 'string', 'published_snapshot' => 'array', 'published_at' => 'immutable_datetime'];
+        return ['price_minor' => 'string', 'published_snapshot' => 'array', 'published_at' => 'immutable_datetime', 'has_selling_options' => 'boolean', 'uses_food_name' => 'boolean'];
+    }
+
+    /** @return HasMany<ListingSellingOption, $this> */
+    public function sellingOptions(): HasMany
+    {
+        return $this->hasMany(ListingSellingOption::class)->orderBy('sort_order');
     }
 
     public function snapshot(): ?array

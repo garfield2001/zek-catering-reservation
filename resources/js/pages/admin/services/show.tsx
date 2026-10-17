@@ -1,3 +1,5 @@
+import { PackageFilters } from "../../../features/packages/components/package-filters";
+import { PackageEditorButton } from "../../../features/packages/components/package-editor-modal";
 import { Link, router, usePage } from "@inertiajs/react";
 import { useState } from "react";
 import AdminLayout from "../../../layouts/admin-layout";
@@ -11,9 +13,11 @@ import {
     type ListingCard,
 } from "../../../features/listings/components/listing-cards";
 import { ConfirmDialog } from "../../../components/ui/confirm-dialog";
+import { ListingEditorButton } from "../../../features/listings/components/listing-editor-modal";
 export default function ServiceShow({
     family,
     products,
+    filters,
     canManage,
     canPackages,
     canCatalog,
@@ -25,6 +29,7 @@ export default function ServiceShow({
 }: {
     family: Collection;
     products: PackageProduct[];
+    filters: { q?: string; status?: string };
     canManage: boolean;
     canPackages: boolean;
     canCatalog: boolean;
@@ -66,15 +71,20 @@ export default function ServiceShow({
                     {String(error)}
                 </p>
             ))}
+            {family.behavior_type !== "direct_sale" && (
+                <PackageFilters
+                    url={`/admin/add-on-services/${family.id}`}
+                    initial={filters}
+                />
+            )}
             {family.behavior_type === "direct_sale" ? (
                 <section className="mb-5 space-y-5">
                     {canListings && family.active && !family.archived_at ? (
-                        <Link
-                            className="inline-block rounded-lg bg-emerald-800 px-4 py-2 font-semibold text-white"
-                            href={`/admin/add-on-services/${family.id}/items/create`}
+                        <ListingEditorButton
+                            url={`/admin/add-on-services/${family.id}/items/create`}
                         >
                             Create Item
-                        </Link>
+                        </ListingEditorButton>
                     ) : (
                         <p className="rounded-lg bg-amber-50 p-3 text-sm">
                             Creating an item requires listing editing and
@@ -86,7 +96,7 @@ export default function ServiceShow({
                     {!listings.length && (
                         <p className="rounded-xl border bg-white p-6 text-sm">
                             No individual items available to view. Prepare
-                            eligible foods below, then create an independently
+                            available foods below, then create an independently
                             priced item.
                         </p>
                     )}
@@ -98,12 +108,12 @@ export default function ServiceShow({
                             canPrice &&
                             family.active &&
                             !family.archived_at && (
-                                <Link
-                                    href={`/admin/packages/editor?service=${family.id}`}
+                                <PackageEditorButton
+                                    url={`/admin/packages/editor?service=${family.id}`}
                                     className="rounded-lg bg-emerald-800 px-4 py-2 font-semibold text-white"
                                 >
                                     Create Package
-                                </Link>
+                                </PackageEditorButton>
                             )}
                     </div>
                     {(!canPackages ||
@@ -150,7 +160,7 @@ export default function ServiceShow({
                 open={archive}
                 onClose={() => setArchive(false)}
                 title="Archive Service?"
-                description={`This permanently retires ${family.name}. Its packages and history remain saved.`}
+                description={`This permanently retires ${family.name}, prevents selection of all its packages and individual listings, and abandons their open Drafts. Child enabled flags, Food Items and immutable published history remain saved. The service cannot be restored.`}
                 confirmLabel="Confirm Archive"
                 busy={archiving}
                 destructive

@@ -1,6 +1,7 @@
+import { PackageFilters } from "../../../features/packages/components/package-filters";
 import type { Collection } from "../../../features/catalog/types";
 import { CollectionPresentationForm } from "../../../features/catalog/components/collection-presentation-form";
-import { Link } from "@inertiajs/react";
+import { PackageEditorButton } from "../../../features/packages/components/package-editor-modal";
 
 import AdminLayout from "../../../layouts/admin-layout";
 import { PackageCards } from "../../../features/packages/components/package-cards";
@@ -9,6 +10,7 @@ import { PaginationControls } from "../../../components/ui/pagination";
 
 export default function CateringIndex({
     products,
+    filters,
     canManage,
     serviceActive,
     family,
@@ -23,6 +25,7 @@ export default function CateringIndex({
         prev_page_url: string | null;
         next_page_url: string | null;
     };
+    filters: { q?: string; status?: string };
     canManage: boolean;
     serviceActive: boolean;
     family: Collection;
@@ -37,12 +40,12 @@ export default function CateringIndex({
             section="catering"
         >
             {canManage && canPrice && serviceActive ? (
-                <Link
-                    href={`/admin/packages/editor?service=${family.id}`}
+                <PackageEditorButton
+                    url={`/admin/packages/editor?service=${family.id}`}
                     className="mb-6 inline-block rounded-lg bg-emerald-800 px-5 py-2.5 font-semibold text-white"
                 >
                     Create Package
-                </Link>
+                </PackageEditorButton>
             ) : (
                 <p className="mb-6 rounded-xl bg-amber-50 p-4 text-sm">
                     {!serviceActive
@@ -50,6 +53,7 @@ export default function CateringIndex({
                         : "Creating a package requires editing and pricing permission. Ask an Administrator for access."}
                 </p>
             )}
+            <PackageFilters url="/admin/catering-packages" initial={filters} />
             {products.data.length ? (
                 <PackageCards
                     products={products.data}

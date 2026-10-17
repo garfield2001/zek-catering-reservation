@@ -39,6 +39,9 @@ test("canonical package navigation does not mix primary and add-on packages", as
     await page
         .getByRole("button", { name: "Create Service", exact: true })
         .click();
+    await page
+        .getByRole("link", { name: "Open newly created service" })
+        .click();
     await createPackage(page, "Bundle Only");
     await inlineFood(page, "Bundle Food", "Scope Foods");
     await page.getByLabel("Bundle Food", { exact: true }).check();

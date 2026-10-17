@@ -8,8 +8,10 @@ use App\Models\Dish;
 use App\Models\DishCategory;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Catalog\FoodImages;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -41,14 +43,30 @@ class InlineFoodCreationTest extends TestCase
         $this->assertSame(1, AuditEvent::where('action', 'catalog.dish_created')->count());
     }
 
+    public function test_inline_json_creation_returns_saved_food_and_category_without_navigation(): void
+    {
+        $response = $this->postJson(route('catalog.dishes.store'), $this->input());
+        $response->assertCreated()->assertJsonPath('food.name', 'Fried Rice')->assertJsonPath('food.category.name', 'Rice');
+        $this->assertSame(Dish::sole()->id, $response->json('food.id'));
+        $this->assertSame(DishCategory::where('name', 'Rice')->sole()->id, $response->json('food.category_id'));
+        $response->assertJsonMissingPath('food.image_path');
+        $this->assertSame(1, AuditEvent::where('action', 'catalog.dish_created')->count());
+        $this->postJson(route('catalog.dishes.store'), [...$this->input(), 'name' => ['invalid']])->assertUnprocessable();
+        // Multipart form submissions supply foreign keys as strings; the JSON contract must not.
+        $categoryId = $response->json('food.category_id');
+        $this->post(route('catalog.dishes.store'), ['name' => 'Steamed Rice', 'category_id' => (string) $categoryId, 'active' => '1'], ['Accept' => 'application/json'])
+            ->assertCreated()->assertJsonPath('food.category_id', $categoryId);
+    }
+
     public function test_food_failure_rolls_back_inline_category_and_audit(): void
     {
         $before = AuditEvent::count();
+        $this->mock(FoodImages::class)->shouldReceive('store')->andThrow(ValidationException::withMessages(['image' => 'Storage unavailable.']));
         try {
-            app(SaveDish::class)->handle($this->admin, [...$this->input(), 'family_ids' => [999999]]);
-            $this->fail('Invalid eligibility was accepted.');
+            app(SaveDish::class)->handle($this->admin, [...$this->input(), 'image' => UploadedFile::fake()->image('food.jpg')]);
+            $this->fail('Expected storage failure.');
         } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('family_ids', $exception->errors());
+            $this->assertArrayHasKey('image', $exception->errors());
         }
         $this->assertDatabaseMissing('dish_categories', ['name' => 'Rice']);
         $this->assertDatabaseMissing('dishes', ['name' => 'Fried Rice']);

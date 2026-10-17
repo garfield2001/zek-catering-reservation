@@ -1,28 +1,70 @@
 @import "tailwindcss";
+
 @source "../views";
 @source "../js";
+
 @theme {
     --font-sans: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 }
+
 @layer base {
+    :root {
+        color-scheme: light;
+    }
+
+    :where(nav, aside, [role="dialog"], [role="menu"], .subtle-scroll) {
+        scrollbar-width: thin;
+        scrollbar-color: #94a3b8 transparent;
+        scrollbar-gutter: stable;
+    }
+
+    :where(nav, aside, [role="dialog"], [role="menu"], .subtle-scroll):hover,
+    :where(
+        nav,
+        aside,
+        [role="dialog"],
+        [role="menu"],
+        .subtle-scroll
+    ):focus-within {
+        scrollbar-color: #475569 transparent;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            scroll-behavior: auto !important;
+        }
+
+        [data-sonner-toast] {
+            transition: none !important;
+            animation: none !important;
+        }
+    }
+
     * {
         @apply border-slate-200;
     }
+
     body {
         @apply bg-slate-50 text-slate-900 antialiased;
     }
+
     input:not([type="checkbox"]):not([type="radio"]),
     select,
     textarea {
         @apply min-h-10 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-emerald-700 focus:outline-2 focus:outline-emerald-700;
     }
+
     textarea {
         @apply min-h-28 resize-y;
     }
+
     input[type="checkbox"],
     input[type="radio"] {
         @apply size-4 shrink-0 accent-emerald-800;
     }
+
     button,
     a,
     input,
@@ -31,13 +73,16 @@
     summary {
         @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700;
     }
+
     button,
     summary {
         @apply cursor-pointer;
     }
+
     button:disabled {
         @apply cursor-not-allowed;
     }
+
     th {
         @apply font-medium;
     }

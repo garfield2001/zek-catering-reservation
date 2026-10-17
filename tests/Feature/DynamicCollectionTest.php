@@ -132,7 +132,7 @@ class DynamicCollectionTest extends TestCase
         ])->assertSessionHasErrors('behavior_type');
     }
 
-    public function test_collection_scoped_eligibility_and_rename_preserve_packed_meal_pricing(): void
+    public function test_global_food_availability_and_collection_rename_preserve_packed_meal_pricing(): void
     {
         $admin = $this->actor();
         $this->signIn($admin);
@@ -140,10 +140,8 @@ class DynamicCollectionTest extends TestCase
         $second = $this->createCollection('Snack Boxes', 'addon', 'packed_meal');
         $category = DishCategory::create(['code' => 'dessert', 'name' => 'Dessert', 'active' => true]);
         $dish = Dish::create(['code' => 'brownie', 'category_id' => $category->id, 'name' => 'Brownie', 'active' => true]);
-        DB::table('dish_family_eligibilities')->insert(['dish_id' => $dish->id, 'family_id' => $first->id,
-            'active' => true, 'created_at' => now(), 'updated_at' => now()]);
         $this->assertTrue(app(CatalogAvailability::class)->dishEligibleForFamily($dish, $first));
-        $this->assertFalse(app(CatalogAvailability::class)->dishEligibleForFamily($dish, $second));
+        $this->assertTrue(app(CatalogAvailability::class)->dishEligibleForFamily($dish, $second));
         $offering = DishOffering::create(['dish_id' => $dish->id, 'family_id' => $first->id,
             'code' => 'boxed', 'name' => 'Boxed', 'active' => true]);
         $option = OfferingOption::create(['offering_id' => $offering->id, 'option_code' => 'regular',
@@ -172,7 +170,7 @@ class DynamicCollectionTest extends TestCase
         ])->assertRedirect();
         $this->assertSame('packed_meal', $first->fresh()->behavior_type);
         $this->assertSame('38250', app(PackagePricePreview::class)->calculate($version->fresh(), 3, $selection)['total_minor']);
-        $this->assertFalse(app(CatalogAvailability::class)->dishEligibleForFamily($dish, $second));
+        $this->assertTrue(app(CatalogAvailability::class)->dishEligibleForFamily($dish, $second));
     }
 
     public function test_collection_search_and_archived_filter_are_server_paginated(): void
@@ -221,8 +219,6 @@ class DynamicCollectionTest extends TestCase
         $direct = $this->createCollection('Tray Market', 'addon', 'direct_sale');
         $category = DishCategory::create(['code' => 'sweets', 'name' => 'Sweets', 'active' => true]);
         $dish = Dish::create(['code' => 'cake', 'category_id' => $category->id, 'name' => 'Cake', 'active' => true]);
-        DB::table('dish_family_eligibilities')->insert(['dish_id' => $dish->id, 'family_id' => $package->id,
-            'active' => true, 'created_at' => now(), 'updated_at' => now()]);
         $offering = DishOffering::create(['dish_id' => $dish->id, 'family_id' => $package->id,
             'code' => 'boxed', 'name' => 'Boxed', 'active' => true]);
         $option = OfferingOption::create(['offering_id' => $offering->id, 'option_code' => 'small',
@@ -258,8 +254,6 @@ class DynamicCollectionTest extends TestCase
         $category = DishCategory::create(['code' => 'snacks', 'name' => 'Snacks', 'active' => true]);
         $dish = Dish::create(['code' => 'crackers', 'category_id' => $category->id,
             'name' => 'Crackers', 'active' => true]);
-        DB::table('dish_family_eligibilities')->insert(['dish_id' => $dish->id,
-            'family_id' => $bundle->id, 'active' => true, 'created_at' => now(), 'updated_at' => now()]);
         $offering = DishOffering::create(['dish_id' => $dish->id, 'family_id' => $bundle->id,
             'code' => 'classic', 'name' => 'Classic', 'active' => true]);
         $option = OfferingOption::create(['offering_id' => $offering->id, 'option_code' => 'regular',

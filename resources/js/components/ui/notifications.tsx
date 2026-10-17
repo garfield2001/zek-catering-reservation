@@ -26,6 +26,7 @@ export function Notifications() {
                 clear();
                 toast.warning("Please check the highlighted fields.", {
                     id: "validation",
+                    duration: 5500,
                 });
             }),
             router.on("exception", (event) => {
@@ -33,7 +34,7 @@ export function Notifications() {
                 clear();
                 toast.error(
                     "The request could not be completed. Check your connection and try again.",
-                    { id: "request-error" },
+                    { id: "request-error", duration: 7000 },
                 );
             }),
             router.on("invalid", (event) => {
@@ -46,7 +47,7 @@ export function Notifications() {
                             event.detail.response.status === 401
                           ? "Your session has expired. Refresh the page and sign in again."
                           : "The server could not complete this request. Refresh the page and try again.",
-                    { id: "request-error" },
+                    { id: "request-error", duration: 7000 },
                 );
             }),
         ];
@@ -57,10 +58,11 @@ export function Notifications() {
     }, []);
     return (
         <Toaster
+            theme="light"
             position="bottom-right"
             richColors
-            closeButton
-            duration={5000}
+            closeButton={false}
+            duration={4000}
             toastOptions={{ className: "font-sans" }}
         />
     );
@@ -72,6 +74,6 @@ export function useFlashToast(flash: { status?: string; id?: string }) {
         if (!flash.status || !flash.id || shown.has(flash.id)) return;
         shown.add(flash.id);
         if (shown.size > 100) shown.delete(shown.values().next().value!);
-        toast.success(flash.status, { id: flash.id });
+        toast.success(flash.status, { id: flash.id, duration: 3000 });
     }, [flash.id, flash.status]);
 }

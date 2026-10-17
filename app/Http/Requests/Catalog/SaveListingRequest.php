@@ -30,9 +30,10 @@ class SaveListingRequest extends FormRequest
             'offering_option_id' => ['nullable', 'integer', 'exists:offering_options,id'],
             'creation_token' => [$editing ? 'prohibited' : 'required', 'uuid'],
             'version_id' => [$editing ? 'required' : 'prohibited', 'integer'], 'draft_revision' => [$editing ? 'required' : 'prohibited', 'integer', 'min:1'],
-            'name' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string', 'max:5000'],
+            'name' => ['nullable', 'string', 'max:255'], 'description' => ['nullable', 'string', 'max:5000'],
             'selling_unit' => ['required', Rule::in(['item', 'tray', 'pack', 'piece', 'bottle', 'kg'])],
-            'price_pesos' => ['required', 'string', 'regex:/^(0|[1-9][0-9]*)(?:\.[0-9]{1,2})?$/', 'max:20'],
+            'price_pesos' => ['required_without:selling_options', 'nullable', 'string', 'regex:/^(0|[1-9][0-9]*)(?:\.[0-9]{1,2})?$/', 'max:20'],
+            'selling_options' => ['sometimes', 'required', 'array', 'list', 'min:1', 'max:100'],
             'minimum_quantity' => ['required', 'integer', 'between:1,2147483647'], 'quantity_step' => ['required', 'integer', 'between:1,2147483647'],
             'maximum_quantity' => ['nullable', 'integer', 'between:1,2147483647', 'gte:minimum_quantity']];
     }

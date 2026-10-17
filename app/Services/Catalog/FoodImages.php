@@ -23,14 +23,16 @@ class FoodImages
         if ($source === false) {
             throw ValidationException::withMessages(['image' => 'The image could not be decoded. Upload a valid JPEG, PNG or WebP image.']);
         }
-        $disk = 'catalog';
+        $disk = 'public';
         $id = strtolower((string) Str::ulid());
         $paths = ['image_disk' => $disk, 'image_path' => "foods/{$id}.jpg", 'image_thumbnail_path' => "foods/{$id}-thumb.jpg"];
         try {
             [$full, $width, $height] = $this->jpeg($source, 1600);
             [$thumbnail] = $this->jpeg($source, 360);
-            Storage::disk($disk)->put($paths['image_path'], $full);
-            Storage::disk($disk)->put($paths['image_thumbnail_path'], $thumbnail);
+            if (! Storage::disk($disk)->put($paths['image_path'], $full)
+                || ! Storage::disk($disk)->put($paths['image_thumbnail_path'], $thumbnail)) {
+                throw new \RuntimeException('Image storage failed.');
+            }
 
             return [...$paths, 'image_width' => $width, 'image_height' => $height];
         } catch (\Throwable $exception) {

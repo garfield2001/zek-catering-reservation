@@ -133,4 +133,15 @@ class FamilyPresentationTest extends TestCase
             ->assertSessionHasErrors('name');
         $this->assertSame('Food Pack Lunch', $family->fresh()->name);
     }
+
+    public function test_primary_service_name_is_system_managed_but_availability_remains_editable(): void
+    {
+        $family = ProductFamily::where('is_addon', false)->sole();
+        $name = $family->name;
+        $this->signIn($this->actor('admin'))->put(route('catalog.families.update', $family),
+            $this->payload($family, ['name' => 'Renamed Catering']))->assertSessionHasErrors('name');
+        $this->assertSame($name, $family->fresh()->name);
+        $this->put(route('catalog.families.update', $family), $this->payload($family, ['active' => false]))->assertSessionHasNoErrors();
+        $this->assertFalse($family->fresh()->active);
+    }
 }

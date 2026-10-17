@@ -21,9 +21,9 @@ class CatalogLookupQuery
             ->get(['id', 'code', 'name', 'is_addon', 'behavior_type'])->toArray();
     }
 
-    public function eligibleFamilies(Dish $dish): array
+    public function availableFamilies(Dish $dish): array
     {
-        return $dish->eligibleFamilies()->wherePivot('active', true)
+        return ProductFamily::query()
             ->where('product_families.active', true)->whereNull('product_families.archived_at')->orderBy('product_families.id')
             ->get(['product_families.id', 'code', 'name', 'is_addon'])->toArray();
     }

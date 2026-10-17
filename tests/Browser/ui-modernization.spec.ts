@@ -45,8 +45,12 @@ test("inline category creation, contextual food dialog and mobile keyboard navig
     await expect(
         page.getByRole("heading", { name: "Steamed Rice", exact: true }),
     ).toBeVisible();
+    await page
+        .getByRole("combobox", { name: "Category", exact: true })
+        .selectOption({ label: "Staples (1)" });
+    await expect(page).toHaveURL(/category=/);
     const add = page.getByRole("button", {
-        name: "Add Food to Staples",
+        name: "Add Food Item",
         exact: true,
     });
     await add.focus();
@@ -92,29 +96,29 @@ test("unsaved package navigation can be cancelled or explicitly discarded", asyn
     await createPackage(page, "Discard confirmation package");
     const workspace = page.url();
     await page.getByLabel("Total included food selections").fill("4");
-    const home = page
-        .getByRole("navigation", { name: "Administration" })
-        .getByRole("link", { name: "Dashboard", exact: true });
-    await home.click();
+    const dialog = page.getByRole("dialog", {
+        name: "Create Package",
+        exact: true,
+    });
+    await dialog.getByRole("button", { name: "Close dialog" }).click();
     const confirmation = page.getByRole("alertdialog", {
         name: "Discard unsaved changes?",
     });
     await expect(confirmation).toBeVisible();
     await confirmation
-        .getByRole("button", { name: "Cancel", exact: true })
+        .getByRole("button", { name: "Keep Editing", exact: true })
         .click();
     await expect(page).toHaveURL(workspace);
     await expect(page.getByLabel("Total included food selections")).toHaveValue(
         "4",
     );
-    await home.click();
-    await confirmation
-        .getByRole("button", { name: "Discard and leave" })
+    await dialog.getByRole("button", { name: "Close dialog" }).click();
+    await confirmation.getByRole("button", { name: "Discard Changes" }).click();
+    await expect(dialog).not.toBeVisible();
+    await expect(page).toHaveURL(workspace);
+    await page
+        .getByRole("button", { name: "Create Package", exact: true })
         .click();
-    await expect(
-        page.getByRole("heading", { name: "Dashboard", exact: true }),
-    ).toBeVisible();
-    await page.goto(workspace);
     await expect(page.getByLabel("Package Name", { exact: true })).toHaveValue(
         "",
     );

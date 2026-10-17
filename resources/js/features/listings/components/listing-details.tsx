@@ -5,9 +5,11 @@ import type { ListingSnapshot } from "../types";
 export function ListingDetails({
     snapshot,
     imageUrl,
+    thumbnailUrl,
 }: {
     snapshot: ListingSnapshot;
     imageUrl: string | null;
+    thumbnailUrl: string | null;
 }) {
     return (
         <section className="space-y-4 rounded-2xl border bg-white p-6">
@@ -18,13 +20,31 @@ export function ListingDetails({
             <FoodImageViewer
                 name={snapshot.food.name}
                 imageUrl={imageUrl}
-                thumbnailUrl={imageUrl}
+                thumbnailUrl={thumbnailUrl}
             />
             <p>{snapshot.description}</p>
             <p>Food Item: {snapshot.food.name}</p>
-            <p className="font-semibold">
-                {formatPesos(snapshot.price_minor)} per {snapshot.selling_unit}
-            </p>
+            {snapshot.selling_options?.length ? (
+                <ul className="space-y-2" aria-label="Selling option prices">
+                    {snapshot.selling_options.map((option) => (
+                        <li
+                            key={option.id}
+                            className="flex justify-between gap-3 rounded-lg border p-3"
+                        >
+                            <span>{option.label}</span>
+                            <strong>
+                                {formatPesos(option.price_minor)} per{" "}
+                                {snapshot.selling_unit}
+                            </strong>
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <p className="font-semibold">
+                    {formatPesos(snapshot.price_minor)} per{" "}
+                    {snapshot.selling_unit}
+                </p>
+            )}
             <p>
                 Minimum {snapshot.minimum_quantity}; increments of{" "}
                 {snapshot.quantity_step}; maximum{" "}

@@ -39,7 +39,7 @@ class CategoryController extends Controller
             return redirect()->route($product->family->behavior_type === 'main_package' ? 'catering.show' : 'packages.show', $product)->with('status', 'Category saved.');
         }
         if ($request->boolean('workspace')) {
-            return redirect()->route('catalog.workspace')->with('status', 'Category created.');
+            return redirect()->back(fallback: route('catalog.workspace'))->with('status', 'Category created.');
         }
 
         return redirect()->route('catalog.categories.show', $category)->with('status', 'Category created.');
@@ -67,7 +67,7 @@ class CategoryController extends Controller
         $action->handle($request->user(), $request->validated(), $category);
 
         if ($request->boolean('workspace')) {
-            return redirect()->route('catalog.workspace')->with('status', 'Category saved.');
+            return redirect()->back(fallback: route('catalog.workspace'))->with('status', 'Category saved.');
         }
 
         return redirect()->route('catalog.categories.show', $category)->with('status', 'Category updated.');

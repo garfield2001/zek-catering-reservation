@@ -14,8 +14,7 @@ class FoodImageController extends Controller
     {
         abort_unless(in_array($size, ['full', 'thumbnail'], true), 404);
         $catalogAccess = $request->user()?->can('view', $dish) ?? false;
-        $publiclyVisible = $dish->active && $dish->category->active && $dish->eligibleFamilies()
-            ->wherePivot('active', true)->where('product_families.active', true)->whereNull('archived_at')->exists();
+        $publiclyVisible = $dish->active && $dish->category->active;
         abort_unless($catalogAccess || $publiclyVisible, 404);
         $path = $dish->getAttribute($size === 'full' ? 'image_path' : 'image_thumbnail_path');
         abort_unless(is_string($path) && preg_match('/^foods\/[a-z0-9]+(?:-thumb)?\.jpg$/D', $path), 404);

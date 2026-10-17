@@ -35,6 +35,10 @@ class PublishListingVersion
             if ((int) $version->price_minor <= 0) {
                 throw ValidationException::withMessages(['price_pesos' => 'Set a positive selling price before publication.']);
             }
+            if ($version->has_selling_options && (! $version->sellingOptions()->exists()
+                || (int) $version->sellingOptions()->min('price_minor') !== (int) $version->price_minor)) {
+                throw ValidationException::withMessages(['selling_options' => 'Review and save all selling options before publication.']);
+            }
             $version->fill(['status' => 'published', 'published_snapshot' => $this->configuration->snapshot($listing, $version), 'published_at' => now(), 'published_by' => $actor->id])->save();
             $listing->forceFill(['current_version_id' => $version->id])->save();
             $this->audit->record('listing.published', $actor, $version, null, ['version_number' => $version->version_number, 'price_minor' => $version->price_minor]);

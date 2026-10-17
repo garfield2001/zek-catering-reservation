@@ -21,6 +21,8 @@ class MenuPricePreview
         $allocated = 0;
         $breakdown = [];
         $menus = [];
+        $servings = app(PackageServingDefaults::class);
+        $servingDefault = $servings->effectiveDefault($version);
         foreach ($groups as $group) {
             $count = $group['quantity'] ?? null;
             if (! is_int($count) || $count < 1 || $count > $quantity - $allocated || ! is_array($group['selections']['food_items'] ?? null)) {
@@ -28,9 +30,14 @@ class MenuPricePreview
             }
             $allocated += $count;
             $ids = $this->menus->validateCustomerSelection($version, $group['selections']['food_items']);
+            $sizeSelections = $group['selections']['food_sizes'] ?? [];
+            if (! is_array($sizeSelections)) {
+                throw ValidationException::withMessages(['food_sizes' => 'Provide a size choice for each applicable food.']);
+            }
+            $sizes = app(PackageFoodSizes::class)->resolve($version, $ids, $sizeSelections);
             sort($ids);
-            $key = implode(',', $ids);
-            $menus[$key] = ['quantity' => ($menus[$key]['quantity'] ?? 0) + $count, 'ids' => $ids];
+            $key = implode(',', $ids).':'.json_encode(array_column($sizes, 'id'), JSON_THROW_ON_ERROR);
+            $menus[$key] = ['quantity' => ($menus[$key]['quantity'] ?? 0) + $count, 'ids' => $ids, 'sizes' => $sizes];
         }
         if ($allocated !== $quantity) {
             throw ValidationException::withMessages(['groups' => 'Meal group quantities must add up to the total purchase quantity.']);
@@ -46,13 +53,18 @@ class MenuPricePreview
             $contents = [];
             foreach ($version->foodItems->whereIn('id', $ids) as $food) {
                 $amount = $this->money->parse($food->pivot->getAttribute('price_adjustment_minor'), 'food_details');
+                $size = $menu['sizes'][$food->id] ?? null;
+                if ($size) {
+                    $amount = $this->money->add($amount, $this->money->parse($size['extra_price_minor'], 'food_sizes'));
+                }
                 $unit = $this->money->add($unit, $amount);
                 if ($amount > 0) {
                     $adjustments[] = ['food_item_id' => $food->id, 'unit_amount_minor' => (string) $amount,
                         'line_amount_minor' => (string) $this->money->multiply($amount, $count)];
                 }
                 $contents[] = ['food_item_id' => $food->id, 'name' => $food->name,
-                    'quantity_per_unit' => $food->pivot->getAttribute('included_quantity'), 'unit' => $food->pivot->getAttribute('included_unit'),
+                    'size_choice' => $size,
+                    ...$servings->resolve($servingDefault, $size, $food->pivot->getAttribute('included_quantity'), $food->pivot->getAttribute('included_unit')),
                     'purchased_units' => $count];
             }
             $line = $this->money->multiply($unit, $count);

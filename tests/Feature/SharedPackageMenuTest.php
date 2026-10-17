@@ -15,6 +15,7 @@ use App\Models\PackageVersion;
 use App\Models\ProductFamily;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Catalog\CatalogAvailability;
 use App\Services\Catalog\PackagePricePreview;
 use App\Services\Package\PackageMenuConfiguration;
 use Database\Seeders\DatabaseSeeder;
@@ -47,9 +48,8 @@ class SharedPackageMenuTest extends TestCase
     {
         $product = app(SaveProduct::class)->handle($this->admin, ['family_id' => $family->id, 'name' => 'Package A', 'active' => true]);
         $category = DishCategory::create(['code' => 'foods_'.$product->id, 'name' => 'Foods '.$product->id, 'active' => true]);
-        $foods = collect(range(1, 3))->map(function ($i) use ($family, $category) {
+        $foods = collect(range(1, 3))->map(function ($i) use ($category) {
             $food = Dish::create(['code' => 'food_'.$category->id.'_'.$i, 'name' => 'Food '.$i, 'category_id' => $category->id, 'active' => true]);
-            $food->eligibleFamilies()->attach($family->id, ['active' => true]);
 
             return $food;
         });
@@ -222,7 +222,7 @@ class SharedPackageMenuTest extends TestCase
         $this->post(route('catalog.categories.store'), ['name' => 'Inline category', 'active' => true, 'return_product_id' => $product->id])->assertRedirect(route('catering.show', $product));
         $category = DishCategory::where('name', 'Inline category')->sole();
         $this->post(route('catalog.dishes.store'), ['name' => 'Inline Food', 'category_id' => $category->id, 'family_ids' => [$product->family_id], 'active' => true, 'return_product_id' => $product->id])->assertRedirect(route('catering.show', $product));
-        $this->assertTrue(Dish::where('name', 'Inline Food')->sole()->eligibleFamilies()->whereKey($product->family_id)->exists());
+        $this->assertTrue(app(CatalogAvailability::class)->dishEligibleForFamily(Dish::where('name', 'Inline Food')->sole(), $product->family));
         $staff = User::factory()->create();
         $staff->roles()->attach(Role::where('code', 'staff')->sole());
         $this->actingAs($staff)->withSession(['access_version' => $staff->access_version])->post(route('catalog.dishes.store'), [

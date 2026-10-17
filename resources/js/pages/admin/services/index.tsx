@@ -1,5 +1,7 @@
-import { Link } from "@inertiajs/react";
+import { Link, router } from "@inertiajs/react";
+import { toast } from "sonner";
 import { useState } from "react";
+import { useLiveFilters } from "../../../features/catalog/use-live-filters";
 import AdminLayout from "../../../layouts/admin-layout";
 import { Modal } from "../../../components/ui/modal";
 import { Button } from "../../../components/ui/button";
@@ -25,6 +27,13 @@ export default function ServicesIndex({
     filters: { q?: string; archived?: boolean };
 }) {
     const [create, setCreate] = useState(false);
+    const [created, setCreated] = useState<{ id: number; name: string } | null>(
+        null,
+    );
+    const search = useLiveFilters("/admin/add-on-services", {
+        q: filters.q ?? "",
+        archived: filters.archived ? "1" : "0",
+    });
     return (
         <AdminLayout
             title="Add-on Services"
@@ -36,30 +45,68 @@ export default function ServicesIndex({
                     Create Add-on Service
                 </Button>
             )}
-            <form
-                className="my-5 flex flex-wrap items-center gap-3"
-                action="/admin/add-on-services"
-                method="get"
-            >
+            {created && (
+                <p
+                    role="status"
+                    className="my-4 rounded-lg bg-emerald-50 p-3 text-sm"
+                >
+                    Saved {created.name}. Your filters are unchanged.{" "}
+                    <Link
+                        className="underline"
+                        href={`/admin/add-on-services/${created.id}`}
+                    >
+                        Open newly created service
+                    </Link>
+                </p>
+            )}
+            <div className="my-5 flex flex-wrap items-center gap-3">
                 <input
                     className="rounded-lg border bg-white p-2"
                     name="q"
                     aria-label="Search services"
                     placeholder="Search services"
-                    defaultValue={filters.q}
+                    value={search.filters.q}
+                    onChange={(event) =>
+                        search.setFilters((current) => ({
+                            ...current,
+                            q: event.target.value,
+                        }))
+                    }
                 />
                 <label className="text-sm">
                     <input
                         name="archived"
                         type="checkbox"
                         value="1"
-                        defaultChecked={filters.archived}
+                        checked={search.filters.archived === "1"}
+                        onChange={(event) =>
+                            search.setFilters((current) => ({
+                                ...current,
+                                archived: event.target.checked ? "1" : "0",
+                            }))
+                        }
                     />{" "}
                     Include archived
                 </label>
-                <Button>Search</Button>
-            </form>
-            <div className="grid gap-4 md:grid-cols-2">
+                {search.filters.q && (
+                    <button
+                        type="button"
+                        className="text-sm underline"
+                        onClick={() =>
+                            search.setFilters((current) => ({
+                                ...current,
+                                q: "",
+                            }))
+                        }
+                    >
+                        Clear search
+                    </button>
+                )}
+                <span role="status" className="text-sm text-slate-500">
+                    {search.pending ? "Updating results…" : ""}
+                </span>
+            </div>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),24rem))] gap-4">
                 {services.data.map((service) => (
                     <article
                         className="rounded-2xl border bg-white p-6"
@@ -117,8 +164,15 @@ export default function ServicesIndex({
             >
                 {create && (
                     <CollectionCreateForm
-                        onCancel={() => setCreate(false)}
-                        onCreated={() => setCreate(false)}
+                        onCreated={(service) => {
+                            setCreated(service);
+                            setCreate(false);
+                            toast.success("Service created.");
+                            setTimeout(
+                                () => router.reload({ only: ["services"] }),
+                                0,
+                            );
+                        }}
                     />
                 )}
             </Modal>

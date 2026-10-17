@@ -68,19 +68,10 @@ return new class extends Migration
         DB::statement("ALTER TABLE dishes ADD CONSTRAINT dishes_code_valid CHECK (code ~ '^[a-z0-9]+(_[a-z0-9]+)*$')");
         DB::statement('ALTER TABLE dishes ADD CONSTRAINT dishes_name_nonempty CHECK (length(btrim(name)) > 0)');
 
-        Schema::create('dish_family_eligibilities', function (Blueprint $table) {
-            $table->foreignId('dish_id')->constrained('dishes')->restrictOnDelete();
-            $table->foreignId('family_id')->constrained('product_families')->restrictOnDelete();
-            $table->boolean('active')->default(true);
-            $table->timestampsTz();
-            $table->primary(['dish_id', 'family_id']);
-            $table->index(['family_id', 'active']);
-        });
-
         Schema::create('dish_offerings', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('dish_id');
-            $table->foreignId('family_id');
+            $table->foreignId('dish_id')->constrained('dishes')->restrictOnDelete();
+            $table->foreignId('family_id')->constrained('product_families')->restrictOnDelete();
             $table->string('code');
             $table->string('name');
             $table->text('description')->nullable();
@@ -90,7 +81,6 @@ return new class extends Migration
             $table->index(['dish_id', 'family_id']);
             $table->index('family_id');
         });
-        DB::statement('ALTER TABLE dish_offerings ADD CONSTRAINT dish_offerings_eligibility_fk FOREIGN KEY (dish_id, family_id) REFERENCES dish_family_eligibilities (dish_id, family_id) ON DELETE RESTRICT');
         DB::statement("ALTER TABLE dish_offerings ADD CONSTRAINT dish_offerings_code_valid CHECK (code ~ '^[a-z0-9]+(_[a-z0-9]+)*$')");
         DB::statement('ALTER TABLE dish_offerings ADD CONSTRAINT dish_offerings_name_nonempty CHECK (length(btrim(name)) > 0)');
 
@@ -117,7 +107,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        foreach (['offering_options', 'dish_offerings', 'dish_family_eligibilities', 'dishes', 'family_order_defaults', 'product_families', 'dish_categories'] as $table) {
+        foreach (['offering_options', 'dish_offerings', 'dishes', 'family_order_defaults', 'product_families', 'dish_categories'] as $table) {
             Schema::dropIfExists($table);
         }
     }

@@ -10,6 +10,7 @@ export function ConfirmDialog({
     confirmLabel = "Confirm",
     destructive = false,
     busy = false,
+    cancelLabel = "Cancel",
 }: {
     open: boolean;
     onClose: () => void;
@@ -19,6 +20,7 @@ export function ConfirmDialog({
     confirmLabel?: string;
     destructive?: boolean;
     busy?: boolean;
+    cancelLabel?: string;
 }) {
     return (
         <AlertDialog.Root
@@ -39,7 +41,7 @@ export function ConfirmDialog({
                     <div className="mt-6 flex flex-wrap justify-end gap-3">
                         <AlertDialog.Cancel asChild>
                             <Button variant="secondary" disabled={busy}>
-                                Cancel
+                                {cancelLabel}
                             </Button>
                         </AlertDialog.Cancel>
                         <Button

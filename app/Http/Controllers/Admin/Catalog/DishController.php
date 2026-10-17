@@ -6,8 +6,9 @@ use App\Actions\Catalog\SaveDish;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Catalog\SaveDishRequest;
 use App\Models\Dish;
-use App\Models\OfferingOption;
 use App\Models\Product;
+use App\Queries\Catalog\FoodUsage;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -29,7 +30,7 @@ class DishController extends Controller
         return redirect()->route('catalog.workspace', ['create' => 'food']);
     }
 
-    public function store(SaveDishRequest $request, SaveDish $action): RedirectResponse
+    public function store(SaveDishRequest $request, SaveDish $action): RedirectResponse|JsonResponse
     {
         // Authorize the return context before writing; never accept an arbitrary redirect URL.
         if ($request->boolean('return_to_editor')) {
@@ -38,6 +39,10 @@ class DishController extends Controller
             abort_unless($product || $request->filled('editor_family_id'), 422);
         }
         $dish = $action->handle($request->user(), collect($request->validated())->except('code')->all());
+
+        if ($request->expectsJson()) {
+            return response()->json(['food' => $dish->load('category')], 201);
+        }
 
         if ($request->boolean('return_to_editor')) {
             return ($product ? redirect()->route('packages.edit', $product) : redirect()->route('packages.editor', ['service' => $request->integer('editor_family_id')]))
@@ -60,18 +65,12 @@ class DishController extends Controller
     public function show(Dish $dish): Response
     {
         Gate::authorize('view', $dish);
-        $dish->load(['category', 'eligibleFamilies', 'offerings.family', 'offerings.options']);
+        $dish->load('category');
 
         return Inertia::render('admin/catalog/dishes/show', [
             'dish' => $dish,
+            'usedIn' => app(FoodUsage::class)->forIds([$dish->id])[$dish->id] ?? [],
             'canManage' => Gate::allows('update', $dish),
-            'setup' => [
-                'hasCategory' => $dish->category !== null && (bool) $dish->category->getAttribute('active'),
-                'eligibleCollections' => $dish->eligibleFamilies()->wherePivot('active', true)->count(),
-                'activeOfferings' => $dish->offerings()->where('active', true)->count(),
-                'activeServingOptions' => OfferingOption::query()->where('active', true)
-                    ->whereHas('offering', fn ($query) => $query->where('dish_id', $dish->id)->where('active', true))->count(),
-            ],
         ]);
     }
 
@@ -82,9 +81,13 @@ class DishController extends Controller
         return redirect()->route('catalog.workspace', ['edit_food' => $dish->id]);
     }
 
-    public function update(SaveDishRequest $request, Dish $dish, SaveDish $action): RedirectResponse
+    public function update(SaveDishRequest $request, Dish $dish, SaveDish $action): RedirectResponse|JsonResponse
     {
-        $action->handle($request->user(), $request->validated(), $dish);
+        $dish = $action->handle($request->user(), $request->validated(), $dish);
+
+        if ($request->expectsJson()) {
+            return response()->json(['food' => $dish->load('category')]);
+        }
 
         if ($request->boolean('workspace')) {
             return redirect()->route('catalog.workspace')->with('status', 'Food item saved.');

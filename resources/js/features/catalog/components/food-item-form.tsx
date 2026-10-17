@@ -1,3 +1,5 @@
+import { useDialogForm } from "../../../components/ui/dialog-form-guard";
+import { DeactivationImpact } from "./deactivation-impact";
 import { useForm, usePage } from "@inertiajs/react";
 import { useState, useId } from "react";
 import { Button } from "../../../components/ui/button";
@@ -9,27 +11,32 @@ import { catalogPaths } from "../paths";
 export function FoodItemForm({
     dish,
     categories,
-    families,
     workspace = false,
     onSaved,
     returnProductId,
     initialCategoryId,
     editorFamilyId,
+    onCreated,
+    onPersisted,
 }: {
     dish: FoodItem | null;
     categories: FoodCategory[];
-    families: Collection[];
+    families?: Collection[];
     workspace?: boolean;
     returnProductId?: number;
     initialCategoryId?: number;
     editorFamilyId?: number;
     onSaved?: () => void;
+    onCreated?: (food: FoodItem & { category: FoodCategory }) => void;
+    onPersisted?: (food: FoodItem & { category: FoodCategory }) => void;
 }) {
     const { auth } = usePage<SharedProps>().props;
     const canCreateCategory =
         auth?.permissions.includes("catalog.manage") ?? false;
     const [newCategory, setNewCategory] = useState(false);
-    const [collectionSearch, setCollectionSearch] = useState("");
+    const [imageRevision, setImageRevision] = useState(0);
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState("");
     const prefix = useId();
     const form = useForm({
         image: null as File | null,
@@ -47,28 +54,132 @@ export function FoodItemForm({
         return_product_id: returnProductId,
         return_to_editor: !!editorFamilyId,
         editor_family_id: editorFamilyId,
-        family_ids:
-            dish?.eligible_families
-                ?.filter((family) => family.pivot?.active)
-                .map((family) => family.id) ??
-            families
-                .filter((family) =>
-                    returnProductId || editorFamilyId ? true : !family.is_addon,
-                )
-                .map((family) => family.id),
     });
-    const toggleFamily = (id: number, checked: boolean) =>
-        form.setData(
-            "family_ids",
-            checked
-                ? [...form.data.family_ids, id]
-                : form.data.family_ids.filter((value) => value !== id),
-        );
+    const processing = form.processing || saving;
+    useDialogForm(form.isDirty, processing);
     return (
         <form
             className="space-y-5"
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
                 event.preventDefault();
+                event.stopPropagation();
+                if (processing) return;
+                const another =
+                    (event.nativeEvent as SubmitEvent).submitter?.getAttribute(
+                        "value",
+                    ) === "another";
+                const afterSave = (page: {
+                    props: Record<string, unknown>;
+                }) => {
+                    if (another && !dish) {
+                        const available = page.props.categories as
+                            FoodCategory[] | undefined;
+                        const category = newCategory
+                            ? available?.find(
+                                  (item) =>
+                                      item.name.toLocaleLowerCase() ===
+                                      form.data.new_category_name
+                                          .trim()
+                                          .toLocaleLowerCase(),
+                              )?.id
+                            : form.data.category_id;
+                        const reset = {
+                            ...form.data,
+                            name: "",
+                            description: "",
+                            image: null,
+                            remove_image: false,
+                            new_category_name: "",
+                            category_id: category ?? form.data.category_id,
+                        };
+                        form.setData(reset);
+                        form.setDefaults(reset);
+                        form.clearErrors();
+                        setNewCategory(false);
+                        setImageRevision((value) => value + 1);
+                    } else onSaved?.();
+                };
+                if (onPersisted || (onCreated && !dish)) {
+                    setSaving(true);
+                    setSaveError("");
+                    form.clearErrors();
+                    const body = new FormData();
+                    if (dish) body.append("_method", "put");
+                    for (const [key, value] of Object.entries({
+                        ...form.data,
+                        category_id: newCategory ? null : form.data.category_id,
+                        new_category_name: newCategory
+                            ? form.data.new_category_name
+                            : null,
+                    })) {
+                        if (value instanceof File) body.append(key, value);
+                        else if (value !== null && value !== undefined)
+                            body.append(
+                                key,
+                                typeof value === "boolean"
+                                    ? value
+                                        ? "1"
+                                        : "0"
+                                    : String(value),
+                            );
+                    }
+                    try {
+                        const response = await fetch(
+                            dish
+                                ? `${catalogPaths.dishes}/${dish.id}`
+                                : catalogPaths.dishes,
+                            {
+                                method: "POST",
+                                credentials: "same-origin",
+                                headers: {
+                                    Accept: "application/json",
+                                    "X-CSRF-TOKEN":
+                                        document.querySelector<HTMLMetaElement>(
+                                            'meta[name="csrf-token"]',
+                                        )?.content ?? "",
+                                },
+                                body,
+                            },
+                        );
+                        if (response.status === 422) {
+                            const result = await response.json();
+                            form.setError(
+                                Object.fromEntries(
+                                    Object.entries(result.errors ?? {}).map(
+                                        ([key, errors]) => [
+                                            key,
+                                            (errors as string[]).join(" "),
+                                        ],
+                                    ),
+                                ),
+                            );
+                            return;
+                        }
+                        if (!response.ok) {
+                            setSaveError(
+                                "Food could not be saved. Check your access and session before retrying. Your unsaved input is retained.",
+                            );
+                            return;
+                        }
+                        const result = await response.json();
+                        (onPersisted ?? onCreated)?.(result.food);
+                        afterSave({
+                            props: {
+                                categories: [
+                                    ...categories,
+                                    result.food.category,
+                                ],
+                            },
+                        });
+                    } catch {
+                        setSaveError(
+                            "Could not confirm the save. Check the connection before retrying.",
+                        );
+                    } finally {
+                        setSaving(false);
+                    }
+                    return;
+                }
                 form.transform((data) => ({
                     ...data,
                     _method: dish ? "put" : "post",
@@ -80,15 +191,20 @@ export function FoodItemForm({
                 if (dish)
                     form.post(catalogPaths.dish(dish.id), {
                         forceFormData: true,
-                        onSuccess: onSaved,
+                        onSuccess: afterSave,
                     });
                 else
                     form.post(catalogPaths.dishes, {
                         forceFormData: true,
-                        onSuccess: onSaved,
+                        onSuccess: afterSave,
                     });
             }}
         >
+            {saveError && (
+                <p role="alert" className="text-sm text-red-700">
+                    {saveError}
+                </p>
+            )}
             <Field
                 id={`${prefix}-name`}
                 label="Food item name"
@@ -167,6 +283,7 @@ export function FoodItemForm({
                 />
             </Field>
             <ImageUploadField
+                key={imageRevision}
                 id={`${prefix}-image`}
                 name={form.data.name}
                 currentUrl={dish?.image_url}
@@ -180,62 +297,10 @@ export function FoodItemForm({
                     }))
                 }
             />
-            <fieldset>
-                <legend className="text-sm font-medium">
-                    Available for services
-                </legend>
-                <p className="mt-1 text-sm text-stone-500">
-                    Choose where this food may be used. Catering Packages is
-                    selected for new foods.
-                </p>
-                {families.length > 8 && (
-                    <input
-                        type="search"
-                        aria-label="Find service"
-                        placeholder="Find service"
-                        value={collectionSearch}
-                        onChange={(event) =>
-                            setCollectionSearch(event.target.value)
-                        }
-                        className="mt-3 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
-                    />
-                )}
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {families
-                        .filter((family) =>
-                            family.name
-                                .toLocaleLowerCase()
-                                .includes(collectionSearch.toLocaleLowerCase()),
-                        )
-                        .map((family) => (
-                            <label
-                                key={family.id}
-                                className="flex items-center gap-2 rounded-lg border border-stone-200 p-3 text-sm"
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={form.data.family_ids.includes(
-                                        family.id,
-                                    )}
-                                    onChange={(e) =>
-                                        toggleFamily(
-                                            family.id,
-                                            e.target.checked,
-                                        )
-                                    }
-                                />
-                                {family.is_addon
-                                    ? family.name
-                                    : "Catering Packages"}
-                            </label>
-                        ))}
-                </div>
-                {form.errors.family_ids && (
-                    <p role="alert" className="text-sm text-red-700">
-                        {form.errors.family_ids}
-                    </p>
-                )}
-            </fieldset>
+            <p className="text-sm text-slate-500">
+                Active foods in active categories are available to every package
+                builder. Each package chooses its own menu.
+            </p>
             <label className="flex items-center gap-2 text-sm">
                 <input
                     type="checkbox"
@@ -244,6 +309,9 @@ export function FoodItemForm({
                 />
                 Active food item
             </label>
+            {dish && !form.data.active && (
+                <DeactivationImpact kind="food" id={dish.id} />
+            )}
             {!form.data.active && (
                 <p className="text-sm text-amber-800">
                     Deactivation preserves the food item and its serving
@@ -252,12 +320,28 @@ export function FoodItemForm({
             )}
             <Button
                 disabled={
-                    form.processing ||
+                    processing ||
                     (!canCreateCategory && categories.length === 0)
                 }
             >
                 {dish ? "Save food item" : "Create food item"}
             </Button>
+            {!dish && (
+                <Button
+                    type="submit"
+                    variant="secondary"
+                    value="another"
+                    disabled={processing}
+                >
+                    Save & Add Another
+                </Button>
+            )}
+            {(returnProductId || editorFamilyId) && (
+                <p className="text-xs text-slate-500">
+                    Saving creates this Food Item in the catalog immediately.
+                    Your package remains unsaved until you save it separately.
+                </p>
+            )}
         </form>
     );
 }

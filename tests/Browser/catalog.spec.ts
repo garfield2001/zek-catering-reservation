@@ -23,7 +23,7 @@ test.beforeAll(() => {
     });
 });
 
-test("unified catalog manages and edits categories, foods and contextual add-on serving sizes", async ({
+test("unified catalog manages categories, globally available foods and measurement units", async ({
     page,
 }) => {
     await login(page, run, password);
@@ -34,9 +34,15 @@ test("unified catalog manages and edits categories, foods and contextual add-on 
     await page
         .getByRole("button", { name: "Create Service", exact: true })
         .click();
-    await expect(page.getByRole("link", { name: "Create Item" })).toBeVisible();
+    await page
+        .getByRole("link", { name: "Open newly created service" })
+        .click();
+    await expect(
+        page.getByRole("button", { name: "Create Item" }),
+    ).toBeVisible();
     await page.goto("/admin/food-catalog");
     await addCategory(page, "Other Foods");
+    await page.getByText("Catalog Settings", { exact: true }).click();
     await page
         .getByRole("button", { name: "Edit category Other Foods" })
         .click();
@@ -62,23 +68,7 @@ test("unified catalog manages and edits categories, foods and contextual add-on 
     await expect(
         page.getByRole("heading", { name: "Crispy Spring Rolls", exact: true }),
     ).toBeVisible();
-    await page.getByText("Add-on preparations & serving sizes").click();
-    await page
-        .getByRole("link", { name: "Add preparation for Crispy Spring Rolls" })
-        .click();
-    await page
-        .getByLabel("Add-on service", { exact: true })
-        .selectOption({ label: "Tray Market" });
-    await page.getByLabel("Preparation name").fill("Classic tray");
-    await page.getByRole("button", { name: "Create preparation" }).click();
-    await page.getByRole("link", { name: "Add serving option" }).click();
-    await page.getByLabel("Serving label").fill("Regular tray");
-    await page.getByLabel("Size per option").fill("1.500");
-    await page.getByRole("button", { name: "Create serving option" }).click();
-    await expect(page.getByText("Regular tray", { exact: true })).toBeVisible();
-    await page.getByRole("link", { name: "Back to Food Catalog" }).click();
-    await page.getByLabel("Search foods").fill("Crispy");
-    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page.getByLabel("Search foods or categories").fill("Crispy");
     await expect(
         page.getByRole("heading", { name: "Crispy Spring Rolls" }),
     ).toBeVisible();
@@ -99,6 +89,9 @@ test("dynamic packed service opens its workspace and creates a service-scoped pa
     await page
         .getByRole("button", { name: "Create Service", exact: true })
         .click();
+    await page
+        .getByRole("link", { name: "Open newly created service" })
+        .click();
     await expect(
         page.getByRole("heading", { name: "Lunch Boxes", exact: true }),
     ).toBeVisible();
@@ -117,7 +110,9 @@ test("dynamic packed service opens its workspace and creates a service-scoped pa
     await page.getByLabel("Minimum packs").fill("10");
     await page.getByLabel("Meal selections").selectOption("split");
     await savePackage(page);
-    await page.getByRole("link", { name: "Edit Package", exact: true }).click();
+    await page
+        .getByRole("button", { name: "Edit Package", exact: true })
+        .click();
     await step(page, "Pricing & Quantity");
     await expect(page.getByLabel("Price per pack (PHP)")).toHaveValue("125.50");
     await expect(page.getByLabel("Minimum packs")).toHaveValue("10");
@@ -139,6 +134,9 @@ test("Bellychon configurable package uses shared choices, optional kilograms and
     await page.getByRole("radio", { name: /Sold by Package/ }).check();
     await page
         .getByRole("button", { name: "Create Service", exact: true })
+        .click();
+    await page
+        .getByRole("link", { name: "Open newly created service" })
         .click();
     await createPackage(page, "Package A");
     await inlineFood(page, "Lechon Belly", "Belly");
@@ -218,6 +216,9 @@ test("fixed bundles use only included foods without customer-choice controls", a
     await page
         .getByRole("button", { name: "Create Service", exact: true })
         .click();
+    await page
+        .getByRole("link", { name: "Open newly created service" })
+        .click();
     await createPackage(page, "Afternoon Set");
     await inlineFood(page, "Cheese Sandwich", "Snacks");
     await page.getByLabel("Cheese Sandwich", { exact: true }).check();
@@ -273,13 +274,17 @@ test("copied package quantities remain independently editable", async ({
     await page.getByLabel("Minimum guests", { exact: true }).fill("100");
     await page.getByLabel("Price per pax (PHP)").fill("750.00");
     await savePackage(page);
-    await page.getByRole("link", { name: "Edit Package", exact: true }).click();
+    await page
+        .getByRole("button", { name: "Edit Package", exact: true })
+        .click();
     await step(page, "Pricing & Quantity");
     await expect(
         page.getByLabel("Minimum guests", { exact: true }),
     ).toHaveValue("100");
     await page.goto(sourceUrl);
-    await page.getByRole("link", { name: "Edit Package", exact: true }).click();
+    await page
+        .getByRole("button", { name: "Edit Package", exact: true })
+        .click();
     await step(page, "Pricing & Quantity");
     await expect(
         page.getByLabel("Minimum guests", { exact: true }),

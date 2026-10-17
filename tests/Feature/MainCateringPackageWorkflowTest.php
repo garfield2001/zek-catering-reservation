@@ -50,7 +50,6 @@ class MainCateringPackageWorkflowTest extends TestCase
             ['Beef Caldereta', 'Beef'], ['Beef Steak', 'Beef'], ['Chicken Adobo', 'Chicken'], ['Chicken BBQ', 'Chicken'], ['Spring Rolls', 'Other Foods'],
         ])->map(function (array $row) use ($categories): Dish {
             $dish = Dish::create(['code' => strtolower(str_replace(' ', '_', $row[0])), 'name' => $row[0], 'category_id' => $categories[$row[1]]->id, 'active' => true]);
-            DB::table('dish_family_eligibilities')->insert(['dish_id' => $dish->id, 'family_id' => $this->family->id, 'active' => true, 'created_at' => now(), 'updated_at' => now()]);
 
             return $dish;
         });
@@ -98,7 +97,6 @@ class MainCateringPackageWorkflowTest extends TestCase
     {
         $category = DishCategory::create(['code' => 'rice', 'name' => 'Rice', 'active' => true]);
         $dish = Dish::create(['code' => 'fried_rice', 'name' => 'Fried Rice', 'category_id' => $category->id, 'active' => true]);
-        DB::table('dish_family_eligibilities')->insert(['dish_id' => $dish->id, 'family_id' => $this->family->id, 'active' => true, 'created_at' => now(), 'updated_at' => now()]);
         $product = app(SaveProduct::class)->handle($this->admin, ['family_id' => $this->family->id, 'name' => 'Impossible', 'description' => null, 'active' => true, 'creation_token' => (string) str()->uuid()]);
         $version = $product->versions()->sole();
         $this->expectException(ValidationException::class);

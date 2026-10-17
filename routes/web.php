@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\Catalog\AddonServiceController;
 use App\Http\Controllers\Admin\Catalog\CategoryController;
 use App\Http\Controllers\Admin\Catalog\CollectionController;
+use App\Http\Controllers\Admin\Catalog\DeactivationImpactController;
 use App\Http\Controllers\Admin\Catalog\DishController;
 use App\Http\Controllers\Admin\Catalog\FamilyOrderDefaultController;
 use App\Http\Controllers\Admin\Catalog\FamilyPresentationController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Admin\Catalog\FoodImageController;
 use App\Http\Controllers\Admin\Catalog\ListingAvailabilityController;
 use App\Http\Controllers\Admin\Catalog\ListingController;
 use App\Http\Controllers\Admin\Catalog\ListingPublicationController;
+use App\Http\Controllers\Admin\Catalog\MeasurementUnitController;
 use App\Http\Controllers\Admin\Catalog\OfferingController;
 use App\Http\Controllers\Admin\Catalog\OfferingOptionController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -71,6 +73,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/catering-packages', [CateringController::class, 'store'])->name('catering.store');
     Route::get('/admin/catering-packages/{product}', [PackageProductController::class, 'workspace'])->name('catering.show');
     Route::prefix('admin/catalog')->name('catalog.')->scopeBindings()->group(function () {
+        Route::get('deactivation-impact/{kind}/{id}', DeactivationImpactController::class)->whereNumber('id')->name('deactivation-impact');
+        Route::get('measurement-units', [MeasurementUnitController::class, 'index'])->name('units.index');
+        Route::post('measurement-units', [MeasurementUnitController::class, 'store'])->name('units.store');
+        Route::put('measurement-units/{unit}', [MeasurementUnitController::class, 'update'])->name('units.update');
         Route::resource('categories', CategoryController::class)->except('destroy');
         Route::post('categories/{category}/move', [DisplayOrderController::class, 'category'])->name('categories.move');
         Route::resource('dishes', DishController::class)->except('destroy');

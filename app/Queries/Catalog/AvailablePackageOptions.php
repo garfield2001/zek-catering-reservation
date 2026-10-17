@@ -13,10 +13,7 @@ class AvailablePackageOptions
             ->join('dishes as dish', 'dish.id', '=', 'offering.dish_id')
             ->join('dish_categories as category', 'category.id', '=', 'dish.category_id')
             ->join('product_families as family', 'family.id', '=', 'offering.family_id')
-            ->join('dish_family_eligibilities as eligibility', function ($join) {
-                $join->on('eligibility.dish_id', '=', 'dish.id')->on('eligibility.family_id', '=', 'family.id');
-            })
-            ->where('family.id', $familyId)->where('family.active', true)->whereNull('family.archived_at')->where('eligibility.active', true)
+            ->where('family.id', $familyId)->where('family.active', true)->whereNull('family.archived_at')
             ->where('category.active', true)->where('dish.active', true)->where('offering.active', true)
             ->where('option.active', true)
             ->orderBy('category.name')->orderBy('dish.name')->orderBy('option.label')

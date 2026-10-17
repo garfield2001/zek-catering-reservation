@@ -1,125 +1,61 @@
 import { Link } from "@inertiajs/react";
 import AdminLayout from "../../../../layouts/admin-layout";
-import { EmptyState } from "../../../../features/catalog/components/empty-state";
+import { FoodImage } from "../../../../components/ui/food-image";
+import {
+    FoodUsage,
+    type FoodUsageRow,
+} from "../../../../features/catalog/components/food-usage";
 import { StatusBadge } from "../../../../features/catalog/components/status-badge";
 import { catalogPaths } from "../../../../features/catalog/paths";
 import type { FoodItem } from "../../../../features/catalog/types";
+
 export default function DishShow({
     dish,
     canManage,
-    setup,
+    usedIn,
 }: {
     dish: FoodItem;
     canManage: boolean;
-    setup: {
-        hasCategory: boolean;
-        eligibleCollections: number;
-        activeOfferings: number;
-        activeServingOptions: number;
-    };
+    usedIn: FoodUsageRow[];
 }) {
-    const activeFamilies =
-        dish.eligible_families?.filter((family) => family.pivot?.active) ?? [];
+    const available = dish.active && !!dish.category?.active;
     return (
-        <AdminLayout title={dish.name} description="Shared Food Item">
-            <div className="mb-6 flex flex-wrap items-center gap-3">
-                <StatusBadge active={dish.active} />
-                <span className="text-sm text-stone-600">
-                    {dish.category?.name}
-                </span>
-                {canManage && (
-                    <Link
-                        className="text-sm text-emerald-800 underline"
-                        href={catalogPaths.dish(dish.id) + "/edit"}
-                    >
-                        Edit food item and eligibility
-                    </Link>
-                )}
-            </div>
-            {dish.description && (
-                <p className="mb-6 max-w-2xl whitespace-pre-wrap text-stone-700">
-                    {dish.description}
-                </p>
-            )}
-            <section className="mb-8 rounded-xl border border-emerald-200 bg-emerald-50 p-5">
-                <h2 className="font-semibold text-emerald-950">
-                    Prepare this Food Item for catering
-                </h2>
-                <p className="mt-1 text-sm text-emerald-900">
-                    Choose the services that may use this food, then configure
-                    it in the package Menu. Preparations and serving sizes are
-                    optional catalog details for services that need them.
-                </p>
-                <ol className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-                    <li>
-                        {setup.hasCategory ? "✓" : "○"} Food Category assigned
-                    </li>
-                    <li>
-                        {setup.eligibleCollections > 0 ? "✓" : "○"} Service
-                        availability configured
-                    </li>
-                    <li>
-                        {setup.activeOfferings > 0 ? "✓" : "○"} Service
-                        preparation configured (optional)
-                    </li>
-                    <li>
-                        {setup.activeServingOptions > 0 ? "✓" : "○"} Active
-                        serving size configured (optional)
-                    </li>
-                </ol>
-                {(!setup.hasCategory || setup.eligibleCollections === 0) && (
-                    <p className="mt-3 text-sm font-medium text-amber-900">
-                        Assign an active category and choose an eligible service
-                        before using this food in a package menu.
+        <AdminLayout title={dish.name} description="Food Catalog">
+            <Link
+                href="/admin/food-catalog"
+                className="mb-5 inline-block text-emerald-800 underline"
+            >
+                Back to Food Catalog
+            </Link>
+            <div className="grid items-start gap-6 md:grid-cols-[16rem_1fr]">
+                <FoodImage src={dish.image_url} name={dish.name} portrait />
+                <section className="space-y-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <StatusBadge active={available} />
+                        <span>{dish.category?.name}</span>
+                        {canManage && (
+                            <Link
+                                className="text-emerald-800 underline"
+                                href={catalogPaths.dish(dish.id) + "/edit"}
+                            >
+                                Edit Food
+                            </Link>
+                        )}
+                    </div>
+                    {dish.description && (
+                        <p className="whitespace-pre-wrap">
+                            {dish.description}
+                        </p>
+                    )}
+                    <p className="text-sm text-slate-600">
+                        {available
+                            ? "Available to all active package builders. Each product independently chooses its foods."
+                            : "Unavailable for new selections. Both the food and its category must be active."}
                     </p>
-                )}
-            </section>
-            <section className="mb-8 rounded-xl border border-stone-200 bg-white p-5">
-                <h2 className="font-semibold">Available for services</h2>
-                <p className="mt-2 text-sm text-stone-600">
-                    {activeFamilies.length
-                        ? activeFamilies
-                              .map((family) => family.name)
-                              .join(" · ")
-                        : "None assigned"}
-                </p>
-            </section>
-            <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Offerings</h2>
-                {canManage && (
-                    <Link
-                        className="text-sm text-emerald-800 underline"
-                        href={catalogPaths.dish(dish.id) + "/offerings/create"}
-                    >
-                        Add offering
-                    </Link>
-                )}
+                    <h2 className="text-lg font-semibold">Used In</h2>
+                    <FoodUsage rows={usedIn} />
+                </section>
             </div>
-            {!dish.offerings?.length ? (
-                <EmptyState
-                    title="No offerings yet"
-                    description="Create a collection-specific preparation, then define its serving options."
-                />
-            ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
-                    {dish.offerings.map((offering) => (
-                        <Link
-                            key={offering.id}
-                            href={catalogPaths.offering(dish.id, offering.id)}
-                            className="rounded-xl border border-stone-200 bg-white p-5 hover:border-emerald-700"
-                        >
-                            <div className="flex justify-between gap-3">
-                                <h3 className="font-medium">{offering.name}</h3>
-                                <StatusBadge active={offering.active} />
-                            </div>
-                            <p className="mt-2 text-sm text-stone-600">
-                                {offering.family?.name} ·{" "}
-                                {offering.options?.length ?? 0} serving options
-                            </p>
-                        </Link>
-                    ))}
-                </div>
-            )}
         </AdminLayout>
     );
 }

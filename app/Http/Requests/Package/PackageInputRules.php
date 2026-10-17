@@ -11,6 +11,7 @@ class PackageInputRules
     {
         return ['draft_revision' => ['required', 'integer', 'min:1'], 'total_selection_count' => ['required', 'integer', 'min:1'],
             'food_item_ids' => ['required', 'array', 'min:1'], 'food_item_ids.*' => ['required', 'integer', 'distinct', 'exists:dishes,id'],
+            'serving_default' => ['sometimes', 'nullable', 'array'], 'food_sizes' => ['sometimes', 'array'],
             'food_details' => ['sometimes', 'array'], 'food_details.*.is_fixed' => ['sometimes', 'boolean'],
             'food_details.*.included_quantity' => ['nullable', 'numeric', 'gt:0', 'max:999999999.999', 'decimal:0,3'],
             'food_details.*.included_unit' => ['nullable', Rule::in(['kg', 'tray', 'portion', 'piece', 'bottle', 'pack'])],

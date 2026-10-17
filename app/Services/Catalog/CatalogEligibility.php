@@ -14,7 +14,7 @@ class CatalogEligibility
     public function ensureOfferingCanActivate(Dish $dish, ProductFamily $family): void
     {
         if (! $this->availability->dishEligibleForFamily($dish, $family)) {
-            throw ValidationException::withMessages(['family_id' => 'This food item is not currently eligible for the selected active collection.']);
+            throw ValidationException::withMessages(['family_id' => 'This food item is not currently available for the selected active collection.']);
         }
     }
 
@@ -24,7 +24,7 @@ class CatalogEligibility
             throw ValidationException::withMessages(['active' => 'Activate the offering before adding or activating a serving option.']);
         }
         if (! $this->availability->offeringAvailable($offering)) {
-            throw ValidationException::withMessages(['family_id' => 'The food item, category, collection and eligibility must be active.']);
+            throw ValidationException::withMessages(['family_id' => 'The food item, category, and collection must be active.']);
         }
     }
 }

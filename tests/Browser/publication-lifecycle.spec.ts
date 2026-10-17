@@ -129,7 +129,9 @@ test("owner creates exact main menu, publishes immutable history, revises and ar
     )
         await page.getByText("Version 1 · Published", { exact: true }).click();
     await expect(page.getByText(/Fried Rice.*Fixed inclusion/)).toBeVisible();
-    await page.getByRole("link", { name: "Edit Package", exact: true }).click();
+    await page
+        .getByRole("button", { name: "Edit Package", exact: true })
+        .click();
     await expect(
         page.getByText(/The current Published Version remains unchanged/),
     ).toBeVisible();

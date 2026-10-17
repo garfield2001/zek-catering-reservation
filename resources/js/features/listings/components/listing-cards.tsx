@@ -45,6 +45,7 @@ export function ListingCards({ listings }: { listings: ListingCard[] }) {
                         </p>
                         {version && (
                             <p className="text-sm">
+                                {version.has_selling_options && "From "}
                                 {formatPesos(version.price_minor)} per{" "}
                                 {version.selling_unit} · Minimum{" "}
                                 {version.minimum_quantity}

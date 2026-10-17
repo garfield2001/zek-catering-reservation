@@ -32,6 +32,6 @@ class CollectionController extends Controller
         Gate::authorize('manage', ProductFamily::class);
         $action->handle($request->user(), $family);
 
-        return redirect()->route($family->is_addon ? 'services.index' : 'catering.index')->with('status', 'Service archived. Existing history was retained.');
+        return redirect()->back(fallback: route($family->is_addon ? 'services.index' : 'catering.index'))->with('status', 'Service archived. Existing history was retained.');
     }
 }

@@ -20,6 +20,16 @@ class SaveCompletePackage
     public function handle(User $actor, array $data, ?Product $product = null): Product
     {
         return DB::transaction(function () use ($actor, $data, $product): Product {
+            $publish = ($data['save_action'] ?? 'draft') === 'publish';
+            if ($publish) {
+                if (DB::transactionLevel() === 1) {
+                    DB::statement('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE');
+                }
+                Gate::forUser($actor->fresh())->authorize('publish', PackageVersion::class);
+                if (! in_array($data['confirm_publication'] ?? null, [true, 1, '1', 'yes', 'on', 'true'], true)) {
+                    throw ValidationException::withMessages(['confirm_publication' => 'Confirm that this reviewed configuration should become the current Published Version.']);
+                }
+            }
             Gate::forUser($actor->fresh())->authorize($product ? 'update' : 'create', $product ?? Product::class);
             $creating = $product === null;
             $hash = hash('sha256', json_encode(Arr::sortRecursive(['actor_id' => $actor->id, ...$data]), JSON_THROW_ON_ERROR));
@@ -66,6 +76,10 @@ class SaveCompletePackage
                 $version = $this->pricing->handle($actor, $product, [...$data, 'draft_revision' => $version->draft_revision], $version);
             }
             $this->menus->handle($actor, $version, [...$data, 'draft_revision' => $version->draft_revision]);
+            if ($publish) {
+                $version->refresh();
+                app(PublishPackageVersion::class)->handle($actor, $version, $version->draft_revision);
+            }
 
             return $product->fresh();
         }, 3);

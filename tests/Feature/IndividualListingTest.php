@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Catalog\CloneListingDraft;
 use App\Actions\Catalog\CreateCollection;
 use App\Actions\Catalog\PublishListingVersion;
 use App\Models\AuditEvent;
@@ -14,12 +15,15 @@ use App\Models\OfferingOption;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use App\Queries\Catalog\CommercialHistory;
+use App\Queries\Catalog\ListingWorkspace;
 use App\Services\Catalog\ListingConfiguration;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class IndividualListingTest extends TestCase
@@ -40,7 +44,6 @@ class IndividualListingTest extends TestCase
         $family = app(CreateCollection::class)->handle($this->admin, ['kind' => 'addon', 'behavior_type' => 'direct_sale', 'name' => 'Tray Kitchen', 'active' => true]);
         $category = DishCategory::create(['code' => 'chicken', 'name' => 'Chicken', 'active' => true]);
         $food = Dish::create(['code' => 'chicken_food', 'name' => 'Roast Chicken', 'category_id' => $category->id, 'active' => true]);
-        $food->eligibleFamilies()->attach($family->id, ['active' => true]);
         $this->input = ['family_id' => $family->id, 'dish_id' => $food->id, 'offering_option_id' => null, 'name' => 'Chicken Tray', 'description' => 'Large tray', 'creation_token' => (string) Str::uuid(), 'price_pesos' => '1250.50', 'selling_unit' => 'tray', 'minimum_quantity' => 2, 'quantity_step' => 2, 'maximum_quantity' => 20];
     }
 
@@ -49,6 +52,155 @@ class IndividualListingTest extends TestCase
         $this->post(route('listings.store'), $this->input)->assertSessionHasNoErrors();
 
         return IndividualListing::sole();
+    }
+
+    private function groupedListing(): IndividualListing
+    {
+        unset($this->input['price_pesos']);
+        $this->input['name'] = '';
+        $this->input['selling_options'] = [
+            ['label' => 'Small Tray', 'price_pesos' => '650'],
+            ['label' => 'Large Tray', 'price_pesos' => '1100'],
+        ];
+
+        return $this->createListing();
+    }
+
+    public function test_grouped_absolute_prices_and_food_name_are_frozen_and_cloned_without_changing_history(): void
+    {
+        $listing = $this->groupedListing();
+        $version = $listing->versions()->sole();
+        $this->assertTrue($version->uses_food_name);
+        $this->assertSame('Roast Chicken', $version->name);
+        $this->assertSame('65000', $version->price_minor);
+        $this->assertCount(2, $version->sellingOptions);
+        app(PublishListingVersion::class)->handle($this->admin, $listing, $version, 1);
+        $version->refresh();
+        $snapshot = $version->snapshot();
+        $large = $version->sellingOptions()->where('label', 'Large Tray')->sole();
+        $this->assertSame('440000', app(ListingConfiguration::class)->preview($listing, $version, 4, $large->id)['total_minor']);
+        foreach ([null, 999999] as $selection) {
+            try {
+                app(ListingConfiguration::class)->preview($listing, $version, 4, $selection);
+                $this->fail('An explicit owned selling option is required.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('selling_option_id', $exception->errors());
+            }
+        }
+        $listing->dish->update(['name' => 'Renamed Food']);
+        $draft = app(CloneListingDraft::class)->handle($this->admin, $listing, $version);
+        $this->assertCount(2, $draft->sellingOptions);
+        $this->assertNotSame($large->id, $draft->sellingOptions()->where('label', 'Large Tray')->sole()->id);
+        $data = $this->input;
+        unset($data['creation_token']);
+        $data['selling_options'][1]['price_pesos'] = '1200';
+        $this->put(route('listings.update', $listing), [...$data, 'version_id' => $draft->id, 'draft_revision' => 1])->assertSessionHasNoErrors();
+        $this->assertSame('Renamed Food', $draft->fresh()->name);
+        $this->assertSame($snapshot, $version->fresh()->snapshot());
+        $this->assertSame($version->id, $listing->fresh()->current_version_id);
+        DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
+    }
+
+    public function test_legacy_publication_can_be_revised_into_grouped_options_without_repricing_history(): void
+    {
+        $listing = $this->createListing();
+        $published = $listing->versions()->sole();
+        app(PublishListingVersion::class)->handle($this->admin, $listing, $published, 1);
+        $snapshot = $published->fresh()->snapshot();
+        $draft = app(CloneListingDraft::class)->handle($this->admin, $listing, $published);
+        $data = $this->input;
+        unset($data['creation_token'], $data['price_pesos']);
+        $this->put(route('listings.update', $listing), [...$data,
+            'version_id' => $draft->id, 'draft_revision' => 1,
+            'selling_options' => [['label' => 'Small', 'price_pesos' => '650'], ['label' => 'Large', 'price_pesos' => '1100']],
+        ])->assertSessionHasNoErrors();
+        $this->assertTrue($draft->fresh()->has_selling_options);
+        $this->assertCount(2, $draft->fresh()->sellingOptions);
+        $this->assertSame($snapshot, $published->fresh()->snapshot());
+        $this->assertSame('500200', app(ListingConfiguration::class)->preview($listing, $published, 4)['total_minor']);
+        $this->assertSame($published->id, $listing->fresh()->current_version_id);
+        DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
+    }
+
+    public function test_grouped_option_validation_is_atomic_and_rejects_malformed_or_duplicate_labels(): void
+    {
+        foreach ([[], [['label' => ['bad'], 'price_pesos' => '1']], [['label' => 'Small', 'price_pesos' => ['bad']]],
+            [['label' => 'Small', 'price_pesos' => '1'], ['label' => ' small ', 'price_pesos' => '2']],
+            [['label' => 'Small', 'price_pesos' => '-1']]] as $options) {
+            $response = $this->post(route('listings.store'), [...$this->input, 'selling_options' => $options]);
+            $response->assertSessionHasErrors();
+            $this->assertSame(0, IndividualListing::count());
+        }
+    }
+
+    public function test_commercial_history_uses_recorded_actors_and_frozen_prices_and_is_permission_scoped(): void
+    {
+        $listing = $this->groupedListing();
+        $first = $listing->versions()->sole();
+        $actorLabel = $this->admin->email;
+        app(PublishListingVersion::class)->handle($this->admin, $listing, $first, 1);
+        $draft = app(CloneListingDraft::class)->handle($this->admin, $listing, $first);
+        $data = $this->input;
+        unset($data['creation_token']);
+        $data['selling_options'][1]['price_pesos'] = '1200';
+        $this->put(route('listings.update', $listing), [...$data, 'version_id' => $draft->id, 'draft_revision' => 1])->assertSessionHasNoErrors();
+        app(PublishListingVersion::class)->handle($this->admin, $listing, $draft, 2);
+        $this->admin->update(['email' => 'renamed-history@example.test']);
+        $history = app(CommercialHistory::class)->forOwner($listing);
+        $this->assertSame($actorLabel, $history['publications'][1]['publisher']);
+        $this->assertSame(1, $history['publications'][1]['compared_to']);
+        $this->assertContains(['label' => 'Selling option: Large Tray', 'before' => 'PHP 1100.00', 'after' => 'PHP 1200.00'], $history['publications'][1]['changes']);
+        $this->assertNotNull($history['publications'][1]['published_at']);
+        $this->assertTrue($history['events']->contains('action', 'listing.draft_updated'));
+        $staff = User::factory()->create();
+        $staff->roles()->attach(Role::where('code', 'staff')->sole());
+        $staff->permissionOverrides()->attach(Permission::where('code', 'listing.view')->sole(), ['effect' => 'allow']);
+        $this->actingAs($staff)->withSession(['access_version' => $staff->access_version]);
+        $this->assertNull(app(ListingWorkspace::class)->details($listing->fresh())['commercialHistory']);
+    }
+
+    public function test_staff_can_retain_options_but_cannot_change_a_nonminimum_option_price(): void
+    {
+        $listing = $this->groupedListing();
+        $version = $listing->versions()->sole();
+        $staff = User::factory()->create();
+        $staff->roles()->attach(Role::where('code', 'staff')->sole());
+        $staff->permissionOverrides()->attach(Permission::where('code', 'listing.manage')->sole(), ['effect' => 'allow']);
+        $this->actingAs($staff)->withSession(['access_version' => $staff->access_version]);
+        $data = $this->input;
+        unset($data['creation_token']);
+        $data = [...$data, 'version_id' => $version->id, 'draft_revision' => 1, 'description' => 'Staff presentation edit'];
+        $this->put(route('listings.update', $listing), $data)->assertSessionHasNoErrors();
+        $data['draft_revision'] = 2;
+        $data['selling_options'][1]['price_pesos'] = '1200';
+        $this->put(route('listings.update', $listing), $data)->assertForbidden();
+        $this->assertSame('110000', $version->sellingOptions()->where('label', 'Large Tray')->sole()->price_minor);
+    }
+
+    public function test_postgresql_rejects_duplicate_empty_mispriced_and_published_option_mutations(): void
+    {
+        $listing = $this->groupedListing();
+        $version = $listing->versions()->sole();
+        $option = $version->sellingOptions()->firstOrFail();
+        foreach ([
+            fn () => $version->sellingOptions()->create(['label' => ' small tray ', 'price_minor' => 1, 'sort_order' => 3]),
+            fn () => $version->sellingOptions()->delete(),
+            fn () => $option->update(['price_minor' => 1]),
+        ] as $mutation) {
+            DB::beginTransaction();
+            try {
+                $mutation();
+                DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
+                $this->fail('Expected PostgreSQL integrity rejection.');
+            } catch (QueryException $exception) {
+                $this->assertContains($exception->errorInfo[0], ['23514', '23505']);
+            } finally {
+                DB::rollBack();
+            }
+        }
+        app(PublishListingVersion::class)->handle($this->admin, $listing, $version, 1);
+        $this->expectException(QueryException::class);
+        $option->update(['label' => 'Changed publication']);
     }
 
     public function test_draft_save_is_idempotent_and_publication_freezes_prices_names_and_quantities(): void
@@ -116,9 +268,12 @@ class IndividualListingTest extends TestCase
         $listing = $this->createListing();
         $version = $listing->versions()->sole();
         app(PublishListingVersion::class)->handle($this->admin, $listing, $version, 1);
+        $frozen = $version->fresh()->snapshot();
+        $this->getJson(route('catalog.deactivation-impact', ['food', $listing->dish_id]))
+            ->assertOk()->assertJsonPath('usage.0.product_id', $listing->id);
         $configuration = app(ListingConfiguration::class);
         $this->assertTrue($configuration->availability($listing->fresh())['available']);
-        Dish::sole()->eligibleFamilies()->updateExistingPivot($listing->family_id, ['active' => false]);
+        Dish::sole()->update(['active' => false]);
         $this->assertFalse($configuration->availability($listing->fresh())['available']);
         $this->post(route('listings.availability', $listing), ['operation' => 'disable'])->assertSessionHasNoErrors();
         $this->assertFalse($listing->fresh()->active);
@@ -127,6 +282,7 @@ class IndividualListingTest extends TestCase
         $this->assertNotNull($listing->fresh()->archived_at);
         $this->assertSame($version->id, $listing->fresh()->current_version_id);
         $this->assertSame('published', $version->fresh()->status);
+        $this->assertSame($frozen, $version->fresh()->snapshot());
     }
 
     public function test_postgresql_enforces_positive_quantities_ownership_one_draft_and_immutable_publication(): void
@@ -174,7 +330,7 @@ class IndividualListingTest extends TestCase
         $this->assertNull($listing->fresh()->archived_at);
     }
 
-    public function test_sizes_are_independent_listings_and_wrong_owner_option_is_rejected(): void
+    public function test_legacy_separate_size_listings_remain_valid_and_wrong_owner_option_is_rejected(): void
     {
         $food = Dish::sole();
         $offering = DishOffering::create(['dish_id' => $food->id, 'family_id' => $this->input['family_id'], 'code' => 'tray', 'name' => 'Tray preparation', 'active' => true]);
@@ -186,7 +342,6 @@ class IndividualListingTest extends TestCase
         $this->assertSame(2, IndividualListing::count());
         $this->assertEquals(['100000', '200000'], ListingVersion::orderBy('id')->pluck('price_minor')->all());
         $otherFood = Dish::create(['category_id' => $food->category_id, 'code' => 'other', 'name' => 'Other Food', 'active' => true]);
-        $otherFood->eligibleFamilies()->attach($this->input['family_id'], ['active' => true]);
         $this->post(route('listings.store'), [...$this->input, 'creation_token' => (string) Str::uuid(), 'dish_id' => $otherFood->id, 'offering_option_id' => $small->id])->assertSessionHasErrors('dish_id');
         $this->assertSame(2, IndividualListing::count());
     }

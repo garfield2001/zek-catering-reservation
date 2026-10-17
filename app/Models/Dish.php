@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
@@ -29,19 +28,13 @@ class Dish extends Model
 
     protected function casts(): array
     {
-        return ['active' => 'boolean'];
+        return ['active' => 'boolean', 'category_id' => 'integer'];
     }
 
     /** @return BelongsTo<DishCategory, $this> */
     public function category(): BelongsTo
     {
         return $this->belongsTo(DishCategory::class, 'category_id');
-    }
-
-    public function eligibleFamilies(): BelongsToMany
-    {
-        return $this->belongsToMany(ProductFamily::class, 'dish_family_eligibilities', 'dish_id', 'family_id')
-            ->withPivot('active')->withTimestamps();
     }
 
     public function offerings(): HasMany

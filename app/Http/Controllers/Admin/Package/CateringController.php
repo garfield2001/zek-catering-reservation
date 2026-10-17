@@ -10,21 +10,24 @@ use App\Models\FamilyOrderDefault;
 use App\Models\PackageVersion;
 use App\Models\Product;
 use App\Models\ProductFamily;
+use App\Queries\Package\PackageDirectory;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CateringController extends Controller
 {
-    public function index(EnsurePrimaryService $primary): Response
+    public function index(Request $request, EnsurePrimaryService $primary, PackageDirectory $directory): Response
     {
         Gate::authorize('viewAny', Product::class);
         $family = $primary->handle();
+        $filters = $request->validate(['q' => ['nullable', 'string', 'max:100'], 'status' => ['nullable', 'in:all,active,inactive,archived']]);
 
         return Inertia::render('admin/catering/index', [
-            'products' => Product::where('family_id', $family->id)->with(['currentVersion:id,package_product_id,status,version_number,price_basis,base_price_minor,minimum_quantity,total_selection_count', 'versions' => fn ($q) => $q->where('status', 'draft')])
-                ->orderBy('sort_order')->orderBy('id')->paginate(20),
+            'products' => $directory->query($family, $filters)->paginate(20)->withQueryString(),
+            'filters' => $filters,
             'canManage' => Gate::allows('create', Product::class), 'serviceActive' => $family->active,
             'canPrice' => Gate::allows('price', PackageVersion::class),
             'canHistory' => Gate::allows('history', PackageVersion::class),

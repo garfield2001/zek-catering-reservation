@@ -1,4 +1,7 @@
+import { useDialogForm } from "../../../components/ui/dialog-form-guard";
 import { useForm } from "@inertiajs/react";
+import { useJsonSave } from "../use-json-save";
+import { ModalClose } from "../../../components/ui/modal";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
 
@@ -26,12 +29,10 @@ export const serviceBehaviors = [
 ] as const;
 
 export function CollectionCreateForm({
-    onCancel,
     onCreated,
 }: {
     hasPrimary?: boolean;
-    onCancel: () => void;
-    onCreated: () => void;
+    onCreated: (service: { id: number; name: string }) => void;
 }) {
     const form = useForm({
         kind: "addon",
@@ -40,14 +41,25 @@ export function CollectionCreateForm({
         description: "",
         active: true,
     });
+    const request = useJsonSave<{ service: { id: number; name: string } }>();
+    useDialogForm(form.isDirty, request.saving);
     return (
         <form
             className="space-y-5"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
                 e.preventDefault();
-                form.post("/admin/add-on-services", { onSuccess: onCreated });
+                if (request.saving) return;
+                form.clearErrors();
+                const result = await request.save(
+                    "/admin/add-on-services",
+                    "POST",
+                    form.data,
+                    form.setError,
+                );
+                if (result) onCreated(result.service);
             }}
         >
+            {request.error && <p role="alert">{request.error}</p>}
             <Field
                 id="service-name"
                 label="Service name"
@@ -125,10 +137,8 @@ export function CollectionCreateForm({
                     </p>
                 ))}
             <div className="flex justify-end gap-3">
-                <button type="button" onClick={onCancel}>
-                    Cancel
-                </button>
-                <Button disabled={form.processing}>Create Service</Button>
+                <ModalClose type="button">Cancel</ModalClose>
+                <Button disabled={request.saving}>Create Service</Button>
             </div>
         </form>
     );

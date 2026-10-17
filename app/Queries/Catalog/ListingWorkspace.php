@@ -21,8 +21,8 @@ class ListingWorkspace
         if ($version?->status === 'published') {
             Gate::authorize('history', IndividualListing::class);
         }
+        $version?->load('sellingOptions');
         $foods = Dish::where('active', true)->whereHas('category', fn ($q) => $q->where('active', true))
-            ->whereHas('eligibleFamilies', fn ($q) => $q->where('product_families.id', $family->id)->where('dish_family_eligibilities.active', true))
             ->with(['offerings' => fn ($q) => $q->where('family_id', $family->id)->where('active', true), 'offerings.options' => fn ($q) => $q->where('active', true)])
             ->orderBy('name')->get();
 
@@ -45,9 +45,11 @@ class ListingWorkspace
         $configuration = app(ListingConfiguration::class);
 
         return ['listing' => $listing->only('id', 'family_id', 'active', 'archived_at', 'current_version_id'),
+            'commercialHistory' => Gate::allows('history', IndividualListing::class) ? app(CommercialHistory::class)->forOwner($listing) : null,
             'snapshot' => $version->status === 'published' ? $version->snapshot() : $configuration->snapshot($listing, $version),
             'version' => $version->only('id', 'version_number', 'status', 'draft_revision', 'published_at'),
             'image_url' => $listing->dish->image_url,
+            'thumbnail_url' => $listing->dish->thumbnail_url,
             'availability' => $configuration->availability($listing),
             'draft_id' => ($canManage || Gate::allows('publish', IndividualListing::class)) ? $listing->versions()->where('status', 'draft')->value('id') : null,
             'history' => Gate::allows('history', IndividualListing::class) ? $listing->versions()->where('status', '!=', 'draft')->get(['id', 'version_number', 'status', 'published_at']) : [],

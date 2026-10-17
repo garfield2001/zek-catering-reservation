@@ -52,7 +52,6 @@ class BusinessWorkspaceTest extends TestCase
             $categories->push($category);
             foreach ($foods as $name) {
                 $food = Dish::firstOrCreate(['code' => strtolower($name)], ['name' => $name, 'category_id' => $category->id, 'active' => true]);
-                $food->eligibleFamilies()->syncWithoutDetaching([$this->family->id => ['active' => true]]);
                 $items->push($food);
             }
         }
@@ -145,7 +144,7 @@ class BusinessWorkspaceTest extends TestCase
         $this->assertSame('12753750', $preview(150)['total_minor']);
     }
 
-    public function test_published_main_availability_uses_frozen_categories_and_live_eligibility(): void
+    public function test_published_main_availability_uses_frozen_categories_and_live_food_status(): void
     {
         [$product, $draft, $items, $categories] = $this->menu();
         $published = app(PublishPackageVersion::class)->handle($this->admin, $draft, $draft->draft_revision);
@@ -153,7 +152,7 @@ class BusinessWorkspaceTest extends TestCase
         $items[0]->update(['category_id' => $categories[2]->id, 'name' => 'Renamed Staple']);
         $this->assertTrue(app(EffectivePackageAvailability::class)->forProduct($product->fresh())['available']);
         $this->assertCount(3, app(PackageMenuConfiguration::class)->validateCustomerSelection($published, [$items[0]->id, $items[1]->id, $items[3]->id]));
-        $items[0]->eligibleFamilies()->updateExistingPivot($this->family->id, ['active' => false]);
+        $items[0]->update(['active' => false]);
         $this->assertFalse(app(EffectivePackageAvailability::class)->forProduct($product->fresh())['available']);
         $this->assertSame($snapshot, $published->fresh()->snapshot());
     }

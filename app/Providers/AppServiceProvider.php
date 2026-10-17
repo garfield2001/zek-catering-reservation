@@ -8,6 +8,7 @@ use App\Models\DishOffering;
 use App\Models\FamilyOrderDefault;
 use App\Models\IndividualListing;
 use App\Models\ListingVersion;
+use App\Models\MeasurementUnit;
 use App\Models\OfferingOption;
 use App\Models\PackageVersion;
 use App\Models\Product;
@@ -33,7 +34,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::define('dashboard.view', fn (User $user) => app(PermissionResolver::class)->allows($user, 'dashboard.view'));
-        foreach ([DishCategory::class, Dish::class, DishOffering::class, OfferingOption::class] as $model) {
+        foreach ([DishCategory::class, Dish::class, DishOffering::class, OfferingOption::class, MeasurementUnit::class] as $model) {
             Gate::policy($model, CatalogPolicy::class);
         }
         Gate::policy(FamilyOrderDefault::class, FamilyOrderDefaultPolicy::class);

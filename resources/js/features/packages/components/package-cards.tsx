@@ -1,4 +1,4 @@
-import { Link } from "@inertiajs/react";
+import { PackageEditorButton } from "./package-editor-modal";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { PackageDetails } from "./package-details";
@@ -19,7 +19,7 @@ export function PackageCards({
 }) {
     const [details, setDetails] = useState<number | null>(null);
     return (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),24rem))] gap-4">
             {details !== null && (
                 <PackageDetails
                     productId={details}
@@ -31,7 +31,7 @@ export function PackageCards({
                 const draft = product.versions?.find(
                     (v) => v.status === "draft",
                 );
-                const version = draft ?? product.current_version;
+                const version = product.current_version ?? draft;
                 return (
                     <article
                         key={product.id}
@@ -63,9 +63,9 @@ export function PackageCards({
                             <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
                                 <div>
                                     <dt className="text-slate-500">
-                                        {draft
-                                            ? "Draft price"
-                                            : "Published price"}
+                                        {product.current_version
+                                            ? "Published price"
+                                            : "Draft price"}
                                     </dt>
                                     <dd className="font-semibold">
                                         {formatMoney(
@@ -106,17 +106,17 @@ export function PackageCards({
                                 (draft ||
                                     !product.current_version ||
                                     canHistory) && (
-                                    <Link
+                                    <PackageEditorButton
                                         className="inline-flex items-center gap-2 rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white"
-                                        href={`/admin/packages/products/${product.id}/edit`}
+                                        url={`/admin/packages/products/${product.id}/edit`}
                                     >
                                         <Pencil size={16} aria-hidden="true" />
                                         {draft &&
                                         !product.current_version_id &&
                                         !draft.total_selection_count
                                             ? "Continue Setup"
-                                            : "Edit"}
-                                    </Link>
+                                            : "Edit Package"}
+                                    </PackageEditorButton>
                                 )}
                             {canManage &&
                                 !product.archived_at &&
@@ -136,16 +136,6 @@ export function PackageCards({
                             >
                                 View Details
                             </button>
-                            <Link
-                                className="text-sm text-stone-600 underline"
-                                href={
-                                    main
-                                        ? `/admin/catering-packages/${product.id}`
-                                        : `/admin/packages/products/${product.id}`
-                                }
-                            >
-                                Publication & History
-                            </Link>
                         </div>
                     </article>
                 );

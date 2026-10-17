@@ -3,6 +3,8 @@ import { useState } from "react";
 import AdminLayout from "../../../layouts/admin-layout";
 import { ConfirmDialog } from "../../../components/ui/confirm-dialog";
 import { ListingDetails } from "../../../features/listings/components/listing-details";
+import { ListingEditorButton } from "../../../features/listings/components/listing-editor-modal";
+import { CommercialHistory } from "../../../features/catalog/components/commercial-history";
 import type { ListingDetailsProps } from "../../../features/listings/types";
 
 export default function ListingShow({
@@ -10,9 +12,11 @@ export default function ListingShow({
     snapshot,
     version,
     image_url,
+    thumbnail_url,
     availability,
     draft_id,
     history,
+    commercialHistory,
     canManage,
     canPublish,
     canHistory,
@@ -50,12 +54,11 @@ export default function ListingShow({
                     Back to Service
                 </Link>
                 {canManage && !listing.archived_at && (
-                    <Link
-                        href={`/admin/items/${listing.id}/edit`}
-                        className="text-emerald-800 underline"
+                    <ListingEditorButton
+                        url={`/admin/items/${listing.id}/edit`}
                     >
                         Edit Item
-                    </Link>
+                    </ListingEditorButton>
                 )}
                 {draft_id && version.status === "published" && (
                     <Link
@@ -75,7 +78,11 @@ export default function ListingShow({
                         </Link>
                     )}
             </div>
-            <ListingDetails snapshot={snapshot} imageUrl={image_url} />
+            <ListingDetails
+                snapshot={snapshot}
+                imageUrl={image_url}
+                thumbnailUrl={thumbnail_url}
+            />
             {version.status === "draft" && (
                 <section className="my-5 rounded-xl border bg-white p-5">
                     <h2 className="font-semibold">Publication Review</h2>
@@ -106,6 +113,15 @@ export default function ListingShow({
                         : availability.reasons.join(" ")}
                 </p>
                 {canLifecycle && !listing.archived_at && (
+                    <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                        Disabling stops new selection of this item without
+                        changing its Food Item, selling options or published
+                        history. Re-enabling still requires active catalog
+                        sources. Archiving is permanent and abandons its open
+                        Draft.
+                    </p>
+                )}
+                {canLifecycle && !listing.archived_at && (
                     <div className="flex gap-4 text-sm">
                         <button
                             className="underline"
@@ -117,6 +133,7 @@ export default function ListingShow({
                                             ? "disable"
                                             : "enable",
                                     },
+                                    { preserveScroll: true },
                                 )
                             }
                         >
@@ -134,6 +151,9 @@ export default function ListingShow({
             {canHistory && (
                 <section className="space-y-3 rounded-xl border bg-white p-5">
                     <h2 className="font-semibold">Publication History</h2>
+                    {commercialHistory && (
+                        <CommercialHistory data={commercialHistory} />
+                    )}
                     {!history.length && (
                         <p className="text-sm">No published revisions yet.</p>
                     )}
@@ -178,7 +198,7 @@ export default function ListingShow({
                 description={
                     confirm === "publish"
                         ? "Confirm the saved configuration above. This publication will be immutable and replace the current version."
-                        : "This permanently retires the item. Publication history is retained."
+                        : "This permanently retires the item and abandons its open Draft. Published versions, selling options and the Food Item remain saved. Other listings are unchanged."
                 }
                 confirmLabel={
                     confirm === "publish"

@@ -37,7 +37,7 @@ class SaveSelectionGroup
             foreach ($data['options'] as $row) {
                 $option = OfferingOption::with('offering')->findOrFail($row['offering_option_id']);
                 if ($option->offering->family_id !== $version->family_id || ! $this->availability->optionAvailable($option)) {
-                    throw ValidationException::withMessages(['options' => 'Only currently eligible serving options from this collection may be used.']);
+                    throw ValidationException::withMessages(['options' => 'Only currently available serving options from this collection may be used.']);
                 }
                 if (
                     $data['slot_kind'] === 'lechon' && $option->unit !== 'kg'
@@ -149,6 +149,7 @@ class SaveSelectionGroup
                 $before,
                 [
                     ...$group->only(
+                        'package_version_id',
                         'group_code',
                         'name',
                         'mode',

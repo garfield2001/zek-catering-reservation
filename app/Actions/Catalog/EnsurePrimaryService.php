@@ -17,7 +17,7 @@ final class EnsurePrimaryService
             DB::select('SELECT pg_advisory_xact_lock(73421, 1)');
             $existing = ProductFamily::where('is_addon', false)->whereNull('archived_at')->first();
             if ($existing) {
-                return $existing; // Preserve existing identity, eligibility and deliberate disabled state.
+                return $existing; // Preserve existing identity and deliberate disabled state.
             }
             $name = 'Catering Packages';
             if (ProductFamily::whereNull('archived_at')->whereRaw('lower(btrim(name)) = lower(?)', [$name])->exists()) {

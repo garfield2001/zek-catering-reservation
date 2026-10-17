@@ -16,6 +16,8 @@ class PackageMenuConfiguration
 
     public function validateDraft(PackageVersion $version): void
     {
+        app(PackageFoodSizes::class)->validateDraft($version);
+        app(PackageServingDefaults::class)->validateDraft($version);
         $version->load(['product.family', 'foodItems.category', 'requiredCategories']);
         if (! $version->product?->family?->behavior()->supportsPackageDrafts()) {
             return;
@@ -26,13 +28,13 @@ class PackageMenuConfiguration
         }
         $rows = $version->foodItems;
         if ($rows->isEmpty()) {
-            throw ValidationException::withMessages(['food_items' => 'Add at least one eligible Food Item to the package menu.']);
+            throw ValidationException::withMessages(['food_items' => 'Add at least one active Food Item to the package menu.']);
         }
         $family = $version->product->family;
         $eligibleIds = $this->availability->eligibleDishIds($family, $rows->pluck('id')->all());
         foreach ($rows as $dish) {
             if (! isset($eligibleIds[$dish->id])) {
-                throw ValidationException::withMessages(['food_items' => "{$dish->name} is not currently eligible for {$family->name}."]);
+                throw ValidationException::withMessages(['food_items' => "{$dish->name} is not currently available for {$family->name}."]);
             }
         }
         $fixed = $rows->where('pivot.is_fixed', true);
@@ -194,7 +196,7 @@ class PackageMenuConfiguration
         }
         $eligible = count($this->availability->eligibleDishIds($family, $ids));
         if ($eligible !== count($ids)) {
-            throw ValidationException::withMessages(['food_items' => 'Every selected Food Item must be active and eligible for this service.']);
+            throw ValidationException::withMessages(['food_items' => 'Every selected Food Item must be active, with an active category and service.']);
         }
         if (count($ids) < (int) $version->total_selection_count) {
             throw ValidationException::withMessages(['food_items' => 'The package selection total cannot exceed the allowed Food Items.']);

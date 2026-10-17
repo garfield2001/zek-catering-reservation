@@ -71,8 +71,6 @@ class PackageDraftTest extends TestCase
             'name' => 'General', 'sort_order' => 0, 'active' => true,
         ]);
         $dish = Dish::create(['code' => $code, 'category_id' => $category->id, 'name' => $code, 'active' => true]);
-        DB::table('dish_family_eligibilities')->insert(['dish_id' => $dish->id, 'family_id' => $family->id,
-            'active' => true, 'created_at' => now(), 'updated_at' => now()]);
         $offering = DishOffering::create(['dish_id' => $dish->id, 'family_id' => $family->id,
             'code' => 'standard', 'name' => 'Standard', 'active' => true]);
 
@@ -346,8 +344,7 @@ class PackageDraftTest extends TestCase
             $this->expectInvalid(fn () => $this->preview($version, 1, $selection), $field);
             $record->forceFill(['active' => true])->save();
         }
-        DB::table('dish_family_eligibilities')->where('dish_id', $option->offering->dish_id)
-            ->where('family_id', $version->family_id)->update(['active' => false]);
+        $option->offering->dish->update(['active' => false]);
         $this->expectInvalid(fn () => $this->preview($version, 1, $selection), 'groups.0.selections.'.$version->fresh()->groups()->sole()->group_code);
     }
 

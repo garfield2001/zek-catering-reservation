@@ -52,6 +52,32 @@ export type PublishedPackageSnapshot = {
         selection_policy: string;
     };
     menu?: {
+        serving_default?: {
+            quantity: string;
+            size_label: string | null;
+            measurement_unit: {
+                id: number;
+                name: string;
+                abbreviation: string;
+            };
+        } | null;
+        food_sizes?: Record<
+            number,
+            {
+                measurement_unit: {
+                    id: number;
+                    name: string;
+                    abbreviation: string;
+                };
+                choices: {
+                    id: number;
+                    quantity: string;
+                    size_label?: string | null;
+                    extra_price_minor: string;
+                    is_default: boolean;
+                }[];
+            }
+        >;
         total_selection_count: number | null;
         food_items: {
             id: number;

@@ -18,6 +18,8 @@ use App\Models\Product;
 use App\Models\ProductFamily;
 use App\Models\Role;
 use App\Models\User;
+use App\Queries\Catalog\CommercialHistory;
+use App\Queries\Package\PackageWorkspace;
 use App\Services\Package\EffectivePackageAvailability;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Database\QueryException;
@@ -57,8 +59,6 @@ class PackagePublicationTest extends TestCase
             ['name' => 'Meat', 'sort_order' => 1, 'active' => true]);
         $dish = Dish::create(['code' => strtolower(str_replace(' ', '_', $name)), 'category_id' => $category->id,
             'name' => $name, 'active' => true]);
-        DB::table('dish_family_eligibilities')->insert(['dish_id' => $dish->id,
-            'family_id' => $this->family->id, 'active' => true, 'created_at' => now(), 'updated_at' => now()]);
         $offering = DishOffering::create(['dish_id' => $dish->id, 'family_id' => $this->family->id,
             'code' => 'standard', 'name' => 'Standard', 'active' => true]);
 
@@ -88,6 +88,27 @@ class PackagePublicationTest extends TestCase
         app(SaveProduct::class)->handle($this->admin, ['family_id' => $this->family->id,
             'name' => 'Package A Updated', 'description' => null, 'active' => true], $product);
         $this->assertSame(1, $package->versions()->count());
+    }
+
+    public function test_commercial_history_has_persisted_publishers_editors_and_scoped_group_activity(): void
+    {
+        $product = $this->product();
+        $draft = $product->versions()->sole();
+        $this->group($draft, $this->option('History Chicken'), 'History Choices');
+        $published = app(PublishPackageVersion::class)->handle($this->admin, $draft, $draft->fresh()->draft_revision);
+        $other = $this->product();
+        $this->group($other->versions()->sole(), $this->option('Unrelated Food'), 'Unrelated Choices');
+        $history = app(CommercialHistory::class)->forOwner($product);
+        $this->assertSame($this->admin->email, $history['publications'][0]['publisher']);
+        $this->assertSame($published->id, $history['publications'][0]['version_id']);
+        $this->assertNotNull($history['publications'][0]['published_at']);
+        $this->assertCount(1, $history['events']->where('action', 'package.group_created'));
+        $this->assertSame($this->admin->email, $history['events']->firstWhere('action', 'package.group_created')->actor_label);
+        $this->assertTrue(collect($history['publications'][0]['changes'])->contains('label', 'Choices: History Choices'));
+        $staff = User::factory()->create();
+        $staff->roles()->attach(Role::where('code', 'staff')->sole());
+        $this->actingAs($staff)->withSession(['access_version' => $staff->access_version]);
+        $this->assertNull(app(PackageWorkspace::class)->data($product)['commercialHistory']);
     }
 
     public function test_http_creation_ignores_a_supplied_technical_code_and_order(): void

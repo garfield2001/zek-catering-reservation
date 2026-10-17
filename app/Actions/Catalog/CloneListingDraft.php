@@ -27,6 +27,9 @@ class CloneListingDraft
             }
             $draft = $source->replicate(['published_snapshot', 'published_at', 'published_by']);
             $draft->fill(['version_number' => $listing->versions()->max('version_number') + 1, 'draft_revision' => 1, 'status' => 'draft', 'cloned_from_id' => $source->id])->save();
+            foreach ($source->sellingOptions as $option) {
+                $draft->sellingOptions()->create($option->only(['label', 'price_minor', 'sort_order']));
+            }
             $this->audit->record('listing.draft_cloned', $actor, $draft, null, ['source_version_id' => $source->id]);
 
             return $draft;
