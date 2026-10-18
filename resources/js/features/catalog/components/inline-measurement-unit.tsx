@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { csrfFetch, sessionFailureMessage } from "../../../lib/http";
 import { Modal } from "../../../components/ui/modal";
 import { Button } from "../../../components/ui/button";
 import { useDialogForm } from "../../../components/ui/dialog-form-guard";
@@ -25,7 +26,7 @@ function CreateUnit({
                 setBusy(true);
                 setError("");
                 try {
-                    const response = await fetch(
+                    const response = await csrfFetch(
                         "/admin/catalog/measurement-units",
                         {
                             method: "POST",
@@ -33,10 +34,6 @@ function CreateUnit({
                             headers: {
                                 "Content-Type": "application/json",
                                 Accept: "application/json",
-                                "X-CSRF-TOKEN":
-                                    document.querySelector<HTMLMetaElement>(
-                                        'meta[name="csrf-token"]',
-                                    )?.content ?? "",
                             },
                             body: JSON.stringify({
                                 name,
@@ -51,10 +48,9 @@ function CreateUnit({
                         );
                         return;
                     }
-                    if (response.status === 419) {
-                        setError(
-                            "Your session expired. Keep a copy of your unsaved input before signing in again.",
-                        );
+                    const sessionError = sessionFailureMessage(response);
+                    if (sessionError) {
+                        setError(sessionError);
                         return;
                     }
                     const result = await response.json();

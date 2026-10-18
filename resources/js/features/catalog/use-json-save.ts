@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { csrfFetch, sessionFailureMessage } from "../../lib/http";
 
 /** Modal saves return data, leaving navigation/filter state with the workspace. */
 export function useJsonSave<T>() {
@@ -13,16 +14,12 @@ export function useJsonSave<T>() {
         setSaving(true);
         setError("");
         try {
-            const response = await fetch(url, {
+            const response = await csrfFetch(url, {
                 method,
                 credentials: "same-origin",
                 headers: {
                     Accept: "application/json",
                     "Content-Type": "application/json",
-                    "X-CSRF-TOKEN":
-                        document.querySelector<HTMLMetaElement>(
-                            'meta[name="csrf-token"]',
-                        )?.content ?? "",
                 },
                 body: JSON.stringify(data),
             });
@@ -40,9 +37,10 @@ export function useJsonSave<T>() {
                 );
                 return;
             }
-            if (!response.ok)
+            if (!response.ok || sessionFailureMessage(response))
                 throw new Error(
-                    "The save could not be completed. Check your access and session before retrying. Your input has been retained.",
+                    sessionFailureMessage(response) ??
+                        "The save could not be completed. Check your access and session before retrying. Your input has been retained.",
                 );
             return (await response.json()) as T;
         } catch (reason) {

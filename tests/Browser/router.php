@@ -23,6 +23,11 @@ if (! $app->environment('testing') || $app->configurationIsCached()
     http_response_code(503);
     exit('Unsafe browser test environment.');
 }
+$identity = $app['db']->selectOne('select current_database() as name, inet_server_port() as port');
+if ($identity->name !== 'zek_catering_test' || (int) $identity->port !== 5432) {
+    http_response_code(503);
+    exit('Unexpected actual browser database connection.');
+}
 // Never attach browser regression tests to an unrelated running Vite dev server.
 $testHotFile = storage_path('framework/browser-tests-disabled.hot');
 if (is_file($testHotFile)) {

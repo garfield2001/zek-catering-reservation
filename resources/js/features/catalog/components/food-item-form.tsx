@@ -8,6 +8,7 @@ import type { FoodCategory, FoodItem, Collection } from "../types";
 import type { SharedProps } from "../../../types";
 import { ImageUploadField } from "./image-upload-field";
 import { catalogPaths } from "../paths";
+import { csrfFetch, sessionFailureMessage } from "../../../lib/http";
 export function FoodItemForm({
     dish,
     categories,
@@ -124,7 +125,7 @@ export function FoodItemForm({
                             );
                     }
                     try {
-                        const response = await fetch(
+                        const response = await csrfFetch(
                             dish
                                 ? `${catalogPaths.dishes}/${dish.id}`
                                 : catalogPaths.dishes,
@@ -133,10 +134,6 @@ export function FoodItemForm({
                                 credentials: "same-origin",
                                 headers: {
                                     Accept: "application/json",
-                                    "X-CSRF-TOKEN":
-                                        document.querySelector<HTMLMetaElement>(
-                                            'meta[name="csrf-token"]',
-                                        )?.content ?? "",
                                 },
                                 body,
                             },
@@ -155,9 +152,10 @@ export function FoodItemForm({
                             );
                             return;
                         }
-                        if (!response.ok) {
+                        if (!response.ok || sessionFailureMessage(response)) {
                             setSaveError(
-                                "Food could not be saved. Check your access and session before retrying. Your unsaved input is retained.",
+                                sessionFailureMessage(response) ??
+                                    "Food could not be saved. Check your access and session before retrying. Your unsaved input is retained.",
                             );
                             return;
                         }

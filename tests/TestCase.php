@@ -13,6 +13,11 @@ abstract class TestCase extends BaseTestCase
             throw new \RuntimeException('Tests require uncached configuration and zek_catering_test on PostgreSQL port 5432.');
         }
 
+        $identity = $app['db']->selectOne('select current_database() as name, inet_server_port() as port');
+        if ($identity->name !== 'zek_catering_test' || (int) $identity->port !== 5432) {
+            throw new \RuntimeException('Tests refused an unexpected actual database connection.');
+        }
+
         return $app;
     }
 

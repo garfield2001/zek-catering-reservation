@@ -1,4 +1,5 @@
 import { useDialogForm } from "../../../components/ui/dialog-form-guard";
+import { csrfFetch, sessionFailureMessage } from "../../../lib/http";
 import { useForm } from "@inertiajs/react";
 import { toast } from "sonner";
 import { useRef, useState } from "react";
@@ -203,7 +204,7 @@ export function CompletePackageForm({
             setSaving(true);
             form.clearErrors();
             try {
-                const response = await fetch(
+                const response = await csrfFetch(
                     product
                         ? `/admin/packages/products/${product.id}/configuration`
                         : "/admin/packages/configurations",
@@ -213,15 +214,11 @@ export function CompletePackageForm({
                         headers: {
                             "Content-Type": "application/json",
                             Accept: "application/json",
-                            "X-CSRF-TOKEN":
-                                document.querySelector<HTMLMetaElement>(
-                                    'meta[name="csrf-token"]',
-                                )?.content ?? "",
                         },
                         body: JSON.stringify(payload(form.data)),
                     },
                 );
-                if (!response.ok) {
+                if (!response.ok || sessionFailureMessage(response)) {
                     if (response.status === 422) {
                         const result = await response.json();
                         form.setError(
@@ -236,11 +233,10 @@ export function CompletePackageForm({
                         );
                     }
                     setNotice(
-                        response.status === 403
-                            ? "Your account cannot perform this action. Ask an Administrator to review access."
-                            : response.status === 419
-                              ? "Your session expired. Keep a copy of your unsaved input before signing in again."
-                              : "Nothing was saved. Review the errors and correct the applicable step.",
+                        sessionFailureMessage(response) ??
+                            (response.status === 403
+                                ? "Your account cannot perform this action. Ask an Administrator to review access."
+                                : "Nothing was saved. Review the errors and correct the applicable step."),
                     );
                     setPublishConfirmation(false);
                     return;

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { csrfFetch, sessionFailureMessage } from "../../../lib/http";
 import { Button } from "../../../components/ui/button";
 import { packagePaths } from "../paths";
 import { formatPesos } from "../money";
@@ -52,7 +53,7 @@ export function PreviewBuilder({
         setPreview(null);
         setError("");
         try {
-            const response = await fetch(
+            const response = await csrfFetch(
                 packagePaths.version(product.id, version.id) + "/preview",
                 {
                     method: "POST",
@@ -60,14 +61,15 @@ export function PreviewBuilder({
                     headers: {
                         "Content-Type": "application/json",
                         Accept: "application/json",
-                        "X-CSRF-TOKEN":
-                            document.querySelector<HTMLMetaElement>(
-                                'meta[name="csrf-token"]',
-                            )?.content ?? "",
                     },
                     body: JSON.stringify({ quantity, groups: allocations }),
                 },
             );
+            const sessionError = sessionFailureMessage(response);
+            if (sessionError) {
+                setError(sessionError);
+                return;
+            }
             const result = await response.json();
             if (!response.ok) {
                 const messages = Object.values(result.errors ?? {}).flat();
