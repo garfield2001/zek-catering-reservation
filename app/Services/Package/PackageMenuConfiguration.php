@@ -18,6 +18,8 @@ class PackageMenuConfiguration
     {
         app(PackageFoodSizes::class)->validateDraft($version);
         app(PackageServingDefaults::class)->validateDraft($version);
+        $presentation = app(PackagePresentation::class);
+        $presentation->validate($version, $presentation->input($version), $version->foodItems()->pluck('dishes.id')->all());
         $version->load(['product.family', 'foodItems.category', 'requiredCategories']);
         if (! $version->product?->family?->behavior()->supportsPackageDrafts()) {
             return;

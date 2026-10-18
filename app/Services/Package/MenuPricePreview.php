@@ -23,6 +23,7 @@ class MenuPricePreview
         $menus = [];
         $servings = app(PackageServingDefaults::class);
         $servingDefault = $servings->effectiveDefault($version);
+        $presentation = app(PackagePresentation::class)->effective($version);
         foreach ($groups as $group) {
             $count = $group['quantity'] ?? null;
             if (! is_int($count) || $count < 1 || $count > $quantity - $allocated || ! is_array($group['selections']['food_items'] ?? null)) {
@@ -63,6 +64,7 @@ class MenuPricePreview
                         'line_amount_minor' => (string) $this->money->multiply($amount, $count)];
                 }
                 $contents[] = ['food_item_id' => $food->id, 'name' => $food->name,
+                    'presentation' => ($presentation['format'] ?? null) === 'separate_servings' ? ($presentation['food_overrides'][$food->id] ?? $presentation['default']) : null,
                     'size_choice' => $size,
                     ...$servings->resolve($servingDefault, $size, $food->pivot->getAttribute('included_quantity'), $food->pivot->getAttribute('included_unit')),
                     'purchased_units' => $count];
@@ -75,7 +77,7 @@ class MenuPricePreview
         }
 
         return ['package_version_id' => $version->id, 'status' => 'draft_preview',
-            'price_basis' => $version->price_basis, 'currency' => 'PHP', 'quantity' => $quantity,
+            'presentation' => $presentation, 'purchase_unit_label' => app(PackagePresentation::class)->purchaseUnit($version), 'price_basis' => $version->price_basis, 'currency' => 'PHP', 'quantity' => $quantity,
             'effective_quantity_rules' => $effective, 'groups' => $breakdown, 'total_minor' => (string) $total];
     }
 }

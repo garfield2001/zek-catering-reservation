@@ -8,6 +8,7 @@ use App\Services\Audit\AuditLogger;
 use App\Services\Catalog\MinorMoney;
 use App\Services\Package\PackageFoodSizes;
 use App\Services\Package\PackageMenuConfiguration;
+use App\Services\Package\PackagePresentation;
 use App\Services\Package\PackageServingDefaults;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -29,6 +30,10 @@ class SavePackageMenuConfiguration
             }
             $before = ['details' => $version->foodItems()->get()->mapWithKeys(fn ($dish) => [$dish->id => $dish->pivot->toArray()])->all(), 'food_items' => $version->foodItems()->pluck('dishes.id')->all(), 'required_categories' => $version->requiredCategories()->pluck('dish_categories.id')->all(), 'total_selection_count' => $version->total_selection_count];
             $details = $data['food_details'] ?? [];
+            $presentation = app(PackagePresentation::class);
+            $before['presentation'] = $presentation->snapshot($version);
+            $presentationInput = array_key_exists('presentation', $data) ? $data['presentation'] : $presentation->input($version);
+            $presentation->validate($version, $presentationInput, $data['food_item_ids']);
             $sizes = app(PackageFoodSizes::class);
             $beforeSizes = $sizes->snapshot($version);
             $sizeInput = $data['food_sizes'] ?? $sizes->input($version);
@@ -60,10 +65,11 @@ class SavePackageMenuConfiguration
             $version->forceFill(['total_selection_count' => $version->family->behavior_type === 'fixed_bundle' ? count($data['food_item_ids']) : (int) $data['total_selection_count']])->save();
             $sizes->clear($version);
             $this->configuration->replace($version, $data['food_item_ids'], $data['required_category_ids'], $details);
+            $presentation->save($version, $presentationInput);
             $sizes->replace($version, $normalizedSizes);
             $this->configuration->validateDraft($version->fresh());
             $version->increment('draft_revision');
-            $this->audit->record('package.menu_updated', $actor, $version, $before, ['details' => $details, 'serving_default' => $servings->snapshot($version), 'food_sizes' => $sizes->snapshot($version), 'food_items' => $data['food_item_ids'], 'required_categories' => $data['required_category_ids'], 'total_selection_count' => $version->total_selection_count]);
+            $this->audit->record('package.menu_updated', $actor, $version, $before, ['presentation' => $presentation->snapshot($version), 'details' => $details, 'serving_default' => $servings->snapshot($version), 'food_sizes' => $sizes->snapshot($version), 'food_items' => $data['food_item_ids'], 'required_categories' => $data['required_category_ids'], 'total_selection_count' => $version->total_selection_count]);
         });
     }
 }

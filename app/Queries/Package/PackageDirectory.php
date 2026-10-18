@@ -15,7 +15,8 @@ class PackageDirectory
         $canInspectDraft = Gate::allows('create', Product::class) || Gate::allows('publish', PackageVersion::class);
 
         return Product::where('family_id', $family->id)
-            ->with(['currentVersion:id,package_product_id,status,version_number,price_basis,base_price_minor,minimum_quantity,total_selection_count',
+            ->with(['currentVersion' => fn ($query) => $query->select('id', 'package_product_id', 'status', 'version_number', 'price_basis', 'base_price_minor', 'minimum_quantity', 'total_selection_count', 'package_format')
+                ->selectRaw("published_snapshot->'presentation'->'default'->'measurement_unit'->>'name' as presentation_unit_name"),
                 'versions' => fn ($query) => $query->where('status', 'draft')->when(! $canInspectDraft, fn ($query) => $query->whereRaw('1 = 0'))])
             ->when($filters['q'] ?? null, fn ($query, $search) => $query->where('name', 'ilike', '%'.addcslashes($search, '%_\\').'%'))
             ->when(($filters['status'] ?? '') === 'active', fn ($query) => $query->where('active', true)->whereNull('archived_at'))

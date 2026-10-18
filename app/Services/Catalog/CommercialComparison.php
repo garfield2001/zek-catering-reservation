@@ -49,6 +49,16 @@ class CommercialComparison
             $facts[$label] = (string) ($terms[$key] ?? 'Not configured');
         }
         $menu = $snapshot['menu'] ?? [];
+        $presentation = $snapshot['presentation'] ?? null;
+        if ($presentation !== null) {
+            $facts['Package Format'] = $presentation['format'] === 'combined_contents' ? 'Combined Contents' : 'Separate Food Servings';
+            $describe = fn (array $value): string => $value['quantity'].' '.$value['measurement_unit']['name'];
+            $facts['Package presentation'] = $presentation['default'] ? $describe($presentation['default']) : 'Not configured';
+            foreach ($presentation['food_overrides'] as $id => $value) {
+                $name = collect($menu['food_items'] ?? [])->firstWhere('id', $id)['name'] ?? 'Food #'.$id;
+                $facts['Presentation: '.$name] = $describe($value);
+            }
+        }
         $default = $menu['serving_default'] ?? null;
         $facts['Default serving'] = $default ? implode(' ', array_filter([$default['quantity'], $default['size_label'] ?? null, $default['measurement_unit']['name']])) : 'Not configured';
         $required = array_column($menu['required_categories'] ?? [], 'name');

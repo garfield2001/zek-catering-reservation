@@ -92,7 +92,8 @@ export function CollectionCreateForm({
                                 Sold by Package
                             </strong>
                             <span className="text-xs text-slate-500">
-                                Configurable sets, packed meals or fixed bundles
+                                Create complete packages with fixed or
+                                customer-selectable foods.
                             </span>
                         </span>
                     </label>
@@ -110,7 +111,8 @@ export function CollectionCreateForm({
                                 Sold Individually
                             </strong>
                             <span className="text-xs text-slate-500">
-                                Independently priced foods and sizes
+                                Sell individual foods with their own prices,
+                                quantities and optional sizes.
                             </span>
                         </span>
                     </label>

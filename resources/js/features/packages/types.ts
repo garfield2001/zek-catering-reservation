@@ -15,6 +15,8 @@ export type PackageProduct = {
     versions_count?: number;
 };
 export type PackageVersion = {
+    package_format?: "separate_servings" | "combined_contents" | null;
+    presentation_unit_name?: string | null;
     estimated_capacity?: number | null;
     id: number;
     package_product_id: number;
@@ -34,6 +36,28 @@ export type PackageVersion = {
 };
 export type PublishedPackageSnapshot = {
     schema: number;
+    presentation?: {
+        format: "separate_servings" | "combined_contents";
+        default: {
+            quantity: number;
+            measurement_unit: {
+                id: number;
+                name: string;
+                abbreviation: string;
+            };
+        } | null;
+        food_overrides: Record<
+            number,
+            {
+                quantity: number;
+                measurement_unit: {
+                    id: number;
+                    name: string;
+                    abbreviation: string;
+                };
+            }
+        >;
+    } | null;
     collection: {
         name: string;
         description: string | null;
@@ -171,6 +195,8 @@ export type AvailableServingOption = {
     offering_name: string;
 };
 export type Preview = {
+    presentation?: PublishedPackageSnapshot["presentation"];
+    purchase_unit_label?: string | null;
     status: "draft_preview";
     quantity: number;
     price_basis: string;

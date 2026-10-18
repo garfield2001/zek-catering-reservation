@@ -166,19 +166,34 @@ export function ListingForm({
                 className="grid gap-4 sm:grid-cols-2"
             >
                 <Field id="listing-unit" label="Sold per">
-                    <select
+                    <input
                         id="listing-unit"
+                        required
+                        maxLength={30}
+                        list="listing-unit-suggestions"
                         value={form.data.selling_unit}
                         onChange={(e) =>
                             form.setData("selling_unit", e.target.value)
                         }
-                    >
-                        {["item", "tray", "pack", "piece", "bottle", "kg"].map(
-                            (unit) => (
-                                <option key={unit}>{unit}</option>
-                            ),
-                        )}
-                    </select>
+                    />
+                    <datalist id="listing-unit-suggestions">
+                        {[
+                            "item",
+                            "tray",
+                            "box",
+                            "pack",
+                            "piece",
+                            "bottle",
+                            "kg",
+                        ].map((unit) => (
+                            <option key={unit} value={unit} />
+                        ))}
+                    </datalist>
+                    <p className="mt-1 text-xs text-slate-500">
+                        Choose or type the unit purchased, such as box or
+                        serving basket. Each option price is the full selling
+                        price for one unit.
+                    </p>
                 </Field>
                 <SellingOptionFields
                     value={form.data.selling_options}

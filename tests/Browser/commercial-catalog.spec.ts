@@ -186,8 +186,8 @@ test("grouped individual selling options publish, isolate revisions, restore his
     await expect(page.getByLabel("Item Name (optional override)")).toHaveValue(
         "",
     );
-    await page.getByLabel("Sold per", { exact: true }).selectOption("tray");
-    await page.getByLabel("Price per tray (PHP)").fill("1250.50");
+    await page.getByLabel("Sold per", { exact: true }).fill("box");
+    await page.getByLabel("Price per box (PHP)").fill("1250.50");
     await page.getByLabel("Option 1 name").fill("Small Tray");
     await page.getByRole("button", { name: "Add Selling Option" }).click();
     await page.getByLabel("Option 2 name").fill("Large Tray");
@@ -226,14 +226,14 @@ test("grouped individual selling options publish, isolate revisions, restore his
         fullPage: true,
     });
     await page.getByRole("button", { name: "Edit Item", exact: true }).click();
-    await page.getByLabel("Price per tray (PHP)").fill("1500.00");
+    await page.getByLabel("Price per box (PHP)").fill("1500.00");
     await page.getByLabel("Price for option 2 (PHP)").fill("1800");
     await page.getByRole("button", { name: "Save Item Draft" }).click();
-    await expect(page.getByText(/1,250.50 per tray/)).toBeVisible();
-    await expect(page.getByText(/1,750.00 per tray/)).toBeVisible();
+    await expect(page.getByText(/1,250.50 per box/)).toBeVisible();
+    await expect(page.getByText(/1,750.00 per box/)).toBeVisible();
     await page.getByRole("link", { name: "Preview Draft Changes" }).click();
-    await expect(page.getByText(/1,500.00 per tray/)).toBeVisible();
-    await expect(page.getByText(/1,800.00 per tray/)).toBeVisible();
+    await expect(page.getByText(/1,500.00 per box/)).toBeVisible();
+    await expect(page.getByText(/1,800.00 per box/)).toBeVisible();
     await page
         .getByRole("button", { name: "Publish Item", exact: true })
         .click();
@@ -257,14 +257,15 @@ test("grouped individual selling options publish, isolate revisions, restore his
     await page
         .getByRole("button", { name: "Create Draft from Version 1" })
         .click();
-    await expect(page.getByLabel("Price per tray (PHP)")).toHaveValue(
-        "1250.50",
+    await expect(page.getByLabel("Sold per", { exact: true })).toHaveValue(
+        "box",
     );
+    await expect(page.getByLabel("Price per box (PHP)")).toHaveValue("1250.50");
     await expect(page.getByLabel("Price for option 2 (PHP)")).toHaveValue(
         "1750.00",
     );
     await page.goto(itemUrl);
-    await expect(page.getByText(/1,500.00 per tray/)).toBeVisible();
+    await expect(page.getByText(/1,500.00 per box/)).toBeVisible();
     await page
         .getByRole("button", { name: "Disable Item", exact: true })
         .click();

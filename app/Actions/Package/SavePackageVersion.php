@@ -32,6 +32,9 @@ class SavePackageVersion
                 ? $this->money->fromPesos($data['base_price_pesos'], 'base_price_pesos')
                 : $this->money->parse($data['base_price_minor'], 'base_price_minor');
             $basis = $data['price_basis'] ?? $version->price_basis;
+            if ($version->package_format !== null && $data['selection_policy'] !== 'uniform') {
+                throw ValidationException::withMessages(['selection_policy' => 'This Package Format repeats one complete food combination across purchased units. Different meal groups are not supported.']);
+            }
             if ($family->behavior_type !== 'package' && $basis !== $family->behavior()->priceBasis()
                 || $family->behavior_type === 'package' && ! in_array($basis, ['per_set', 'per_pack'], true)) {
                 throw ValidationException::withMessages(['price_basis' => 'Choose a supported selling unit for this package.']);

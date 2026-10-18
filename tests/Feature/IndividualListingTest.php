@@ -54,6 +54,38 @@ class IndividualListingTest extends TestCase
         return IndividualListing::sole();
     }
 
+    public function test_configurable_selling_units_preserve_absolute_prices_and_publication_history(): void
+    {
+        $this->input['selling_unit'] = '  meal box  ';
+        $listing = $this->groupedListing();
+        $version = $listing->versions()->sole();
+        $this->assertSame('meal box', $version->selling_unit);
+        app(PublishListingVersion::class)->handle($this->admin, $listing, $version, 1);
+        $snapshot = $version->fresh()->snapshot();
+        $this->assertSame('meal box', $snapshot['selling_unit']);
+        $large = $version->sellingOptions()->where('label', 'Large Tray')->sole();
+        $this->assertSame('440000', app(ListingConfiguration::class)->preview($listing, $version, 4, $large->id)['total_minor']);
+        $draft = app(CloneListingDraft::class)->handle($this->admin, $listing, $version);
+        $this->assertSame('meal box', $draft->selling_unit);
+        $data = $this->input;
+        unset($data['creation_token']);
+        $this->put(route('listings.update', $listing), [...$data, 'selling_unit' => 'serving basket', 'version_id' => $draft->id, 'draft_revision' => 1])->assertSessionHasNoErrors();
+        $this->assertSame('serving basket', $draft->fresh()->selling_unit);
+        $this->assertSame($snapshot, $version->fresh()->snapshot());
+    }
+
+    public function test_invalid_selling_units_are_rejected_by_http_and_database(): void
+    {
+        foreach ([[], true, '', '   ', str_repeat('x', 31), "meal\nbox"] as $unit) {
+            $this->post(route('listings.store'), [...$this->input, 'selling_unit' => $unit])->assertSessionHasErrors('selling_unit');
+            $this->assertSame(0, IndividualListing::count());
+        }
+        $version = $this->createListing()->versions()->sole();
+        foreach (['', ' ', ' tray ', "meal\nbox"] as $unit) {
+            $this->rejectSql(fn () => DB::table('listing_versions')->where('id', $version->id)->update(['selling_unit' => $unit]));
+        }
+    }
+
     private function groupedListing(): IndividualListing
     {
         unset($this->input['price_pesos']);
@@ -324,6 +356,8 @@ class IndividualListingTest extends TestCase
         $this->actingAs($staff)->withSession(['access_version' => $staff->access_version]);
         $this->put(route('listings.update', $listing), $data)->assertSessionHasNoErrors();
         $this->put(route('listings.update', $listing), [...$data, 'draft_revision' => 2, 'price_pesos' => '1.00'])->assertForbidden();
+        $this->put(route('listings.update', $listing), [...$data, 'draft_revision' => 2, 'selling_unit' => 'meal box'])->assertForbidden();
+        $this->assertSame('tray', $version->fresh()->selling_unit);
         $this->post(route('listings.publish', [$listing, $version]), ['draft_revision' => 2, 'confirm' => true])->assertForbidden();
         $this->post(route('listings.availability', $listing), ['operation' => 'archive', 'confirm' => true])->assertForbidden();
         $this->assertSame('125050', $version->fresh()->price_minor);

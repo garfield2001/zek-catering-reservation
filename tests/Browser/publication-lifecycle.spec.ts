@@ -43,6 +43,11 @@ test("owner creates exact main menu, publishes immutable history, revises and ar
         await addFood(page, food, category);
     await page.goto("/admin/catering-packages");
     await createPackage(page, `Lifecycle package ${run}`);
+    await step(page, "Details");
+    await expect(page.getByLabel("What does the customer receive")).toHaveCount(
+        0,
+    );
+    await step(page, "Menu");
     await page.getByLabel("Total included food selections").fill("5");
     const beef = page.getByRole("group", { name: /^Beef / });
     await beef.getByRole("button", { name: "Select All", exact: true }).click();

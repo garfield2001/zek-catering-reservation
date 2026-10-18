@@ -46,7 +46,9 @@ test("canonical package navigation does not mix primary and add-on packages", as
     await inlineFood(page, "Bundle Food", "Scope Foods");
     await page.getByLabel("Bundle Food", { exact: true }).check();
     await step(page, "Pricing & Quantity");
-    await page.getByLabel("Price per package (PHP)").fill("4500.00");
+    await page
+        .getByLabel("Price per complete package set (PHP)")
+        .fill("4500.00");
     await savePackage(page);
     await page.goto("/admin/packages/products?scope=primary");
     await expect(page).toHaveURL(/\/admin\/catering-packages$/);

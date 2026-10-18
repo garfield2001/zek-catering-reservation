@@ -137,7 +137,7 @@ export function PackageDetails({
                     <ConfigurationSummary snapshot={data.snapshot} />
                     <Link
                         href={`/admin/packages/products/${productId}`}
-                        className="text-sm text-slate-600 underline"
+                        className="mr-4 inline-block text-sm text-slate-600 underline"
                     >
                         Publication & Version History
                     </Link>

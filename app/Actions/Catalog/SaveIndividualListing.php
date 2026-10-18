@@ -24,6 +24,7 @@ class SaveIndividualListing
     {
         return DB::transaction(function () use ($actor, $data, $listing) {
             Gate::forUser($actor->fresh())->authorize($listing ? 'update' : 'create', $listing ?? IndividualListing::class);
+            $data['selling_unit'] = $this->configuration->normalizeSellingUnit($data['selling_unit'] ?? null);
             $family = ProductFamily::lockForUpdate()->findOrFail($data['family_id']);
             abort_unless($family->behavior_type === 'direct_sale' && ! $family->archived_at, 404);
             $creating = ! $listing;

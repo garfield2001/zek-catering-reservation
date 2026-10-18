@@ -38,7 +38,7 @@ $identity = DB::selectOne('select current_database() as name, inet_server_port()
 if ($identity->name !== 'zek_catering_test' || (int) $identity->port !== 5432) {
     throw new RuntimeException('Unexpected actual database connection.');
 }
-$baseline = array_values(array_filter(glob(database_path('migrations/*.php')), fn ($path) => ! str_contains(basename($path), '000017_use_global_food_availability') && ! str_contains(basename($path), '000019_create_listing_selling_options')));
+$baseline = array_values(array_filter(glob(database_path('migrations/*.php')), fn ($path) => ! str_contains(basename($path), '000017_use_global_food_availability') && ! str_contains(basename($path), '000019_create_listing_selling_options') && ! str_contains(basename($path), '000021_allow_configurable_listing_units')));
 Artisan::call('migrate:fresh', ['--path' => $baseline, '--realpath' => true, '--force' => true]);
 Artisan::call('db:seed', ['--force' => true]);
 $admin = User::factory()->create();
@@ -99,10 +99,10 @@ if ($legacyListingVersion->fresh()->snapshot() !== $listingSnapshot || $listing-
 $draft = app(CloneListingDraft::class)->handle($admin, $listing, $legacyListingVersion);
 app(SaveIndividualListing::class)->handle($admin, [
     'family_id' => $saleFamily->id, 'dish_id' => $food->id, 'offering_option_id' => null, 'version_id' => $draft->id, 'draft_revision' => 1,
-    'name' => '', 'selling_unit' => 'tray', 'minimum_quantity' => 1, 'quantity_step' => 1, 'maximum_quantity' => null,
+    'name' => '', 'selling_unit' => 'serving basket', 'minimum_quantity' => 1, 'quantity_step' => 1, 'maximum_quantity' => null,
     'selling_options' => [['label' => 'Small Tray', 'price_pesos' => '650'], ['label' => 'Large Tray', 'price_pesos' => '1100']],
 ], $listing);
-if ($draft->sellingOptions()->count() !== 2 || $legacyListingVersion->fresh()->snapshot() !== $listingSnapshot) {
+if ($draft->fresh()->selling_unit !== 'serving basket' || $draft->sellingOptions()->count() !== 2 || $legacyListingVersion->fresh()->snapshot() !== $listingSnapshot) {
     throw new RuntimeException('Grouped Draft conversion did not preserve the legacy publication.');
 }
 if (Product::findOrFail($ids[4])->current_version_id !== $ids[5] || $version->fresh()->published_snapshot !== $snapshot

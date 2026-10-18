@@ -74,9 +74,16 @@ export function PackageCards({
                                         /{" "}
                                         {main
                                             ? "pax"
-                                            : version.price_basis === "per_pack"
-                                              ? "pack"
-                                              : "set"}
+                                            : version.package_format ===
+                                                "combined_contents"
+                                              ? `complete ${version.presentation_unit_name ?? "unit"}`
+                                              : version.package_format ===
+                                                  "separate_servings"
+                                                ? "complete package set"
+                                                : version.price_basis ===
+                                                    "per_pack"
+                                                  ? "pack"
+                                                  : "set"}
                                     </dd>
                                 </div>
                                 {main && (

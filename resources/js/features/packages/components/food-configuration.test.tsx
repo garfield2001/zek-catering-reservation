@@ -63,10 +63,10 @@ describe("contextual food configuration", () => {
             />,
         );
         expect(
-            screen.queryByLabelText("Included quantity of Roast (optional)"),
+            screen.queryByLabelText("Serving Override for Roast (optional)"),
         ).not.toBeInTheDocument();
         expect(
-            screen.queryByLabelText("Extra price for Roast (PHP)"),
+            screen.queryByLabelText("Additional Food Charge for Roast (PHP)"),
         ).not.toBeInTheDocument();
         expect(screen.getByText(/Fixed inclusion · Custom/)).toHaveTextContent(
             "Small tray",

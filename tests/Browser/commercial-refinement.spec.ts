@@ -141,7 +141,7 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
         await inlineFood(page, name, "Mixed Foods");
     await page.getByLabel("Total included food selections").fill("3");
     const defaults = page.getByRole("region", {
-        name: "Package default serving",
+        name: "Default Serving per Food",
         exact: true,
     });
     await defaults.getByLabel("Set an optional serving default").check();
@@ -211,9 +211,14 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
         .nth(1)
         .fill("200");
     await reviewResponsive(page, "mixed-package-editor");
+    await step(page, "Details");
+    await page.getByLabel("Container count", { exact: true }).fill("1");
+    await page
+        .getByRole("combobox", { name: "Presentation unit", exact: true })
+        .selectOption({ label: "Mixed Tray" });
     await step(page, "Pricing & Quantity");
-    await page.getByLabel("Price per package (PHP)").fill("1000");
-    await page.getByLabel("Minimum packages").fill("2");
+    await page.getByLabel("Price per complete package set (PHP)").fill("1000");
+    await page.getByLabel("Minimum complete package set units").fill("2");
     await savePackage(page);
     await page.reload();
     await page
@@ -221,6 +226,16 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
         .click();
     await step(page, "Menu");
     await expect(defaults.getByLabel("Amount per food")).toHaveValue("1.000");
+    await step(page, "Details");
+    await expect(
+        page.getByLabel("Container count", { exact: true }),
+    ).toHaveValue("1");
+    await expect(
+        page
+            .getByRole("combobox", { name: "Presentation unit", exact: true })
+            .locator("option:checked"),
+    ).toHaveText("Mixed Tray");
+    await step(page, "Menu");
     await expect(
         defaults.getByLabel("Size label (optional)", { exact: true }),
     ).toHaveValue("Medium");
@@ -240,7 +255,9 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
         page.getByLabel("Offer Size Choices for Mixed Vegetables"),
     ).not.toBeChecked();
     await step(page, "Pricing & Quantity");
-    await expect(page.getByLabel("Minimum packages")).toHaveValue("2");
+    await expect(
+        page.getByLabel("Minimum complete package set units"),
+    ).toHaveValue("2");
     await step(page, "Menu");
     await defaults.getByLabel("Amount per food").fill("2");
     await page

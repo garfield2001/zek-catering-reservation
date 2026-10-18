@@ -4,6 +4,7 @@ namespace App\Services\Catalog;
 
 use App\Models\PackageVersion;
 use App\Models\ProductFamily;
+use App\Services\Package\PackagePresentation;
 use Illuminate\Validation\ValidationException;
 
 class PackageQuantityRules
@@ -44,7 +45,8 @@ class PackageQuantityRules
         if ($quantity < $rules['minimum_quantity']
             || ($quantity - $rules['minimum_quantity']) % $rules['quantity_step'] !== 0
             || ($rules['maximum_quantity'] !== null && $quantity > $rules['maximum_quantity'])) {
-            $unit = $version->family->behavior()->quantityUnit();
+            $purchaseUnit = app(PackagePresentation::class)->purchaseUnit($version);
+            $unit = $purchaseUnit === null ? $version->family->behavior()->quantityUnit() : $purchaseUnit.' units';
             $maximum = $rules['maximum_quantity'] === null ? 'no maximum' : "maximum {$rules['maximum_quantity']} {$unit}";
             throw ValidationException::withMessages(['quantity' => "{$version->family->name} — {$version->product->name} requires a minimum of {$rules['minimum_quantity']} {$unit}, increments of {$rules['quantity_step']}, and {$maximum}."]);
         }

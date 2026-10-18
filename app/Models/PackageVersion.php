@@ -16,11 +16,12 @@ class PackageVersion extends Model
         'base_price_minor', 'currency', 'price_basis', 'selection_policy', 'minimum_quantity', 'quantity_step', 'maximum_quantity',
         'total_selection_count', 'estimated_capacity', 'subgroup_minimum', 'subgroup_step', 'subgroup_maximum', 'created_by',
         'default_serving_quantity', 'default_serving_unit_id', 'default_serving_size_label',
+        'package_format', 'presentation_quantity', 'presentation_unit_id',
         'cloned_from_id', 'published_snapshot', 'published_at', 'published_by', 'abandoned_at', 'abandoned_by'];
 
     protected function casts(): array
     {
-        return ['default_serving_quantity' => 'decimal:3', 'default_serving_unit_id' => 'integer', 'draft_revision' => 'integer', 'minimum_quantity' => 'integer',
+        return ['presentation_quantity' => 'integer', 'presentation_unit_id' => 'integer', 'default_serving_quantity' => 'decimal:3', 'default_serving_unit_id' => 'integer', 'draft_revision' => 'integer', 'minimum_quantity' => 'integer',
             'quantity_step' => 'integer', 'maximum_quantity' => 'integer', 'total_selection_count' => 'integer', 'estimated_capacity' => 'integer',
             'subgroup_minimum' => 'integer', 'subgroup_step' => 'integer', 'subgroup_maximum' => 'integer',
             'published_snapshot' => 'array', 'published_at' => 'immutable_datetime', 'abandoned_at' => 'immutable_datetime'];
@@ -77,7 +78,7 @@ class PackageVersion extends Model
     public function foodItems(): BelongsToMany
     {
         return $this->belongsToMany(Dish::class, 'package_version_food_items', 'package_version_id', 'dish_id')
-            ->withPivot('is_fixed', 'always_include', 'included_quantity', 'included_unit', 'price_adjustment_minor')->withTimestamps()->orderBy('dishes.id');
+            ->withPivot('is_fixed', 'always_include', 'included_quantity', 'included_unit', 'price_adjustment_minor', 'presentation_quantity', 'presentation_unit_id')->withTimestamps()->orderBy('dishes.id');
     }
 
     /** @return BelongsToMany<DishCategory, $this> */

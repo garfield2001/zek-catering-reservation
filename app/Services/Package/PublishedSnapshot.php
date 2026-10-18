@@ -27,7 +27,8 @@ class PublishedSnapshot
             ->pluck('is_fixed', 'dish_id');
 
         return [
-            'schema' => 4,
+            'schema' => 5,
+            'presentation' => app(PackagePresentation::class)->snapshot($version),
             'collection' => $version->family->only('id', 'code', 'name', 'description', 'behavior_type'),
             'product' => $product->only('id', 'code', 'name', 'description'),
             'package' => $product->only('id', 'code', 'name', 'description'),

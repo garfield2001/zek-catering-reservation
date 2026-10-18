@@ -6,6 +6,7 @@ use App\Models\PackageVersion;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Package\PackagePresentation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -56,6 +57,7 @@ class ClonePackageDraft
             foreach ($source->requiredCategories as $category) {
                 DB::table('package_version_required_categories')->insert(['package_version_id' => $draft->id, 'category_id' => $category->id, 'created_at' => now(), 'updated_at' => now()]);
             }
+            app(PackagePresentation::class)->save($draft, app(PackagePresentation::class)->input($source));
             foreach ($source->sizeGroups()->with('choices')->get() as $group) {
                 $copy = $draft->sizeGroups()->create($group->only('dish_id', 'measurement_unit_id'));
                 foreach ($group->choices as $choice) {

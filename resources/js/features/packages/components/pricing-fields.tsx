@@ -13,7 +13,9 @@ export function PricingFields({
     data,
     onChange,
     main,
-    configurable,
+    configurable: _configurable,
+    purchaseLabel,
+    legacySplit = false,
     disabled,
     sources = [],
 }: {
@@ -21,11 +23,19 @@ export function PricingFields({
     onChange: (values: Partial<PricingData>) => void;
     main: boolean;
     configurable: boolean;
+    purchaseLabel?: string;
+    legacySplit?: boolean;
     disabled: boolean;
     sources?: QuantitySource[];
 }) {
     const split = data.price_basis === "per_pack";
-    const unit = main ? "guests" : split ? "packs" : "packages";
+    const unit = main
+        ? "guests"
+        : purchaseLabel
+          ? `${purchaseLabel} units`
+          : split
+            ? "packs"
+            : "packages";
     const form = {
         data,
         errors: {} as Record<string, string>,
@@ -74,7 +84,7 @@ export function PricingFields({
                     </p>
                 </Field>
             )}
-            {configurable && (
+            {_configurable && legacySplit && (
                 <details>
                     <summary className="cursor-pointer text-sm text-emerald-800">
                         Packed meal settings (optional)
@@ -105,9 +115,11 @@ export function PricingFields({
                 label={
                     main
                         ? "Price per pax (PHP)"
-                        : split
-                          ? "Price per pack (PHP)"
-                          : "Price per package (PHP)"
+                        : purchaseLabel
+                          ? `Price per ${purchaseLabel} (PHP)`
+                          : split
+                            ? "Price per pack (PHP)"
+                            : "Price per package (PHP)"
                 }
                 error={form.errors.base_price_pesos}
             >
@@ -173,7 +185,7 @@ export function PricingFields({
             {!main && (
                 <Field
                     id="capacity"
-                    label={`Estimated people served per ${split ? "pack" : "package"} (optional)`}
+                    label={`Estimated people served per ${purchaseLabel ?? (split ? "pack" : "package")} (optional)`}
                     error={form.errors.estimated_capacity}
                 >
                     <input
@@ -191,7 +203,7 @@ export function PricingFields({
                     </p>
                 </Field>
             )}
-            {split && (
+            {split && legacySplit && (
                 <Field
                     id="package-selection"
                     label="Meal selections"

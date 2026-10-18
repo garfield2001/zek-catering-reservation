@@ -12,18 +12,28 @@ export function ServingDefaultFields({
     units,
     onChange,
     onUnitCreated,
+    secondary = false,
 }: {
     value: ServingDefault | null;
     units: MeasurementUnit[];
     onChange: (value: ServingDefault | null) => void;
     onUnitCreated?: (unit: MeasurementUnit) => void;
+    secondary?: boolean;
 }) {
+    const Container = secondary ? "details" : "section";
     return (
-        <section
+        <Container
             className="my-4 space-y-3 rounded-xl border p-4"
-            aria-label="Package default serving"
+            aria-label="Default Serving per Food"
         >
-            <h3 className="font-semibold">Package default serving</h3>
+            {secondary ? (
+                <summary className="cursor-pointer font-semibold">
+                    Optional food portions: Default Serving per Food
+                    {value ? " (configured)" : ""}
+                </summary>
+            ) : (
+                <h3 className="font-semibold">Default Serving per Food</h3>
+            )}
             <p className="text-sm text-slate-600">
                 Applies to each food without a custom serving. Changing this
                 default keeps food-specific overrides unchanged. This is not the
@@ -109,6 +119,6 @@ export function ServingDefaultFields({
                     }}
                 />
             )}
-        </section>
+        </Container>
     );
 }

@@ -101,22 +101,43 @@ test("dynamic packed service opens its workspace and creates a service-scoped pa
     await page.getByLabel("Total included food selections").fill("2");
     await page.getByLabel("Packed Rice", { exact: true }).check();
     await page.getByLabel("Packed Chicken", { exact: true }).check();
-    await step(page, "Pricing & Quantity");
+    await step(page, "Details");
     await page
-        .getByText("Packed meal settings (optional)", { exact: true })
+        .getByLabel("What does the customer receive")
+        .selectOption("combined_contents");
+    await page.getByLabel("Container count", { exact: true }).fill("1");
+    await page
+        .getByRole("button", {
+            name: "Create New Measurement Unit",
+            exact: true,
+        })
         .click();
-    await page.getByLabel("Sell each purchased unit as a packed meal").check();
-    await page.getByLabel("Price per pack (PHP)").fill("125.50");
-    await page.getByLabel("Minimum packs").fill("10");
-    await page.getByLabel("Meal selections").selectOption("split");
+    const unitDialog = page.getByRole("dialog", {
+        name: "Create Measurement Unit",
+        exact: true,
+    });
+    await unitDialog.getByLabel("Unit name").fill("Meal Box");
+    await unitDialog.getByLabel("Abbreviation").fill("meal-box");
+    await unitDialog
+        .getByRole("button", { name: "Create Measurement Unit", exact: true })
+        .click();
+    await expect(unitDialog).not.toBeVisible();
+    await step(page, "Pricing & Quantity");
+    await page.getByLabel("Price per complete Meal Box (PHP)").fill("125.50");
+    await page.getByLabel("Minimum complete Meal Box units").fill("10");
+    await expect(page.getByLabel("Meal selections")).toHaveCount(0);
     await savePackage(page);
     await page
         .getByRole("button", { name: "Edit Package", exact: true })
         .click();
     await step(page, "Pricing & Quantity");
-    await expect(page.getByLabel("Price per pack (PHP)")).toHaveValue("125.50");
-    await expect(page.getByLabel("Minimum packs")).toHaveValue("10");
-    await expect(page.getByLabel("Meal selections")).toHaveValue("split");
+    await expect(
+        page.getByLabel("Price per complete Meal Box (PHP)"),
+    ).toHaveValue("125.50");
+    await expect(
+        page.getByLabel("Minimum complete Meal Box units"),
+    ).toHaveValue("10");
+    await expect(page.getByLabel("Meal selections")).toHaveCount(0);
     await page.screenshot({
         path: "test-results/packed-service-package.png",
         fullPage: true,
@@ -154,22 +175,26 @@ test("Bellychon configurable package uses shared choices, optional kilograms and
         .getByLabel("Require at least one")
         .check();
     await page
-        .getByText("Quantity & preparation details for Lechon Belly", {
+        .getByText("Serving & Additional Pricing for Lechon Belly", {
             exact: true,
         })
         .click();
     await page
-        .getByLabel("Included quantity of Lechon Belly (optional)")
+        .getByLabel("Serving Override for Lechon Belly (optional)")
         .fill("3");
     await page.getByLabel("Measurement for Lechon Belly").selectOption("kg");
     await expect(page.getByLabel("Menu summary")).toContainText(
         "Fixed inclusions: Lechon Belly",
     );
     await step(page, "Pricing & Quantity");
-    await page.getByLabel("Price per package (PHP)").fill("4500.00");
-    await page.getByLabel("Minimum packages").fill("1");
     await page
-        .getByLabel("Estimated people served per package (optional)")
+        .getByLabel("Price per complete package set (PHP)")
+        .fill("4500.00");
+    await page.getByLabel("Minimum complete package set units").fill("1");
+    await page
+        .getByLabel(
+            "Estimated people served per complete package set (optional)",
+        )
         .fill("15");
     await step(page, "Review & Publish");
     await page
@@ -226,7 +251,9 @@ test("fixed bundles use only included foods without customer-choice controls", a
         .getByLabel("Always include Cheese Sandwich", { exact: true })
         .check();
     await step(page, "Pricing & Quantity");
-    await page.getByLabel("Price per package (PHP)").fill("120.00");
+    await page
+        .getByLabel("Price per complete package set (PHP)")
+        .fill("120.00");
     await step(page, "Review & Publish");
     await page
         .getByRole("link", { name: "Review & Publish", exact: true })

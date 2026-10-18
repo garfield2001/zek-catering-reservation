@@ -4,6 +4,8 @@ Status: implementation and current-source browser verification complete; final b
 
 ## Checkpoint and inspection
 
+The subsequent add-on Package Format milestone starts from committed `18891b6` and is tracked separately in [20-addon-package-formats.md](20-addon-package-formats.md). This completed milestone's historical results do not certify that later work.
+
 Started from clean commit `7047d26`. Read-only development inspection confirmed `zek_reservation:5432`, all 15 migrations, 1 user, 21 foods, 29 eligibility records, 2 products and 2 versions. No offerings, serving options, selection groups or individual listings currently exist there. No development changes were performed. Inspection script uses a read-only transaction and outputs no credentials.
 
 ## Approved rules

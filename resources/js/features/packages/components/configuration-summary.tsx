@@ -7,6 +7,12 @@ export function ConfigurationSummary({
     snapshot: PublishedPackageSnapshot;
 }) {
     const rules = snapshot.version;
+    const presentation = snapshot.presentation;
+    const purchaseLabel = presentation
+        ? presentation.format === "combined_contents"
+            ? `per complete ${presentation.default?.measurement_unit.name ?? "container"}`
+            : "per complete package set"
+        : rules.price_basis.replaceAll("_", " ");
     return (
         <div className="space-y-5 text-sm">
             <section className="rounded-xl border border-stone-200 bg-white p-5">
@@ -19,7 +25,7 @@ export function ConfigurationSummary({
                 )}
                 <p>
                     Base Price: {formatPesos(rules.base_price_minor)}{" "}
-                    {rules.price_basis.replaceAll("_", " ")}
+                    {purchaseLabel}
                 </p>
                 <p>
                     Quantity: minimum {rules.minimum_quantity}, increments of{" "}
@@ -41,6 +47,53 @@ export function ConfigurationSummary({
                         : "Same menu for everyone"}
                 </p>
             </section>
+            {snapshot.collection.behavior_type !== "main_package" && (
+                <section
+                    className="rounded-xl border bg-white p-5"
+                    aria-label="Published Package Format"
+                >
+                    <h3 className="font-semibold">Package Format</h3>
+                    {!presentation ? (
+                        <p>
+                            Not recorded in this legacy publication. No
+                            presentation facts are inferred.
+                        </p>
+                    ) : (
+                        <>
+                            <p>
+                                {presentation.format === "combined_contents"
+                                    ? `Combined Contents: every complete ${presentation.default?.measurement_unit.name} contains the configured food combination. Minimum purchase: ${rules.minimum_quantity} complete units, not separate containers for each food.`
+                                    : "Separate Food Servings: each included or selected food is provided separately."}
+                            </p>
+                            {presentation.default && (
+                                <p>
+                                    {presentation.format === "combined_contents"
+                                        ? "Per complete purchased unit"
+                                        : "Default presentation per selected food"}
+                                    : {presentation.default.quantity}{" "}
+                                    {presentation.default.measurement_unit.name}
+                                    .
+                                </p>
+                            )}
+                            {Object.entries(presentation.food_overrides).map(
+                                ([id, value]) => (
+                                    <p key={id}>
+                                        {snapshot.menu?.food_items.find(
+                                            (food) => food.id === Number(id),
+                                        )?.name ?? `Food #${id}`}
+                                        : {value.quantity}{" "}
+                                        {value.measurement_unit.name}.
+                                    </p>
+                                ),
+                            )}
+                            <p>
+                                Serving amounts and size upgrades do not change
+                                container counts.
+                            </p>
+                        </>
+                    )}
+                </section>
+            )}
             {snapshot.menu && (
                 <section className="rounded-xl border bg-white p-5">
                     <h3 className="font-semibold">

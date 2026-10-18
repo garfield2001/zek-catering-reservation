@@ -18,6 +18,14 @@ import { PricingFields } from "./pricing-fields";
 import { minorToPesoInput } from "../money";
 import type { FoodSizes } from "./food-size-fields";
 import { FoodConfiguration } from "./food-configuration";
+import { PresentationReview } from "./presentation-review";
+import {
+    PackagePresentationFields,
+    FoodPresentationFields,
+    purchasedUnit,
+    separatePresentation,
+    type PackagePresentationInput,
+} from "./package-presentation-fields";
 import type { MeasurementUnit } from "../../catalog/components/measurement-unit-form";
 import {
     ServingDefaultFields,
@@ -38,6 +46,7 @@ export type PackageEditorProps = {
     measurementUnits: MeasurementUnit[];
     foodSizes: FoodSizes;
     servingDefault: ServingDefault | null;
+    presentation?: PackagePresentationInput | null;
 };
 const steps = ["Details", "Menu", "Pricing & Quantity", "Review & Save"];
 export function CompletePackageForm({
@@ -54,6 +63,7 @@ export function CompletePackageForm({
     measurementUnits: initialMeasurementUnits,
     foodSizes,
     servingDefault,
+    presentation,
     onSaved,
     initialStep = 0,
 }: PackageEditorProps & {
@@ -78,6 +88,9 @@ export function CompletePackageForm({
         ...initialMenu(version),
         food_sizes: foodSizes,
         serving_default: servingDefault,
+        presentation: main
+            ? null
+            : (presentation ?? (version ? null : separatePresentation())),
         name: product?.name ?? "",
         description: product?.description ?? "",
         active: product?.active ?? true,
@@ -144,6 +157,18 @@ export function CompletePackageForm({
         if (processing) return;
         const payload = (data: typeof form.data) => ({
             ...data,
+            presentation: data.presentation
+                ? {
+                      ...data.presentation,
+                      food_overrides: Object.fromEntries(
+                          Object.entries(
+                              data.presentation.food_overrides,
+                          ).filter(([id]) =>
+                              data.food_item_ids.includes(Number(id)),
+                          ),
+                      ),
+                  }
+                : null,
             save_action: publish ? "publish" : "draft",
             ...(publish ? { confirm_publication: true } : {}),
             food_sizes: Object.fromEntries(
@@ -350,10 +375,35 @@ export function CompletePackageForm({
                                     }
                                 />
                             </Field>
+                            {!main && (
+                                <PackagePresentationFields
+                                    value={form.data.presentation}
+                                    onChange={(value) =>
+                                        form.setData("presentation", value)
+                                    }
+                                    units={measurementUnits}
+                                    onUnitCreated={addUnit}
+                                    legacySplit={
+                                        form.data.selection_policy === "split"
+                                    }
+                                />
+                            )}
                         </section>
                     )}
                     {step === 1 && !main && (
+                        <p className="mb-3 text-sm text-slate-600">
+                            {form.data.presentation?.format ===
+                            "combined_contents"
+                                ? "These foods are components of each complete purchased container. Individual portions are optional; do not assign a pack to every food."
+                                : "Each selected food is provided separately. Serving measurements and presentation containers are independent."}
+                        </p>
+                    )}
+                    {step === 1 && !main && (
                         <ServingDefaultFields
+                            secondary={
+                                form.data.presentation?.format ===
+                                "combined_contents"
+                            }
                             onUnitCreated={addUnit}
                             value={form.data.serving_default}
                             units={measurementUnits}
@@ -378,41 +428,54 @@ export function CompletePackageForm({
                             packed={form.data.price_basis === "per_pack"}
                             canPrice={canPrice}
                             renderFoodConfiguration={(food, fixed) => (
-                                <FoodConfiguration
-                                    food={food}
-                                    fixed={fixed}
-                                    bundle={bundle}
-                                    packed={
-                                        form.data.price_basis === "per_pack"
-                                    }
-                                    detail={
-                                        form.data.food_details[food.id] ??
-                                        emptyFoodDetail()
-                                    }
-                                    sizes={form.data.food_sizes[food.id]}
-                                    servingDefault={form.data.serving_default}
-                                    units={measurementUnits}
-                                    canPrice={canPrice}
-                                    onUnitCreated={addUnit}
-                                    onChange={(detail, sizes) =>
-                                        form.setData((current) => {
-                                            const foodSizes = {
-                                                ...current.food_sizes,
-                                            };
-                                            if (sizes)
-                                                foodSizes[food.id] = sizes;
-                                            else delete foodSizes[food.id];
-                                            return {
-                                                ...current,
-                                                food_details: {
-                                                    ...current.food_details,
-                                                    [food.id]: detail,
-                                                },
-                                                food_sizes: foodSizes,
-                                            };
-                                        })
-                                    }
-                                />
+                                <>
+                                    <FoodConfiguration
+                                        food={food}
+                                        fixed={fixed}
+                                        bundle={bundle}
+                                        packed={
+                                            form.data.price_basis === "per_pack"
+                                        }
+                                        detail={
+                                            form.data.food_details[food.id] ??
+                                            emptyFoodDetail()
+                                        }
+                                        sizes={form.data.food_sizes[food.id]}
+                                        servingDefault={
+                                            form.data.serving_default
+                                        }
+                                        units={measurementUnits}
+                                        canPrice={canPrice}
+                                        onUnitCreated={addUnit}
+                                        onChange={(detail, sizes) =>
+                                            form.setData((current) => {
+                                                const foodSizes = {
+                                                    ...current.food_sizes,
+                                                };
+                                                if (sizes)
+                                                    foodSizes[food.id] = sizes;
+                                                else delete foodSizes[food.id];
+                                                return {
+                                                    ...current,
+                                                    food_details: {
+                                                        ...current.food_details,
+                                                        [food.id]: detail,
+                                                    },
+                                                    food_sizes: foodSizes,
+                                                };
+                                            })
+                                        }
+                                    />
+                                    <FoodPresentationFields
+                                        food={food}
+                                        value={form.data.presentation}
+                                        units={measurementUnits}
+                                        onUnitCreated={addUnit}
+                                        onChange={(value) =>
+                                            form.setData("presentation", value)
+                                        }
+                                    />
+                                </>
                             )}
                             onAddFood={
                                 canCreateFood
@@ -433,6 +496,18 @@ export function CompletePackageForm({
                             }
                             main={main}
                             configurable={family.behavior_type === "package"}
+                            purchaseLabel={
+                                !main && form.data.presentation
+                                    ? purchasedUnit(
+                                          form.data.presentation,
+                                          measurementUnits,
+                                      )
+                                    : undefined
+                            }
+                            legacySplit={
+                                version?.selection_policy === "split" &&
+                                !form.data.presentation
+                            }
                             disabled={!canPrice}
                         />
                     )}
@@ -448,13 +523,28 @@ export function CompletePackageForm({
                                 {form.data.name || "Package name needed"}
                             </h3>
                             <p>{form.data.description}</p>
+                            {!main && (
+                                <p>
+                                    {form.data.presentation
+                                        ? form.data.presentation.format ===
+                                          "combined_contents"
+                                            ? `Every ${purchasedUnit(form.data.presentation, measurementUnits)} contains the configured combination of ${summary.total} distinct foods. Purchase quantity repeats the complete container, not each food separately.`
+                                            : `Includes ${summary.total} distinct foods provided as separate servings per complete package set.`
+                                        : "Legacy Package Format was not recorded; no packaging facts are inferred."}
+                                </p>
+                            )}
                             <p>
                                 PHP {form.data.base_price_pesos || "—"} per{" "}
                                 {main
                                     ? "pax"
-                                    : form.data.price_basis === "per_pack"
-                                      ? "pack"
-                                      : "package"}
+                                    : form.data.presentation
+                                      ? purchasedUnit(
+                                            form.data.presentation,
+                                            measurementUnits,
+                                        )
+                                      : form.data.price_basis === "per_pack"
+                                        ? "pack"
+                                        : "package"}
                                 . Minimum {form.data.minimum_quantity};
                                 increment {form.data.quantity_step}; maximum{" "}
                                 {form.data.maximum_quantity || "not set"}.
@@ -508,6 +598,16 @@ export function CompletePackageForm({
                                     . Foods with custom servings keep their
                                     overrides.
                                 </p>
+                            )}
+                            {!main && (
+                                <PresentationReview
+                                    presentation={form.data.presentation}
+                                    foods={summary.allowed}
+                                    details={form.data.food_details}
+                                    sizes={form.data.food_sizes}
+                                    servingDefault={form.data.serving_default}
+                                    units={measurementUnits}
+                                />
                             )}
                             {!main &&
                                 summary.allowed.some(

@@ -5,10 +5,24 @@ namespace App\Services\Catalog;
 use App\Models\DishCategory;
 use App\Models\IndividualListing;
 use App\Models\ListingVersion;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class ListingConfiguration
 {
+    public static function sellingUnitRules(): array
+    {
+        return ['required', 'string', 'max:30', 'regex:/^[^\x00-\x1F\x7F]+$/u'];
+    }
+
+    public function normalizeSellingUnit(mixed $value): string
+    {
+        $unit = is_string($value) ? trim($value) : $value;
+        Validator::make(['selling_unit' => $unit], ['selling_unit' => self::sellingUnitRules()])->validate();
+
+        return $unit;
+    }
+
     public function __construct(private CatalogAvailability $catalog, private MinorMoney $money) {}
 
     public function sourceAvailable(IndividualListing $listing): bool

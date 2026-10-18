@@ -23,7 +23,9 @@ class DeactivationImpact
             $messages = ['Disabling this unit prevents its use in new or edited serving configurations. Existing Published Version measurements and prices remain frozen. Re-enable the unit before saving a Draft that still uses it.'];
             if (Gate::allows('viewAny', Product::class) && (Gate::allows('create', Product::class) || Gate::allows('publish', PackageVersion::class))) {
                 $usage = PackageVersion::with('product')->where('status', 'draft')
-                    ->where(fn ($q) => $q->where('default_serving_unit_id', $record->id)->orWhereHas('sizeGroups', fn ($sizes) => $sizes->where('measurement_unit_id', $record->id)))
+                    ->where(fn ($q) => $q->where('default_serving_unit_id', $record->id)->orWhere('presentation_unit_id', $record->id)
+                        ->orWhereHas('foodItems', fn ($foods) => $foods->where('package_version_food_items.presentation_unit_id', $record->id))
+                        ->orWhereHas('sizeGroups', fn ($sizes) => $sizes->where('measurement_unit_id', $record->id)))
                     ->get()->map(fn ($version) => ['kind' => 'package', 'version_id' => $version->id, 'name' => $version->product->name,
                         'status' => $version->status, 'url' => '/admin/packages/products/'.$version->package_product_id])->all();
             }

@@ -9,6 +9,7 @@ use App\Models\PackageVersion;
 use App\Models\Product;
 use App\Models\ProductFamily;
 use App\Services\Package\PackageFoodSizes;
+use App\Services\Package\PackagePresentation;
 use App\Services\Package\PackageServingDefaults;
 use Illuminate\Support\Facades\Gate;
 
@@ -32,6 +33,7 @@ class PackageEditor
         return ['family' => $family, 'product' => $product, 'version' => $version,
             'measurementUnits' => MeasurementUnit::where('active', true)->orderBy('name')->get(['id', 'name', 'abbreviation', 'active']),
             'servingDefault' => $version ? app(PackageServingDefaults::class)->input($version) : null,
+            'presentation' => $version ? app(PackagePresentation::class)->input($version) : null,
             'foodSizes' => $version ? app(PackageFoodSizes::class)->input($version) : (object) [],
             'canPrice' => Gate::allows('price', PackageVersion::class),
             'canPublish' => Gate::allows('publish', PackageVersion::class),
