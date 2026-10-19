@@ -8,6 +8,8 @@ The [Milestone A UI modernization report](docs/17-milestone-a-ui-modernization.m
 
 ## Historical phase references
 
+The [Phase 2 maintainability review](docs/22-maintainability-review.md) records the current reliability follow-up's code-quality changes, intentional size exceptions, verification and owner-testing scope. Its phase numbering belongs to the Application Reliability milestone, not the original catalog implementation phases below.
+
 1. [Architecture and approved rules](docs/01-architecture.md)
 2. [Acceptance criteria](docs/02-acceptance-cases.md)
 3. [Code organization](docs/03-code-organization.md)

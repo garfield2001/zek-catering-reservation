@@ -1,203 +1,24 @@
-import { useDialogForm } from "../../../components/ui/dialog-form-guard";
+import { useId } from "react";
 import { DeactivationImpact } from "./deactivation-impact";
-import { useForm, usePage } from "@inertiajs/react";
-import { useState, useId } from "react";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
-import type { FoodCategory, FoodItem, Collection } from "../types";
-import type { SharedProps } from "../../../types";
 import { ImageUploadField } from "./image-upload-field";
-import { catalogPaths } from "../paths";
-import { csrfFetch, sessionFailureMessage } from "../../../lib/http";
-export function FoodItemForm({
-    dish,
-    categories,
-    workspace = false,
-    onSaved,
-    returnProductId,
-    initialCategoryId,
-    editorFamilyId,
-    onCreated,
-    onPersisted,
-}: {
-    dish: FoodItem | null;
-    categories: FoodCategory[];
-    families?: Collection[];
-    workspace?: boolean;
-    returnProductId?: number;
-    initialCategoryId?: number;
-    editorFamilyId?: number;
-    onSaved?: () => void;
-    onCreated?: (food: FoodItem & { category: FoodCategory }) => void;
-    onPersisted?: (food: FoodItem & { category: FoodCategory }) => void;
-}) {
-    const { auth } = usePage<SharedProps>().props;
-    const canCreateCategory =
-        auth?.permissions.includes("catalog.manage") ?? false;
-    const [newCategory, setNewCategory] = useState(false);
-    const [imageRevision, setImageRevision] = useState(0);
-    const [saving, setSaving] = useState(false);
-    const [saveError, setSaveError] = useState("");
+import { useFoodItemForm, type FoodItemFormProps } from "../use-food-item-form";
+export function FoodItemForm(props: FoodItemFormProps) {
+    const { dish, categories, returnProductId, editorFamilyId } = props;
+    const {
+        form,
+        newCategory,
+        setNewCategory,
+        imageRevision,
+        processing,
+        saveError,
+        canCreateCategory,
+        submit,
+    } = useFoodItemForm(props);
     const prefix = useId();
-    const form = useForm({
-        image: null as File | null,
-        remove_image: false,
-        name: dish?.name ?? "",
-        description: dish?.description ?? "",
-        category_id:
-            dish?.category_id ??
-            initialCategoryId ??
-            categories.find((c) => c.active)?.id ??
-            0,
-        new_category_name: "",
-        active: dish?.active ?? true,
-        workspace,
-        return_product_id: returnProductId,
-        return_to_editor: !!editorFamilyId,
-        editor_family_id: editorFamilyId,
-    });
-    const processing = form.processing || saving;
-    useDialogForm(form.isDirty, processing);
     return (
-        <form
-            className="space-y-5"
-            onSubmit={async (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                if (processing) return;
-                const another =
-                    (event.nativeEvent as SubmitEvent).submitter?.getAttribute(
-                        "value",
-                    ) === "another";
-                const afterSave = (page: {
-                    props: Record<string, unknown>;
-                }) => {
-                    if (another && !dish) {
-                        const available = page.props.categories as
-                            FoodCategory[] | undefined;
-                        const category = newCategory
-                            ? available?.find(
-                                  (item) =>
-                                      item.name.toLocaleLowerCase() ===
-                                      form.data.new_category_name
-                                          .trim()
-                                          .toLocaleLowerCase(),
-                              )?.id
-                            : form.data.category_id;
-                        const reset = {
-                            ...form.data,
-                            name: "",
-                            description: "",
-                            image: null,
-                            remove_image: false,
-                            new_category_name: "",
-                            category_id: category ?? form.data.category_id,
-                        };
-                        form.setData(reset);
-                        form.setDefaults(reset);
-                        form.clearErrors();
-                        setNewCategory(false);
-                        setImageRevision((value) => value + 1);
-                    } else onSaved?.();
-                };
-                if (onPersisted || (onCreated && !dish)) {
-                    setSaving(true);
-                    setSaveError("");
-                    form.clearErrors();
-                    const body = new FormData();
-                    if (dish) body.append("_method", "put");
-                    for (const [key, value] of Object.entries({
-                        ...form.data,
-                        category_id: newCategory ? null : form.data.category_id,
-                        new_category_name: newCategory
-                            ? form.data.new_category_name
-                            : null,
-                    })) {
-                        if (value instanceof File) body.append(key, value);
-                        else if (value !== null && value !== undefined)
-                            body.append(
-                                key,
-                                typeof value === "boolean"
-                                    ? value
-                                        ? "1"
-                                        : "0"
-                                    : String(value),
-                            );
-                    }
-                    try {
-                        const response = await csrfFetch(
-                            dish
-                                ? `${catalogPaths.dishes}/${dish.id}`
-                                : catalogPaths.dishes,
-                            {
-                                method: "POST",
-                                credentials: "same-origin",
-                                headers: {
-                                    Accept: "application/json",
-                                },
-                                body,
-                            },
-                        );
-                        if (response.status === 422) {
-                            const result = await response.json();
-                            form.setError(
-                                Object.fromEntries(
-                                    Object.entries(result.errors ?? {}).map(
-                                        ([key, errors]) => [
-                                            key,
-                                            (errors as string[]).join(" "),
-                                        ],
-                                    ),
-                                ),
-                            );
-                            return;
-                        }
-                        if (!response.ok || sessionFailureMessage(response)) {
-                            setSaveError(
-                                sessionFailureMessage(response) ??
-                                    "Food could not be saved. Check your access and session before retrying. Your unsaved input is retained.",
-                            );
-                            return;
-                        }
-                        const result = await response.json();
-                        (onPersisted ?? onCreated)?.(result.food);
-                        afterSave({
-                            props: {
-                                categories: [
-                                    ...categories,
-                                    result.food.category,
-                                ],
-                            },
-                        });
-                    } catch {
-                        setSaveError(
-                            "Could not confirm the save. Check the connection before retrying.",
-                        );
-                    } finally {
-                        setSaving(false);
-                    }
-                    return;
-                }
-                form.transform((data) => ({
-                    ...data,
-                    _method: dish ? "put" : "post",
-                    category_id: newCategory ? null : data.category_id,
-                    new_category_name: newCategory
-                        ? data.new_category_name
-                        : null,
-                }));
-                if (dish)
-                    form.post(catalogPaths.dish(dish.id), {
-                        forceFormData: true,
-                        onSuccess: afterSave,
-                    });
-                else
-                    form.post(catalogPaths.dishes, {
-                        forceFormData: true,
-                        onSuccess: afterSave,
-                    });
-            }}
-        >
+        <form className="space-y-5" onSubmit={submit}>
             {saveError && (
                 <p role="alert" className="text-sm text-red-700">
                     {saveError}

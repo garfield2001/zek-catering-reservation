@@ -1,3 +1,4 @@
+import { validationErrors } from "../../../lib/validation-errors";
 import { useDialogForm } from "../../../components/ui/dialog-form-guard";
 import { csrfFetch, sessionFailureMessage } from "../../../lib/http";
 import { useForm } from "@inertiajs/react";
@@ -19,7 +20,11 @@ import { PricingFields } from "./pricing-fields";
 import { minorToPesoInput } from "../money";
 import type { FoodSizes } from "./food-size-fields";
 import { FoodConfiguration } from "./food-configuration";
-import { PresentationReview } from "./presentation-review";
+import { PackageReview } from "./package-review";
+import {
+    preparePackagePayload,
+    type PackageFormData,
+} from "../package-form-data";
 import {
     PackagePresentationFields,
     FoodPresentationFields,
@@ -85,7 +90,7 @@ export function CompletePackageForm({
         : undefined;
     const main = family.behavior_type === "main_package",
         bundle = family.behavior_type === "fixed_bundle";
-    const form = useForm({
+    const form = useForm<PackageFormData>({
         ...initialMenu(version),
         food_sizes: foodSizes,
         serving_default: servingDefault,
@@ -156,50 +161,8 @@ export function CompletePackageForm({
     };
     const save = async (publish = false) => {
         if (processing) return;
-        const payload = (data: typeof form.data) => ({
-            ...data,
-            presentation: data.presentation
-                ? {
-                      ...data.presentation,
-                      food_overrides: Object.fromEntries(
-                          Object.entries(
-                              data.presentation.food_overrides,
-                          ).filter(([id]) =>
-                              data.food_item_ids.includes(Number(id)),
-                          ),
-                      ),
-                  }
-                : null,
-            save_action: publish ? "publish" : "draft",
-            ...(publish ? { confirm_publication: true } : {}),
-            food_sizes: Object.fromEntries(
-                Object.entries(data.food_sizes).filter(([id]) =>
-                    data.food_item_ids.includes(Number(id)),
-                ),
-            ),
-            total_selection_count: bundle
-                ? data.food_item_ids.length
-                : data.total_selection_count,
-            required_category_ids: bundle ? [] : data.required_category_ids,
-            maximum_quantity: data.maximum_quantity || null,
-            estimated_capacity: data.estimated_capacity || null,
-            food_details: Object.fromEntries(
-                data.food_item_ids.map((id) => {
-                    const detail = data.food_details[id] ?? emptyFoodDetail();
-                    return [
-                        id,
-                        main
-                            ? { is_fixed: detail.is_fixed }
-                            : {
-                                  ...detail,
-                                  included_quantity:
-                                      detail.included_quantity || null,
-                                  included_unit: detail.included_unit || null,
-                              },
-                    ];
-                }),
-            ),
-        });
+        const payload = (data: PackageFormData) =>
+            preparePackagePayload(data, { main, bundle, publish });
         if (onSaved) {
             setSaving(true);
             form.clearErrors();
@@ -221,16 +184,7 @@ export function CompletePackageForm({
                 if (!response.ok || sessionFailureMessage(response)) {
                     if (response.status === 422) {
                         const result = await response.json();
-                        form.setError(
-                            Object.fromEntries(
-                                Object.entries(result.errors ?? {}).map(
-                                    ([key, messages]) => [
-                                        key,
-                                        (messages as string[]).join(" "),
-                                    ],
-                                ),
-                            ),
-                        );
+                        form.setError(validationErrors(result));
                     }
                     setNotice(
                         sessionFailureMessage(response) ??
@@ -512,151 +466,13 @@ export function CompletePackageForm({
                             className="space-y-4"
                             aria-label="Review package"
                         >
-                            <h2 className="text-xl font-semibold">
-                                Review & Save
-                            </h2>
-                            <h3 className="font-semibold">
-                                {form.data.name || "Package name needed"}
-                            </h3>
-                            <p>{form.data.description}</p>
-                            {!main && (
-                                <p>
-                                    {form.data.presentation
-                                        ? form.data.presentation.format ===
-                                          "combined_contents"
-                                            ? `Every ${purchasedUnit(form.data.presentation, measurementUnits)} contains the configured combination of ${summary.total} distinct foods. Purchase quantity repeats the complete container, not each food separately.`
-                                            : `Includes ${summary.total} distinct foods provided as separate servings per complete package set.`
-                                        : "Legacy Package Format was not recorded; no packaging facts are inferred."}
-                                </p>
-                            )}
-                            <p>
-                                PHP {form.data.base_price_pesos || "—"} per{" "}
-                                {main
-                                    ? "pax"
-                                    : form.data.presentation
-                                      ? purchasedUnit(
-                                            form.data.presentation,
-                                            measurementUnits,
-                                        )
-                                      : form.data.price_basis === "per_pack"
-                                        ? "pack"
-                                        : "package"}
-                                . Minimum {form.data.minimum_quantity};
-                                increment {form.data.quantity_step}; maximum{" "}
-                                {form.data.maximum_quantity || "not set"}.
-                            </p>
-                            <p>
-                                Exactly {summary.total} distinct foods. Fixed:{" "}
-                                {summary.fixed.map((f) => f.name).join(", ") ||
-                                    "None"}
-                                .
-                            </p>
-                            <p>
-                                Required categories:{" "}
-                                {categories
-                                    .filter((c) =>
-                                        form.data.required_category_ids.includes(
-                                            c.id,
-                                        ),
-                                    )
-                                    .map((c) => c.name)
-                                    .join(", ") || "None"}
-                                .
-                            </p>
-                            <p>
-                                Allowed foods:{" "}
-                                {summary.allowed
-                                    .map((f) => f.name)
-                                    .join(", ") || "None"}
-                                .
-                            </p>
-                            <p className="text-sm text-stone-500">
-                                This is a preview of unsaved input. Laravel
-                                validates and saves all steps together. Use Save
-                                Draft to continue later, or explicitly confirm
-                                publication to make these terms live.
-                            </p>
-                            {!main && form.data.serving_default && (
-                                <p>
-                                    Default per food:{" "}
-                                    {form.data.serving_default.quantity}{" "}
-                                    {form.data.serving_default.size_label}{" "}
-                                    {
-                                        measurementUnits.find(
-                                            (unit) =>
-                                                unit.id ===
-                                                Number(
-                                                    form.data.serving_default
-                                                        ?.measurement_unit_id,
-                                                ),
-                                        )?.abbreviation
-                                    }
-                                    . Foods with custom servings keep their
-                                    overrides.
-                                </p>
-                            )}
-                            {!main && (
-                                <PresentationReview
-                                    presentation={form.data.presentation}
-                                    foods={summary.allowed}
-                                    details={form.data.food_details}
-                                    sizes={form.data.food_sizes}
-                                    servingDefault={form.data.serving_default}
-                                    units={measurementUnits}
-                                />
-                            )}
-                            {!main &&
-                                summary.allowed.some(
-                                    (food) => form.data.food_sizes[food.id],
-                                ) && (
-                                    <section
-                                        aria-label="Review size choices"
-                                        className="space-y-3 rounded-xl border p-4"
-                                    >
-                                        <h3 className="font-semibold">
-                                            Size choices per purchased package
-                                        </h3>
-                                        {summary.allowed.map((food) => {
-                                            const group =
-                                                form.data.food_sizes[food.id];
-                                            if (!group) return null;
-                                            const unit = measurementUnits.find(
-                                                (unit) =>
-                                                    unit.id ===
-                                                    Number(
-                                                        group.measurement_unit_id,
-                                                    ),
-                                            );
-                                            return (
-                                                <div key={food.id}>
-                                                    <h4 className="text-sm font-medium">
-                                                        {food.name}
-                                                    </h4>
-                                                    <ul className="text-sm text-slate-600">
-                                                        {group.choices.map(
-                                                            (choice, index) => (
-                                                                <li key={index}>
-                                                                    {
-                                                                        choice.quantity
-                                                                    }{" "}
-                                                                    {
-                                                                        choice.size_label
-                                                                    }{" "}
-                                                                    {unit?.abbreviation ??
-                                                                        "— choose an active unit"}{" "}
-                                                                    ·{" "}
-                                                                    {choice.is_default
-                                                                        ? "Included default"
-                                                                        : `+ PHP ${choice.extra_price_pesos} per package`}
-                                                                </li>
-                                                            ),
-                                                        )}
-                                                    </ul>
-                                                </div>
-                                            );
-                                        })}
-                                    </section>
-                                )}
+                            <PackageReview
+                                data={form.data}
+                                main={main}
+                                summary={summary}
+                                categories={categories}
+                                measurementUnits={measurementUnits}
+                            />
                             <Button
                                 type="button"
                                 disabled={processing}

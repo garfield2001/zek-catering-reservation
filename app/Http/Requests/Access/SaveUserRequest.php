@@ -16,14 +16,16 @@ class SaveUserRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge(['email' => strtolower(trim((string) $this->input('email')))]);
+        if (is_string($email = $this->input('email'))) {
+            $this->merge(['email' => strtolower(trim($email))]);
+        }
     }
 
     public function rules(): array
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($this->route('user'))],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($this->route('user'))],
             'password' => [$this->route('user') ? 'nullable' : 'required', 'confirmed', Password::min(12)->mixedCase()->numbers(), 'max:128'],
             'active' => ['required', 'boolean'],
             'role' => ['required', Rule::in($this->user()->isAdmin() ? ['admin', 'staff'] : ['staff'])],

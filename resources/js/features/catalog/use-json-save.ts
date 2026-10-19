@@ -1,3 +1,4 @@
+import { validationErrors } from "../../lib/validation-errors";
 import { useState } from "react";
 import { csrfFetch, sessionFailureMessage } from "../../lib/http";
 
@@ -25,16 +26,7 @@ export function useJsonSave<T>() {
             });
             if (response.status === 422) {
                 const result = await response.json();
-                validation(
-                    Object.fromEntries(
-                        Object.entries(result.errors ?? {}).map(
-                            ([key, values]) => [
-                                key,
-                                (values as string[]).join(" "),
-                            ],
-                        ),
-                    ),
-                );
+                validation(validationErrors(result));
                 return;
             }
             if (!response.ok || sessionFailureMessage(response))
