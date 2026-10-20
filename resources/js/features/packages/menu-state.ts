@@ -12,6 +12,7 @@ export const emptyFoodDetail = (): FoodDetail => ({
     is_fixed: false,
     included_quantity: "",
     included_unit: "",
+    included_unit_id: "",
     price_adjustment_pesos: "0",
 });
 export function initialMenu(version?: MenuVersion | null): MenuData {
@@ -27,6 +28,7 @@ export function initialMenu(version?: MenuVersion | null): MenuData {
                     is_fixed: !!f.pivot?.always_include,
                     included_quantity: f.pivot?.included_quantity ?? "",
                     included_unit: f.pivot?.included_unit ?? "",
+                    included_unit_id: "",
                     price_adjustment_pesos: minorToPesoInput(
                         f.pivot?.price_adjustment_minor ?? "0",
                     ),

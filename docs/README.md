@@ -8,6 +8,10 @@ The [Milestone A UI modernization report](docs/17-milestone-a-ui-modernization.m
 
 ## Historical phase references
 
+The [service-owned package configuration work](docs/23-service-package-configuration.md) records the approved Phase 3 change from version-only format selection to service configuration, migration safeguards, implementation boundaries, verification, and the owner transition path.
+
+The [Phase 3.1 package-builder and Measurement Unit refinement](docs/24-package-builder-and-measurement-units.md) records the current simplified Food Options workflow, dynamic units, historical-label decision, and safety boundaries.
+
 The [Phase 2 maintainability review](docs/22-maintainability-review.md) records the current reliability follow-up's code-quality changes, intentional size exceptions, verification and owner-testing scope. Its phase numbering belongs to the Application Reliability milestone, not the original catalog implementation phases below.
 
 1. [Architecture and approved rules](docs/01-architecture.md)

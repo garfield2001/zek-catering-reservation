@@ -12,7 +12,12 @@ class Product extends Model
 
     protected function casts(): array
     {
-        return ['active' => 'boolean', 'sort_order' => 'integer', 'archived_at' => 'immutable_datetime'];
+        return ['service_format_owned' => 'boolean', 'active' => 'boolean', 'sort_order' => 'integer', 'archived_at' => 'immutable_datetime'];
+    }
+
+    public function usesServiceFormat(): bool
+    {
+        return $this->getAttribute('service_format_owned') === true;
     }
 
     /** @return BelongsTo<ProductFamily, $this> */

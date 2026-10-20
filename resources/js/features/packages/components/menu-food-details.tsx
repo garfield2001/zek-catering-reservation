@@ -3,6 +3,7 @@ export type FoodDetail = {
     is_fixed: boolean;
     included_quantity: string;
     included_unit: string;
+    included_unit_id?: number | string;
     price_adjustment_pesos: string;
 };
 
@@ -25,7 +26,7 @@ export function MenuFoodDetails({
     return (
         <details className="ml-6 mt-2 text-sm">
             <summary className="cursor-pointer text-emerald-800">
-                Serving & Additional Pricing for {food.name}
+                Food Options
             </summary>
             <div className="mt-3 space-y-3 rounded-lg bg-slate-50 p-3">
                 {!bundle && showFixed && (
@@ -43,7 +44,7 @@ export function MenuFoodDetails({
                 <div className="grid grid-cols-2 gap-3">
                     <Field
                         id={`food-quantity-${food.id}`}
-                        label={`Serving Override for ${food.name} (optional)`}
+                        label="Fixed portion (optional)"
                     >
                         <input
                             id={`food-quantity-${food.id}`}
@@ -56,37 +57,27 @@ export function MenuFoodDetails({
                     </Field>
                     <Field
                         id={`food-unit-${food.id}`}
-                        label={`Measurement for ${food.name}`}
+                        label={`Saved measurement for ${food.name}`}
                     >
                         <select
                             id={`food-unit-${food.id}`}
                             value={value.included_unit}
-                            onChange={(e) =>
-                                onChange({ included_unit: e.target.value })
-                            }
+                            disabled
                         >
-                            <option value="">No measurement</option>
-                            {[
-                                "kg",
-                                "tray",
-                                "portion",
-                                "piece",
-                                "bottle",
-                                "pack",
-                            ].map((unit) => (
-                                <option key={unit}>{unit}</option>
-                            ))}
+                            <option value={value.included_unit}>
+                                {value.included_unit || "Choose Food Options"}
+                            </option>
                         </select>
                     </Field>
                 </div>
                 <p className="text-xs text-slate-500">
-                    Per complete purchased unit. Leave blank when a measurement
-                    is not meaningful.
+                    Use Food Options in the package builder to select an active
+                    Measurement Unit for a new portion.
                 </p>
                 {!bundle && canPrice && (
                     <Field
                         id={`food-price-${food.id}`}
-                        label={`Additional Food Charge for ${food.name} (PHP)`}
+                        label="Additional charge (PHP)"
                     >
                         <input
                             id={`food-price-${food.id}`}

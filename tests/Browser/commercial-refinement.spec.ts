@@ -1,3 +1,4 @@
+import { configureService, customizeFood, openPortions } from "./workflow";
 import { test, expect } from "@playwright/test";
 import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -50,6 +51,7 @@ test("service creation preserves filters and light-only surfaces ignore the oper
     await page.getByRole("button", { name: "Create Add-on Service" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Service name").fill("Visual context service");
+    await configureService(page);
     for (const colorScheme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme });
         await page.setViewportSize({ width: 390, height: 844 });
@@ -129,6 +131,7 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
     await page.goto("/admin/add-on-services");
     await page.getByRole("button", { name: "Create Add-on Service" }).click();
     await page.getByLabel("Service name").fill("Mixed Serving Service");
+    await configureService(page);
     await page.getByRole("radio", { name: /Sold by Package/ }).check();
     await page
         .getByRole("button", { name: "Create Service", exact: true })
@@ -140,11 +143,9 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
     for (const name of ["Mixed Roast", "Mixed Noodles", "Mixed Vegetables"])
         await inlineFood(page, name, "Mixed Foods");
     await page.getByLabel("Total included food selections").fill("3");
-    const defaults = page.getByRole("region", {
-        name: "Default Serving per Food",
-        exact: true,
-    });
-    await defaults.getByLabel("Set an optional serving default").check();
+    await openPortions(page);
+    const defaults = page.locator('details[aria-label="Default Food Portion"]');
+    await defaults.getByLabel("Set a default food portion").check();
     await defaults
         .getByLabel("Size label (optional)", { exact: true })
         .fill("Medium");
@@ -155,7 +156,7 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
     ) => {
         await parent
             .getByRole("button", {
-                name: "Create New Measurement Unit",
+                name: "Add Measurement Unit",
                 exact: true,
             })
             .click();
@@ -179,8 +180,13 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
             .getByRole("combobox", { name: "Measurement Unit", exact: true })
             .locator("option:checked"),
     ).toHaveText("Mixed Tray (mtray)");
-    const roast = page.getByRole("group", { name: "Mixed Roast", exact: true });
-    await roast.getByLabel("Offer Size Choices for Mixed Roast").check();
+    for (const name of ["Mixed Roast", "Mixed Noodles", "Mixed Vegetables"])
+        await customizeFood(page, name);
+    const roast = page.getByRole("region", {
+        name: "Food Options for Mixed Roast",
+        exact: true,
+    });
+    await roast.getByLabel("Offer size choices").check();
     await createUnit(roast, "Mixed Kilogram", "mkg");
     await roast.getByLabel("Amount for size 1", { exact: true }).fill("3");
     await roast
@@ -191,11 +197,11 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
         .getByLabel("Extra price (PHP)", { exact: true })
         .nth(1)
         .fill("600");
-    const noodles = page.getByRole("group", {
-        name: "Mixed Noodles",
+    const noodles = page.getByRole("region", {
+        name: "Food Options for Mixed Noodles",
         exact: true,
     });
-    await noodles.getByLabel("Offer Size Choices for Mixed Noodles").check();
+    await noodles.getByLabel("Offer size choices").check();
     await noodles
         .getByLabel("Measurement Unit for Mixed Noodles")
         .selectOption({ label: "Mixed Tray (mtray)" });
@@ -211,11 +217,6 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
         .nth(1)
         .fill("200");
     await reviewResponsive(page, "mixed-package-editor");
-    await step(page, "Details");
-    await page.getByLabel("Container count", { exact: true }).fill("1");
-    await page
-        .getByRole("combobox", { name: "Presentation unit", exact: true })
-        .selectOption({ label: "Mixed Tray" });
     await step(page, "Pricing & Quantity");
     await page.getByLabel("Price per complete package set (PHP)").fill("1000");
     await page.getByLabel("Minimum complete package set units").fill("2");
@@ -225,17 +226,17 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
         .getByRole("button", { name: "Edit Package", exact: true })
         .click();
     await step(page, "Menu");
+    await openPortions(page);
+    for (const name of ["Mixed Roast", "Mixed Noodles", "Mixed Vegetables"])
+        await customizeFood(page, name);
     await expect(defaults.getByLabel("Amount per food")).toHaveValue("1.000");
-    await step(page, "Details");
     await expect(
         page.getByLabel("Container count", { exact: true }),
-    ).toHaveValue("1");
-    await expect(
-        page
-            .getByRole("combobox", { name: "Presentation unit", exact: true })
-            .locator("option:checked"),
-    ).toHaveText("Mixed Tray");
+    ).toHaveCount(0);
     await step(page, "Menu");
+    await openPortions(page);
+    for (const name of ["Mixed Roast", "Mixed Noodles", "Mixed Vegetables"])
+        await customizeFood(page, name);
     await expect(
         defaults.getByLabel("Size label (optional)", { exact: true }),
     ).toHaveValue("Medium");
@@ -252,22 +253,29 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
         noodles.getByLabel("Extra price (PHP)", { exact: true }).nth(1),
     ).toHaveValue("200.00");
     await expect(
-        page.getByLabel("Offer Size Choices for Mixed Vegetables"),
-    ).not.toBeChecked();
+        page
+            .getByRole("region", {
+                name: "Food Options for Mixed Vegetables",
+                exact: true,
+            })
+            .getByLabel("Use standard serving"),
+    ).toBeChecked();
     await step(page, "Pricing & Quantity");
     await expect(
         page.getByLabel("Minimum complete package set units"),
     ).toHaveValue("2");
     await step(page, "Menu");
+    await openPortions(page);
+    for (const name of ["Mixed Roast", "Mixed Noodles", "Mixed Vegetables"])
+        await customizeFood(page, name);
     await defaults.getByLabel("Amount per food").fill("2");
+    // Leaving size choices requires an explicit confirmation because their
+    // commercial configuration is replaced by the standard serving.
+    await noodles.getByLabel("Use standard serving").click();
     await page
-        .getByRole("button", {
-            name: "Return Mixed Noodles to package default",
-        })
+        .getByRole("button", { name: "Change Serving", exact: true })
         .click();
-    await expect(
-        page.getByLabel("Offer Size Choices for Mixed Noodles"),
-    ).not.toBeChecked();
+    await expect(noodles.getByLabel("Use standard serving")).toBeChecked();
     await expect(
         roast.getByLabel("Amount for size 2", { exact: true }),
     ).toHaveValue("4.000");
@@ -277,13 +285,11 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
         .getByRole("button", { name: "Edit Package", exact: true })
         .click();
     await step(page, "Menu");
+    await openPortions(page);
+    for (const name of ["Mixed Roast", "Mixed Noodles", "Mixed Vegetables"])
+        await customizeFood(page, name);
     await expect(defaults.getByLabel("Amount per food")).toHaveValue("2.000");
-    await expect(
-        page.getByRole("region", {
-            name: "Food Configuration for Mixed Noodles",
-            exact: true,
-        }),
-    ).toContainText("Default — 2.000 Medium mtray");
+    await expect(noodles).toContainText("2.000 Medium mtray");
     await expect(
         roast.getByLabel("Extra price (PHP)", { exact: true }).nth(1),
     ).toHaveValue("600.00");

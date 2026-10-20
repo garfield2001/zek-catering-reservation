@@ -38,6 +38,7 @@ class CreateCollectionRequest extends FormRequest
             'behavior_type' => ['required', Rule::in(array_map(fn (CollectionBehavior $behavior) => $behavior->value, CollectionBehavior::cases()))],
             'sort_order' => ['sometimes', 'integer', 'between:-2147483648,2147483647'],
             'active' => ['required', 'boolean'],
+            'package_configuration' => [Rule::requiredIf($this->input('kind') === 'addon' && $this->input('behavior_type') !== 'direct_sale'), 'array'],
         ];
     }
 

@@ -1,7 +1,77 @@
 import { expect, type Page } from "@playwright/test";
 
+export async function configureService(
+    page: Page,
+    format = "separate_servings",
+    container = "Tray",
+) {
+    const formatField = page.getByLabel("How are foods provided?");
+    if (await formatField.isDisabled())
+        await expect(formatField).toHaveValue(format);
+    else await formatField.selectOption(format);
+    const select = page.getByRole("combobox", {
+        name: "Presentation unit",
+        exact: true,
+    });
+    if (
+        await select
+            .locator("option")
+            .filter({ hasText: new RegExp(`^${container}$`) })
+            .count()
+    ) {
+        await select.selectOption({ label: container });
+    } else {
+        await page
+            .getByRole("button", {
+                name: "Add Measurement Unit",
+                exact: true,
+            })
+            .click();
+        const dialog = page.getByRole("dialog", {
+            name: "Create Measurement Unit",
+            exact: true,
+        });
+        await dialog.getByLabel("Unit name").fill(container);
+        await dialog
+            .getByLabel("Abbreviation")
+            .fill(container.toLowerCase().replaceAll(" ", "-"));
+        await dialog
+            .getByRole("button", {
+                name: "Create Measurement Unit",
+                exact: true,
+            })
+            .click();
+        await expect(dialog).not.toBeVisible();
+    }
+}
+
+export async function customizeFood(page: Page, name: string) {
+    const summary = page
+        .getByRole("region", { name: `Food Options for ${name}`, exact: true })
+        .getByText("Food Options", { exact: true });
+    if (
+        !(await summary.evaluate(
+            (el) => (el.parentElement as HTMLDetailsElement).open,
+        ))
+    )
+        await summary.click();
+}
+
+export async function openPortions(page: Page) {
+    const summary = page.getByText(/^Optional: Default Food Portion/);
+    if (
+        !(await summary.evaluate(
+            (el) => (el.parentElement as HTMLDetailsElement).open,
+        ))
+    )
+        await summary.click();
+}
+
 export async function reviewResponsive(page: Page, name: string) {
     const original = page.viewportSize();
+    await expect(page.locator("[data-sonner-toast]")).toHaveCount(0, {
+        timeout: 10000,
+    });
     for (const colorScheme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme });
         // Both OS preferences must retain the owner-approved light-only UI.
@@ -37,6 +107,18 @@ export async function reviewResponsive(page: Page, name: string) {
                 path: `test-results/${name}-os-${colorScheme}-${layout}.png`,
                 fullPage: true,
             });
+            const customization = page
+                .getByText("Food Options", {
+                    exact: true,
+                })
+                .first();
+            if (await customization.count()) {
+                await customization.scrollIntoViewIfNeeded();
+                await page.screenshot({
+                    path: `test-results/${name}-customization-os-${colorScheme}-${layout}.png`,
+                    fullPage: true,
+                });
+            }
         }
     }
     await page.emulateMedia({ colorScheme: "light" });

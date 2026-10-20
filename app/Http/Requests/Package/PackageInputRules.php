@@ -15,7 +15,10 @@ class PackageInputRules
             'serving_default' => ['sometimes', 'nullable', 'array'], 'food_sizes' => ['sometimes', 'array'],
             'food_details' => ['sometimes', 'array'], 'food_details.*.is_fixed' => ['sometimes', 'boolean'],
             'food_details.*.included_quantity' => ['nullable', 'numeric', 'gt:0', 'max:999999999.999', 'decimal:0,3'],
-            'food_details.*.included_unit' => ['nullable', Rule::in(['kg', 'tray', 'portion', 'piece', 'bottle', 'pack'])],
+            // New fixed portions use the active Measurement Unit catalog. The
+            // text field remains only to preserve legacy Draft facts.
+            'food_details.*.included_unit' => ['nullable', 'string', 'max:20'],
+            'food_details.*.included_unit_id' => ['nullable', 'integer'],
             'food_details.*.price_adjustment_pesos' => ['sometimes', 'string', 'regex:/^(0|[1-9][0-9]*)(?:\\.[0-9]{1,2})?$/', 'max:20'],
             'required_category_ids' => ['present', 'array'], 'required_category_ids.*' => ['required', 'integer', 'distinct', 'exists:dish_categories,id']];
     }

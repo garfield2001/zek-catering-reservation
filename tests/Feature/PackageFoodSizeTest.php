@@ -25,6 +25,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\ServiceConfiguration;
 use Tests\TestCase;
 
 class PackageFoodSizeTest extends TestCase
@@ -47,6 +48,7 @@ class PackageFoodSizeTest extends TestCase
         $this->admin->roles()->attach(Role::where('code', 'admin')->sole());
         $this->actingAs($this->admin)->withSession(['access_version' => $this->admin->access_version]);
         $family = app(CreateCollection::class)->handle($this->admin, ['kind' => 'addon', 'name' => 'Celebration Sets', 'behavior_type' => 'package', 'active' => true]);
+        ServiceConfiguration::configure($family);
         $category = DishCategory::create(['name' => 'Roasts', 'code' => 'roasts', 'active' => true]);
         $this->food = Dish::create(['category_id' => $category->id, 'name' => 'Roasted Food', 'code' => 'roast', 'active' => true]);
         $this->unit = MeasurementUnit::create(['name' => 'Weight', 'abbreviation' => 'w', 'active' => true]);

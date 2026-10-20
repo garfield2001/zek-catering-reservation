@@ -27,6 +27,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Tests\Support\LegacyCollections;
+use Tests\Support\ServiceConfiguration;
 use Tests\TestCase;
 
 class PackagePublicationTest extends TestCase
@@ -113,6 +114,7 @@ class PackagePublicationTest extends TestCase
 
     public function test_http_creation_ignores_a_supplied_technical_code_and_order(): void
     {
+        ServiceConfiguration::configure($this->family);
         $payload = ['family_id' => $this->family->id, 'code' => 'forged', 'sort_order' => 900,
             'name' => 'Package B', 'description' => null, 'active' => true,
             'creation_token' => 'c917b7bf-bc5f-4464-ae50-66fdb17bc802'];

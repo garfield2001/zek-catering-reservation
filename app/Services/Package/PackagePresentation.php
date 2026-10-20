@@ -26,6 +26,12 @@ class PackagePresentation
 
     public function validate(PackageVersion $version, ?array $input, array $foodIds): void
     {
+        if ($version->product->usesServiceFormat() && ($input === null
+            || ($input['format'] ?? null) !== $version->package_format
+            || (string) ($input['quantity'] ?? null) !== (string) $version->presentation_quantity
+            || (string) ($input['measurement_unit_id'] ?? null) !== (string) $version->presentation_unit_id)) {
+            throw ValidationException::withMessages(['presentation' => 'This package retains its service format and default container. Configure food-specific exceptions in the menu, or create a separate service for a different format.']);
+        }
         if ($input === null) {
             return;
         }

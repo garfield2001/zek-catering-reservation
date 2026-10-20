@@ -6,6 +6,10 @@ import { Field } from "../../../components/ui/field";
 import { Modal, ModalClose } from "../../../components/ui/modal";
 import type { Collection } from "../types";
 import { DeactivationImpact } from "./deactivation-impact";
+import {
+    ServicePackageFields,
+    initialServicePackage,
+} from "./service-package-fields";
 
 export function CollectionPresentationForm({
     family,
@@ -15,10 +19,19 @@ export function CollectionPresentationForm({
     canManage: boolean;
 }) {
     const [open, setOpen] = useState(false);
+    const [configureLegacy, setConfigureLegacy] = useState(false);
     const form = useForm({
         name: family.name,
         description: family.description ?? "",
         active: family.active,
+        package_configuration: family.package_format
+            ? {
+                  format: family.package_format,
+                  quantity: family.default_presentation_quantity ?? null,
+                  measurement_unit_id:
+                      family.default_presentation_unit_id ?? null,
+              }
+            : initialServicePackage(),
     });
     if (!canManage) return null;
     return (
@@ -32,10 +45,11 @@ export function CollectionPresentationForm({
             </button>
             <Modal
                 open={open}
-                dirty={form.isDirty}
+                dirty={form.isDirty || configureLegacy}
                 busy={form.processing}
                 onClose={() => {
                     form.reset();
+                    setConfigureLegacy(false);
                     setOpen(false);
                 }}
                 title={`Edit ${family.name}`}
@@ -44,10 +58,18 @@ export function CollectionPresentationForm({
                     className="space-y-4"
                     onSubmit={(event) => {
                         event.preventDefault();
+                        form.transform((data) =>
+                            family.is_addon &&
+                            family.behavior_type !== "direct_sale" &&
+                            (family.package_format || configureLegacy)
+                                ? data
+                                : { ...data, package_configuration: undefined },
+                        );
                         form.put(`/admin/catalog/families/${family.id}`, {
                             preserveScroll: true,
                             onSuccess: () => {
                                 form.setDefaults(form.data);
+                                setConfigureLegacy(false);
                                 setOpen(false);
                             },
                         });
@@ -103,6 +125,49 @@ export function CollectionPresentationForm({
                             }
                         />
                     </Field>
+                    {family.is_addon &&
+                        family.behavior_type !== "direct_sale" &&
+                        !family.package_format && (
+                            <label className="flex items-start gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    checked={configureLegacy}
+                                    onChange={(event) =>
+                                        setConfigureLegacy(event.target.checked)
+                                    }
+                                />
+                                Configure format and containers for new
+                                packages. Existing package history will not
+                                change.
+                            </label>
+                        )}
+                    {family.is_addon &&
+                        family.behavior_type !== "direct_sale" &&
+                        (family.package_format || configureLegacy) && (
+                            <ServicePackageFields
+                                value={form.data.package_configuration}
+                                onChange={(value) =>
+                                    form.setData("package_configuration", value)
+                                }
+                                locked={Boolean(
+                                    family.package_format &&
+                                    family.products_count,
+                                )}
+                            />
+                        )}
+                    {Object.entries(form.errors)
+                        .filter(([key]) =>
+                            key.startsWith("package_configuration"),
+                        )
+                        .map(([key, error]) => (
+                            <p
+                                role="alert"
+                                className="text-sm text-red-700"
+                                key={key}
+                            >
+                                {error}
+                            </p>
+                        ))}
                     <label className="flex items-center gap-2 text-sm">
                         <input
                             type="checkbox"

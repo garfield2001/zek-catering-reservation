@@ -29,7 +29,7 @@ class SaveCompletePackageRequest extends FormRequest
         $product = $this->route('product');
 
         return [...PackageInputRules::menu(), ...PackageInputRules::pricing(),
-            'family_id' => ['required', 'integer', $product instanceof Product ? Rule::in([$product->family_id]) : 'exists:product_families,id'],
+            'family_id' => ['required', 'integer', $product instanceof Product ? Rule::in([$product->family_id]) : Rule::exists('product_families', 'id')->where(fn ($q) => $q->where(fn ($q) => $q->where('is_addon', false)->orWhereNotNull('package_format')))],
             'name' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string', 'max:5000'],
             'active' => ['required', 'boolean'],
             'save_action' => ['sometimes', Rule::in(['draft', 'publish'])],
@@ -38,5 +38,10 @@ class SaveCompletePackageRequest extends FormRequest
             'version_id' => $product instanceof Product ? ['required', 'integer', 'min:1'] : ['prohibited'],
             'draft_revision' => $product instanceof Product ? ['required', 'integer', 'min:1'] : ['prohibited'],
         ];
+    }
+
+    public function messages(): array
+    {
+        return ['family_id.exists' => 'Choose an available service with its package format configured. Edit the service to set how foods are provided before creating a package.'];
     }
 }

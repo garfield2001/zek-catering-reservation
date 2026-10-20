@@ -1,3 +1,4 @@
+import { Link } from "@inertiajs/react";
 import { useState } from "react";
 import { csrfFetch, sessionFailureMessage } from "../../../lib/http";
 import { Modal } from "../../../components/ui/modal";
@@ -120,8 +121,14 @@ export function InlineMeasurementUnit({
                 className="text-sm text-emerald-800 underline"
                 onClick={() => setOpen(true)}
             >
-                Create New Measurement Unit
+                Add Measurement Unit
             </button>
+            <Link
+                href="/admin/catalog/measurement-units"
+                className="ml-3 text-sm text-emerald-800 underline"
+            >
+                Manage units
+            </Link>
             <Modal
                 open={open}
                 onClose={() => setOpen(false)}

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Catalog\CreateCollection;
 use App\Actions\Catalog\SaveMeasurementUnit;
 use App\Models\AuditEvent;
 use App\Models\MeasurementUnit;
@@ -46,8 +47,8 @@ class MeasurementUnitTest extends TestCase
         $this->assertFalse($unit->fresh()->active);
         $this->assertSame(2, AuditEvent::where('action', 'like', 'catalog.measurement_unit_%')->count());
         $this->get(route('catalog.units.index'))->assertOk();
-        $this->delete(route('catalog.units.update', $unit))->assertStatus(405);
-        $this->assertSame(1, MeasurementUnit::count());
+        $this->delete(route('catalog.units.destroy', $unit))->assertSessionHasNoErrors();
+        $this->assertSame(0, MeasurementUnit::count());
     }
 
     public function test_duplicate_case_whitespace_and_malformed_labels_are_rejected(): void
@@ -104,5 +105,40 @@ class MeasurementUnitTest extends TestCase
         $this->account('staff');
         $this->postJson(route('catalog.units.store'), ['name' => 'Bowls', 'abbreviation' => 'bowl', 'active' => true])->assertForbidden();
         $this->assertSame(1, MeasurementUnit::count());
+    }
+
+    public function test_staff_cannot_delete_a_measurement_unit_through_a_forged_request(): void
+    {
+        $this->account('admin');
+        $unit = MeasurementUnit::create(['name' => 'Unused bowl', 'abbreviation' => 'bowl', 'active' => true]);
+        $staff = User::factory()->create();
+        $staff->roles()->attach(Role::where('code', 'staff')->sole());
+        $staff->permissionOverrides()->attach(Permission::where('code', 'catalog.view')->sole(), ['effect' => 'allow']);
+
+        $this->actingAs($staff)->withSession(['access_version' => $staff->access_version])
+            ->delete(route('catalog.units.destroy', $unit))
+            ->assertForbidden();
+
+        $this->assertModelExists($unit);
+    }
+
+    public function test_used_units_cannot_be_renamed_or_deleted_but_can_be_deactivated_and_reactivated(): void
+    {
+        $admin = $this->account('admin');
+        $unit = MeasurementUnit::create(['name' => 'Tray', 'abbreviation' => 'tray', 'active' => true]);
+        $family = app(CreateCollection::class)->handle($admin, [
+            'kind' => 'addon', 'name' => 'Unit service', 'behavior_type' => 'package', 'active' => true,
+            'package_configuration' => ['format' => 'separate_servings', 'quantity' => 1, 'measurement_unit_id' => $unit->id],
+        ]);
+        $this->put(route('catalog.units.update', $unit), ['name' => 'Trays', 'abbreviation' => 'trays', 'active' => true])
+            ->assertSessionHasErrors('name');
+        $this->delete(route('catalog.units.destroy', $unit))->assertSessionHasErrors('unit');
+        $this->put(route('catalog.units.update', $unit), ['name' => 'Tray', 'abbreviation' => 'tray', 'active' => false])
+            ->assertSessionHasNoErrors();
+        $this->assertFalse($unit->fresh()->active);
+        $this->put(route('catalog.units.update', $unit), ['name' => 'Tray', 'abbreviation' => 'tray', 'active' => true])
+            ->assertSessionHasNoErrors();
+        $this->assertTrue($unit->fresh()->active);
+        $this->assertSame($family->id, $family->fresh()->id);
     }
 }

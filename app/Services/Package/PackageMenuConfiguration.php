@@ -3,6 +3,7 @@
 namespace App\Services\Package;
 
 use App\Models\Dish;
+use App\Models\MeasurementUnit;
 use App\Models\PackageVersion;
 use App\Services\Catalog\CatalogAvailability;
 use App\Services\Catalog\MinorMoney;
@@ -157,7 +158,7 @@ class PackageMenuConfiguration
             DB::table('package_version_food_items')->where('package_version_id', $version->id)->delete();
             $rows = [];
             foreach (array_values(array_unique(array_map('intval', $foodItemIds))) as $id) {
-                $rows[] = ['package_version_id' => $version->id, 'dish_id' => $id, ...$this->foodDetails($version, $details[$id] ?? []), 'created_at' => now(), 'updated_at' => now()];
+                $rows[] = ['package_version_id' => $version->id, 'dish_id' => $id, ...$this->foodDetails($version, $id, $details[$id] ?? []), 'created_at' => now(), 'updated_at' => now()];
             }
             DB::table('package_version_food_items')->insert($rows);
             DB::table('package_version_required_categories')->where('package_version_id', $version->id)->delete();
@@ -168,18 +169,42 @@ class PackageMenuConfiguration
         });
     }
 
-    private function foodDetails(PackageVersion $version, array $data): array
+    private function foodDetails(PackageVersion $version, int $dishId, array $data): array
     {
         $behavior = $version->family->behavior_type;
         $fixed = (bool) ($data['is_fixed'] ?? false);
         $quantity = $data['included_quantity'] ?? null;
         $unit = $data['included_unit'] ?? null;
+        $unitId = $data['included_unit_id'] ?? null;
         $amount = app(MinorMoney::class)->fromPesos($data['price_adjustment_pesos'] ?? '0', 'food_details');
-        if ($behavior === 'main_package' && ($quantity !== null || $unit !== null || $amount !== 0)) {
+        if ($behavior === 'main_package' && ($quantity !== null || $unit !== null || $unitId !== null || $amount !== 0)) {
             throw ValidationException::withMessages(['food_details' => 'Catering foods have equal price standing and no per-food quantities.']);
         }
-        if (($quantity === null) !== ($unit === null) || ($quantity !== null && (! is_numeric($quantity) || $quantity <= 0 || ! in_array($unit, ['kg', 'tray', 'portion', 'piece', 'bottle', 'pack'], true)))) {
-            throw ValidationException::withMessages(['food_details' => 'A measurement needs a positive quantity and a supported unit.']);
+        if ($quantity === null && ($unit !== null || $unitId !== null)) {
+            throw ValidationException::withMessages(['food_details' => 'Choose a portion amount and measurement unit together.']);
+        }
+        if ($quantity !== null && (! is_numeric($quantity) || $quantity <= 0)) {
+            throw ValidationException::withMessages(['food_details' => 'A fixed portion needs a positive amount.']);
+        }
+        if ($quantity !== null && $unitId !== null) {
+            if ((! is_int($unitId) && (! is_string($unitId) || ! ctype_digit($unitId))) || (int) $unitId < 1) {
+                throw ValidationException::withMessages(['food_details' => 'Please select a valid measurement unit.']);
+            }
+            $selected = MeasurementUnit::whereKey($unitId)->where('active', true)->lockForUpdate()->first();
+            if (! $selected) {
+                throw ValidationException::withMessages(['food_details' => 'Please select an active measurement unit.']);
+            }
+            $unit = $selected->abbreviation;
+        }
+        if ($quantity !== null && $unitId === null) {
+            // An old published or Draft configuration can retain its frozen text
+            // while the Admin completes unrelated Draft changes. New UI input
+            // always sends a selected active Measurement Unit id.
+            $existing = DB::table('package_version_food_items')
+                ->where('package_version_id', $version->id)->where('dish_id', $dishId)->first(['included_quantity', 'included_unit']);
+            if (! is_string($unit) || ! $existing || (string) $existing->included_quantity !== (string) $quantity || $existing->included_unit !== $unit) {
+                throw ValidationException::withMessages(['food_details' => 'Please select a valid measurement unit.']);
+            }
         }
         if ($behavior === 'fixed_bundle' && $amount !== 0) {
             throw ValidationException::withMessages(['food_details' => 'Fixed bundles cannot have food substitutions or premiums.']);

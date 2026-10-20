@@ -24,20 +24,20 @@ export function ServingDefaultFields({
     return (
         <Container
             className="my-4 space-y-3 rounded-xl border p-4"
-            aria-label="Default Serving per Food"
+            aria-label="Default Food Portion"
         >
             {secondary ? (
                 <summary className="cursor-pointer font-semibold">
-                    Optional food portions: Default Serving per Food
+                    Optional: Default Food Portion
                     {value ? " (configured)" : ""}
                 </summary>
             ) : (
-                <h3 className="font-semibold">Default Serving per Food</h3>
+                <h3 className="font-semibold">Default Food Portion</h3>
             )}
             <p className="text-sm text-slate-600">
-                Applies to each food without a custom serving. Changing this
-                default keeps food-specific overrides unchanged. This is not the
-                number of packages purchased.
+                Optional. Set a common portion for foods in this package.
+                Individual foods can use a different amount. This does not
+                change the service's packaging or the purchase quantity.
             </p>
             <label className="flex items-center gap-2 text-sm">
                 <input
@@ -55,7 +55,7 @@ export function ServingDefaultFields({
                         )
                     }
                 />
-                Set an optional serving default
+                Set a default food portion
             </label>
             {value && (
                 <div className="grid gap-3 sm:grid-cols-3">

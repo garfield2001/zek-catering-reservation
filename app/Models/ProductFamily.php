@@ -12,6 +12,7 @@ class ProductFamily extends Model
     protected function casts(): array
     {
         return ['is_addon' => 'boolean', 'active' => 'boolean', 'sort_order' => 'integer',
+            'default_presentation_quantity' => 'integer', 'default_presentation_unit_id' => 'integer',
             'archived_at' => 'immutable_datetime'];
     }
 

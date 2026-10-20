@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Catalog\CreateCollectionRequest;
 use App\Models\FamilyOrderDefault;
 use App\Models\IndividualListing;
+use App\Models\MeasurementUnit;
 use App\Models\PackageVersion;
 use App\Models\Product;
 use App\Models\ProductFamily;
@@ -31,6 +32,8 @@ class AddonServiceController extends Controller
                 ->when($filters['q'] ?? null, fn ($q, $search) => $q->where('name', 'ilike', '%'.addcslashes($search, '%_\\').'%'))
                 ->orderBy('sort_order')->orderBy('id')->paginate(20)->withQueryString(),
             'canManage' => Gate::allows('manage', ProductFamily::class), 'filters' => $filters,
+            'measurementUnits' => MeasurementUnit::where('active', true)->orderBy('name')->get(['id', 'name', 'abbreviation', 'active']),
+            'canCreateUnit' => Gate::allows('create', MeasurementUnit::class),
         ]);
     }
 
@@ -52,7 +55,9 @@ class AddonServiceController extends Controller
         $filters = $request->validate(['q' => ['nullable', 'string', 'max:100'], 'status' => ['nullable', 'in:all,active,inactive,archived']]);
 
         return Inertia::render('admin/services/show', [
-            'family' => $family->load('orderDefault'),
+            'family' => $family->load('orderDefault')->loadCount('products'),
+            'measurementUnits' => MeasurementUnit::where('active', true)->orderBy('name')->get(['id', 'name', 'abbreviation', 'active']),
+            'canCreateUnit' => Gate::allows('create', MeasurementUnit::class),
             'products' => Gate::allows('viewAny', Product::class) ? $directory->query($family, $filters)->get() : [],
             'filters' => $filters,
             'canManage' => Gate::allows('manage', ProductFamily::class),

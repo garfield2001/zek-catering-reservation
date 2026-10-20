@@ -23,6 +23,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Tests\Support\LegacyCollections;
+use Tests\Support\ServiceConfiguration;
 use Tests\TestCase;
 
 class PackageDraftTest extends TestCase
@@ -598,6 +599,7 @@ class PackageDraftTest extends TestCase
         $admin = $this->actor();
         $staff = $this->actor('staff');
         $family = $this->family('belly_lechon');
+        ServiceConfiguration::configure($family);
         $this->signIn($staff)->post(route('packages.store'), [
             'family_id' => $family->id, 'code' => 'basic', 'name' => 'Basic', 'description' => null, 'active' => true,
             'creation_token' => '64d203ad-889a-42b7-8f50-b31838999b4c',

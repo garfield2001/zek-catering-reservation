@@ -6,6 +6,7 @@ use App\Actions\Catalog\CreateCollection;
 use App\Actions\Catalog\EnsurePrimaryService;
 use App\Actions\Package\ClonePackageDraft;
 use App\Actions\Package\PublishPackageVersion;
+use App\Actions\Package\SaveCompletePackage;
 use App\Models\AuditEvent;
 use App\Models\Dish;
 use App\Models\DishCategory;
@@ -224,7 +225,8 @@ class CompletePackageSaveTest extends TestCase
     public function test_generic_package_supports_packed_mode_without_name_based_behavior(): void
     {
         $family = app(CreateCollection::class)->handle($this->admin, ['kind' => 'addon', 'behavior_type' => 'package', 'name' => 'Any Meal Name', 'active' => true]);
-        $this->post(route('packages.configurations.store'), [...$this->input, 'family_id' => $family->id, 'price_basis' => 'per_pack', 'selection_policy' => 'split', 'minimum_quantity' => 50])->assertSessionHasNoErrors();
+        // Reconstruct a legacy split record; new HTTP creation requires configured service defaults.
+        app(SaveCompletePackage::class)->handle($this->admin, [...$this->input, 'family_id' => $family->id, 'price_basis' => 'per_pack', 'selection_policy' => 'split', 'minimum_quantity' => 50]);
         $version = PackageVersion::sole();
         $this->assertTrue($version->behavior()->supportsSplit());
         $this->assertSame('per_pack', $version->behavior()->priceBasis());

@@ -8,6 +8,7 @@ use App\Models\ProductFamily;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Catalog\ServicePackageConfiguration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -42,6 +43,10 @@ class CreateCollection
                 'sort_order' => (int) ProductFamily::max('sort_order') + 1, 'active' => $data['active'],
                 'is_addon' => $isAddon, 'behavior_type' => $behavior->value,
             ])->save();
+            $configuration = app(ServicePackageConfiguration::class);
+            if (array_key_exists('package_configuration', $data)) {
+                $family->forceFill($configuration->normalize($family, $data['package_configuration']))->save();
+            }
             $default = new FamilyOrderDefault;
             $default->family_id = $family->id;
             $default->fill([
@@ -51,7 +56,8 @@ class CreateCollection
                 'enforce_minimum_floor' => ! $isAddon,
             ])->save();
             $this->audit->record('catalog.collection_created', $actor, $family, null,
-                $family->only('code', 'name', 'description', 'behavior_type', 'is_addon', 'sort_order', 'active'));
+                [...$family->only('code', 'name', 'description', 'behavior_type', 'is_addon', 'sort_order', 'active'),
+                    'package_configuration' => $configuration->input($family)]);
 
             return $family;
         });

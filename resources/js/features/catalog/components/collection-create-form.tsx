@@ -4,6 +4,10 @@ import { useJsonSave } from "../use-json-save";
 import { ModalClose } from "../../../components/ui/modal";
 import { Button } from "../../../components/ui/button";
 import { Field } from "../../../components/ui/field";
+import {
+    ServicePackageFields,
+    initialServicePackage,
+} from "./service-package-fields";
 
 export const serviceBehaviors = [
     {
@@ -40,6 +44,7 @@ export function CollectionCreateForm({
         name: "",
         description: "",
         active: true,
+        package_configuration: initialServicePackage(),
     });
     const request = useJsonSave<{ service: { id: number; name: string } }>();
     useDialogForm(form.isDirty, request.saving);
@@ -53,7 +58,9 @@ export function CollectionCreateForm({
                 const result = await request.save(
                     "/admin/add-on-services",
                     "POST",
-                    form.data,
+                    form.data.behavior_type === "direct_sale"
+                        ? { ...form.data, package_configuration: undefined }
+                        : form.data,
                     form.setError,
                 );
                 if (result) onCreated(result.service);
@@ -118,6 +125,14 @@ export function CollectionCreateForm({
                     </label>
                 </div>
             </fieldset>
+            {form.data.behavior_type !== "direct_sale" && (
+                <ServicePackageFields
+                    value={form.data.package_configuration}
+                    onChange={(value) =>
+                        form.setData("package_configuration", value)
+                    }
+                />
+            )}
             <Field
                 id="service-description"
                 label="Description (optional)"

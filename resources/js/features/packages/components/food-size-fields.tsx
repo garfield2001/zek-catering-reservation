@@ -21,6 +21,7 @@ export function FoodSizeFields({
     onChange,
     canPrice,
     onUnitCreated,
+    selectionOnly = false,
 }: {
     foods: { id: number; name: string }[];
     units: MeasurementUnit[];
@@ -28,12 +29,13 @@ export function FoodSizeFields({
     onChange: (value: FoodSizes) => void;
     canPrice: boolean;
     onUnitCreated?: (unit: MeasurementUnit) => void;
+    selectionOnly?: boolean;
 }) {
     const update = (id: number, group: FoodSizeInput) =>
         onChange({ ...value, [id]: group });
     return (
         <section className="space-y-3" aria-label="Food size choices">
-            <h3 className="font-semibold">Optional size choices</h3>
+            <h3 className="font-semibold">Size choices</h3>
             <p className="text-sm text-slate-600">
                 Each food still counts once. Extra prices apply to each
                 purchased package. The included default costs no extra.
@@ -68,38 +70,40 @@ export function FoodSizeFields({
                         disabled={!canPrice}
                         className="rounded-xl border bg-white p-4"
                     >
-                        <legend className="px-1 text-sm font-semibold">
-                            {food.name}
-                        </legend>
-                        <label className="flex items-center gap-2 text-sm">
-                            <input
-                                type="checkbox"
-                                checked={!!group}
-                                onChange={(event) => {
-                                    if (event.target.checked)
-                                        update(food.id, {
-                                            measurement_unit_id: "",
-                                            choices: [
-                                                {
-                                                    quantity: "",
-                                                    extra_price_pesos: "0",
-                                                    is_default: true,
-                                                },
-                                            ],
-                                        });
-                                    else
-                                        onChange(
-                                            Object.fromEntries(
-                                                Object.entries(value).filter(
-                                                    ([id]) =>
-                                                        Number(id) !== food.id,
+                        {!selectionOnly && (
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    checked={!!group}
+                                    onChange={(event) => {
+                                        if (event.target.checked)
+                                            update(food.id, {
+                                                measurement_unit_id: "",
+                                                choices: [
+                                                    {
+                                                        quantity: "",
+                                                        extra_price_pesos: "0",
+                                                        is_default: true,
+                                                    },
+                                                ],
+                                            });
+                                        else
+                                            onChange(
+                                                Object.fromEntries(
+                                                    Object.entries(
+                                                        value,
+                                                    ).filter(
+                                                        ([id]) =>
+                                                            Number(id) !==
+                                                            food.id,
+                                                    ),
                                                 ),
-                                            ),
-                                        );
-                                }}
-                            />
-                            Offer Size Choices for {food.name}
-                        </label>
+                                            );
+                                    }}
+                                />
+                                Offer size choices
+                            </label>
+                        )}
                         {group && (
                             <div className="mt-4 space-y-3">
                                 <label className="block text-sm">

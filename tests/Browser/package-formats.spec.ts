@@ -1,3 +1,4 @@
+import { configureService } from "./workflow";
 import { test, expect, type Page } from "@playwright/test";
 import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -50,7 +51,7 @@ async function publish(page: Page, workspace: string) {
         .click();
     await expect(page).toHaveURL(workspace);
 }
-test("combined packs preserve composition, publish format changes and clone historical presentation", async ({
+test("service-owned combined packs preserve defaults, publish revisions and clone historical presentation", async ({
     page,
 }) => {
     test.setTimeout(180000);
@@ -60,12 +61,16 @@ test("combined packs preserve composition, publish format changes and clone hist
         .getByRole("button", { name: "Create Add-on Service", exact: true })
         .click();
     await page.getByLabel("Service name").fill("Flexible presentation service");
+    await configureService(page, "combined_contents", "Meal Pack");
+    await reviewResponsive(page, "service-owned-configuration");
     await page
         .getByRole("button", { name: "Create Service", exact: true })
         .click();
     await page
         .getByRole("link", { name: "Open newly created service" })
         .click();
+    await expect(page).toHaveURL(/\/admin\/add-on-services\/\d+$/);
+    const serviceWorkspace = page.url();
     await createPackage(page, "Combined Meal");
     for (const name of ["Format Rice", "Format Drink", "Format Roast"])
         await inlineFood(page, name, "Format Foods");
@@ -75,38 +80,24 @@ test("combined packs preserve composition, publish format changes and clone hist
             .getByLabel(`Always include ${name}`, { exact: true })
             .check();
     await step(page, "Details");
-    await page
-        .getByLabel("What does the customer receive")
-        .selectOption("combined_contents");
-    await page.getByLabel("Container count", { exact: true }).fill("1");
-    await page
-        .getByRole("button", {
-            name: "Create New Measurement Unit",
-            exact: true,
-        })
-        .click();
-    const unit = page.getByRole("dialog", {
-        name: "Create Measurement Unit",
-        exact: true,
-    });
-    await unit.getByLabel("Unit name").fill("Meal Pack");
-    await unit.getByLabel("Abbreviation").fill("meal-pack");
-    await unit
-        .getByRole("button", { name: "Create Measurement Unit", exact: true })
-        .click();
-    await expect(unit).not.toBeVisible();
+    await expect(page.getByLabel("What does the customer receive")).toHaveCount(
+        0,
+    );
+    await expect(
+        page.getByRole("region", { name: "Inherited service presentation" }),
+    ).toContainText("Meal Pack");
     await expect(page.getByLabel("Package Name", { exact: true })).toHaveValue(
         "Combined Meal",
     );
     await reviewResponsive(page, "combined-presentation-details");
     await step(page, "Menu");
     await expect(
-        page.getByText("Optional food portions: Default Serving per Food", {
+        page.getByText("Optional: Default Food Portion", {
             exact: true,
         }),
     ).toBeVisible();
     await expect(
-        page.getByLabel("Set an optional serving default"),
+        page.getByLabel("Set a default food portion"),
     ).not.toBeVisible();
     await expect(
         page.getByLabel("Always include Format Rice", { exact: true }),
@@ -140,25 +131,24 @@ test("combined packs preserve composition, publish format changes and clone hist
     await page
         .getByRole("button", { name: "Edit Package", exact: true })
         .click();
-    await page
-        .getByLabel("What does the customer receive")
-        .selectOption("separate_servings");
-    // Keep the explicitly configured one-pack presentation: format does not invent trays.
+    await expect(page.getByLabel("What does the customer receive")).toHaveCount(
+        0,
+    );
+    await step(page, "Pricing & Quantity");
+    await page.getByLabel("Price per complete Meal Pack (PHP)").fill("159");
     await savePackage(page);
     await publish(page, workspace);
     const revised = await persisted(page, workspace);
     expect(revised.history[0].published_snapshot).toEqual(original);
     expect(revised.history[1].published_snapshot.presentation.format).toBe(
-        "separate_servings",
+        "combined_contents",
     );
     expect(revised.history[1].published_snapshot.version.base_price_minor).toBe(
-        "14900",
+        "15900",
     );
-    expect(revised.commercialHistory.publications[1].changes).toContainEqual({
-        label: "Package Format",
-        before: "Combined Contents",
-        after: "Separate Food Servings",
-    });
+    expect(
+        revised.commercialHistory.publications[1].changes.length,
+    ).toBeGreaterThan(0);
     const old = page
         .locator("#history details")
         .filter({
@@ -178,15 +168,49 @@ test("combined packs preserve composition, publish format changes and clone hist
     await page
         .getByRole("button", { name: "Edit Package", exact: true })
         .click();
-    await expect(page.getByLabel("What does the customer receive")).toHaveValue(
-        "combined_contents",
+    await expect(page.getByLabel("What does the customer receive")).toHaveCount(
+        0,
     );
     await expect(
-        page
-            .getByRole("combobox", { name: "Presentation unit", exact: true })
-            .locator("option:checked"),
-    ).toHaveText("Meal Pack");
+        page.getByRole("region", { name: "Inherited service presentation" }),
+    ).toContainText("Meal Pack");
     expect(
         (await persisted(page, workspace)).history[0].published_snapshot,
     ).toEqual(original);
+    await page.keyboard.press("Escape");
+    await page.goto(serviceWorkspace);
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await expect(page.getByLabel("How are foods provided?")).toBeDisabled();
+    await configureService(page, "combined_contents", "Meal Box");
+    await page
+        .getByRole("button", { name: "Save changes", exact: true })
+        .click();
+    await expect(page.getByRole("dialog")).not.toBeVisible();
+    await createPackage(page, "Two Food Box");
+    await page.getByLabel("Total included food selections").fill("2");
+    for (const food of ["Format Rice", "Format Drink"]) {
+        await page.getByLabel(food, { exact: true }).check();
+        await page
+            .getByLabel(`Always include ${food}`, { exact: true })
+            .check();
+    }
+    await step(page, "Pricing & Quantity");
+    await page.getByLabel("Price per complete Meal Box (PHP)").fill("160");
+    await savePackage(page);
+    const secondWorkspace = page.url();
+    await publish(page, secondWorkspace);
+    const second = (await persisted(page, secondWorkspace)).history[0]
+        .published_snapshot;
+    expect(second.presentation.default.measurement_unit.name).toBe("Meal Box");
+    expect(second.menu.food_items).toHaveLength(2);
+    await page.goto(workspace);
+    expect(
+        (await persisted(page, workspace)).history[0].published_snapshot,
+    ).toEqual(original);
+    await page
+        .getByRole("button", { name: "Edit Package", exact: true })
+        .click();
+    await expect(
+        page.getByRole("region", { name: "Inherited service presentation" }),
+    ).toContainText("Meal Pack");
 });

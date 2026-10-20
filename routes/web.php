@@ -77,6 +77,7 @@ Route::middleware('auth')->group(function () {
         Route::get('measurement-units', [MeasurementUnitController::class, 'index'])->name('units.index');
         Route::post('measurement-units', [MeasurementUnitController::class, 'store'])->name('units.store');
         Route::put('measurement-units/{unit}', [MeasurementUnitController::class, 'update'])->name('units.update');
+        Route::delete('measurement-units/{unit}', [MeasurementUnitController::class, 'destroy'])->name('units.destroy');
         Route::resource('categories', CategoryController::class)->except('destroy');
         Route::post('categories/{category}/move', [DisplayOrderController::class, 'category'])->name('categories.move');
         Route::resource('dishes', DishController::class)->except('destroy');

@@ -202,8 +202,10 @@ export function FoodPresentationFields({
         onChange({ ...value, food_overrides: overrides });
     };
     return (
-        <details className="mt-3 text-sm">
-            <summary>Presentation exception for {food.name}</summary>
+        <section
+            aria-label={`Different packaging for ${food.name}`}
+            className="mt-3 rounded-lg bg-slate-50 p-3 text-sm"
+        >
             <label className="my-2 flex gap-2">
                 <input
                     type="checkbox"
@@ -216,17 +218,17 @@ export function FoodPresentationFields({
                         )
                     }
                 />
-                Use a different presentation (not a serving measurement)
+                Use different packaging for this food
             </label>
             {value.food_overrides[food.id] && (
                 <PresentationAmountFields
-                    label={`Presentation for ${food.name}`}
+                    label="Different packaging"
                     value={value.food_overrides[food.id]}
                     units={units}
                     onChange={update}
                     onUnitCreated={onUnitCreated}
                 />
             )}
-        </details>
+        </section>
     );
 }

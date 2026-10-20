@@ -53,6 +53,7 @@ export type PackageEditorProps = {
     foodSizes: FoodSizes;
     servingDefault: ServingDefault | null;
     presentation?: PackagePresentationInput | null;
+    serviceFormatOwned?: boolean;
 };
 const steps = ["Details", "Menu", "Pricing & Quantity", "Review & Save"];
 export function CompletePackageForm({
@@ -70,6 +71,7 @@ export function CompletePackageForm({
     foodSizes,
     servingDefault,
     presentation,
+    serviceFormatOwned = false,
     onSaved,
     initialStep = 0,
 }: PackageEditorProps & {
@@ -136,8 +138,18 @@ export function CompletePackageForm({
         const fields = panel.current?.querySelectorAll<
             HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
         >("input, textarea, select");
-        for (const field of fields ?? [])
-            if (!field.disabled && !field.reportValidity()) return false;
+        for (const field of fields ?? []) {
+            if (!field.disabled && !field.checkValidity()) {
+                let parent = field.parentElement;
+                while (parent) {
+                    if (parent instanceof HTMLDetailsElement)
+                        parent.open = true;
+                    parent = parent.parentElement;
+                }
+                field.reportValidity();
+                return false;
+            }
+        }
         if (step === 1 && summary.impossible) {
             setNotice("Resolve the menu conflict below before continuing.");
             return false;
@@ -325,18 +337,64 @@ export function CompletePackageForm({
                                     }
                                 />
                             </Field>
-                            {!main && (
-                                <PackagePresentationFields
-                                    value={form.data.presentation}
-                                    onChange={(value) =>
-                                        form.setData("presentation", value)
-                                    }
-                                    units={measurementUnits}
-                                    onUnitCreated={addUnit}
-                                    legacySplit={
-                                        form.data.selection_policy === "split"
-                                    }
-                                />
+                            {!main && serviceFormatOwned && (
+                                <section
+                                    aria-label="Inherited service presentation"
+                                    className="space-y-2 rounded-xl bg-slate-50 p-4 text-sm"
+                                >
+                                    <h3 className="font-semibold">
+                                        {form.data.presentation?.format ===
+                                        "combined_contents"
+                                            ? "Combined Contents"
+                                            : "Separate Food Servings"}
+                                    </h3>
+                                    <p>
+                                        From {family.name}:{" "}
+                                        {form.data.presentation?.quantity}{" "}
+                                        {measurementUnits.find(
+                                            (unit) =>
+                                                unit.id ===
+                                                Number(
+                                                    form.data.presentation
+                                                        ?.measurement_unit_id,
+                                                ),
+                                        )?.name ?? "container unit unavailable"}
+                                        {form.data.presentation?.format ===
+                                        "combined_contents"
+                                            ? " per complete purchased unit. All foods go inside it."
+                                            : " per included or selected food."}
+                                    </p>
+                                    <p>
+                                        This package retains its inherited
+                                        format and default container. Food
+                                        amounts and optional presentation
+                                        exceptions are configured in Menu.
+                                        Create another service for a different
+                                        format.
+                                    </p>
+                                </section>
+                            )}
+                            {!main && !serviceFormatOwned && (
+                                <>
+                                    <p className="rounded bg-amber-50 p-3 text-sm">
+                                        Legacy package: its recorded format and
+                                        presentation are preserved independently
+                                        of the service. Changes affect this
+                                        Draft only.
+                                    </p>
+                                    <PackagePresentationFields
+                                        value={form.data.presentation}
+                                        onChange={(value) =>
+                                            form.setData("presentation", value)
+                                        }
+                                        units={measurementUnits}
+                                        onUnitCreated={addUnit}
+                                        legacySplit={
+                                            form.data.selection_policy ===
+                                            "split"
+                                        }
+                                    />
+                                </>
                             )}
                         </section>
                     )}
@@ -350,10 +408,7 @@ export function CompletePackageForm({
                     )}
                     {step === 1 && !main && (
                         <ServingDefaultFields
-                            secondary={
-                                form.data.presentation?.format ===
-                                "combined_contents"
-                            }
+                            secondary
                             onUnitCreated={addUnit}
                             value={form.data.serving_default}
                             units={measurementUnits}
@@ -396,6 +451,7 @@ export function CompletePackageForm({
                                         }
                                         units={measurementUnits}
                                         canPrice={canPrice}
+                                        presentation={form.data.presentation}
                                         onUnitCreated={addUnit}
                                         onChange={(detail, sizes) =>
                                             form.setData((current) => {
@@ -415,16 +471,20 @@ export function CompletePackageForm({
                                                 };
                                             })
                                         }
-                                    />
-                                    <FoodPresentationFields
-                                        food={food}
-                                        value={form.data.presentation}
-                                        units={measurementUnits}
-                                        onUnitCreated={addUnit}
-                                        onChange={(value) =>
-                                            form.setData("presentation", value)
-                                        }
-                                    />
+                                    >
+                                        <FoodPresentationFields
+                                            food={food}
+                                            value={form.data.presentation}
+                                            units={measurementUnits}
+                                            onUnitCreated={addUnit}
+                                            onChange={(value) =>
+                                                form.setData(
+                                                    "presentation",
+                                                    value,
+                                                )
+                                            }
+                                        />
+                                    </FoodConfiguration>
                                 </>
                             )}
                             onAddFood={

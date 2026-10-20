@@ -21,6 +21,10 @@ class DeactivationImpact
                 'Archiving is permanent and abandons its open package and listing Drafts. Published Versions and history remain saved.'];
         } elseif ($record instanceof MeasurementUnit) {
             $messages = ['Disabling this unit prevents its use in new or edited serving configurations. Existing Published Version measurements and prices remain frozen. Re-enable the unit before saving a Draft that still uses it.'];
+            if (Gate::allows('viewAny', ProductFamily::class)) {
+                $count = ProductFamily::where('default_presentation_unit_id', $record->id)->whereNull('archived_at')->count();
+                $messages[] = "{$count} services use this unit as their default container. Re-enable the unit or edit those services before creating new packages. Existing package defaults and Published Versions are not rewritten.";
+            }
             if (Gate::allows('viewAny', Product::class) && (Gate::allows('create', Product::class) || Gate::allows('publish', PackageVersion::class))) {
                 $usage = PackageVersion::with('product')->where('status', 'draft')
                     ->where(fn ($q) => $q->where('default_serving_unit_id', $record->id)->orWhere('presentation_unit_id', $record->id)

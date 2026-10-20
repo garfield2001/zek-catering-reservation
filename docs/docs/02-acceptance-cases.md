@@ -98,6 +98,14 @@ Phase 3 implements **draft-only administrator configuration and price previews**
 
 ## Milestone B acceptance amendment (2026-10-14)
 
+### Later service-owned configuration acceptance (2026-10-20)
+
+- New package-service creation requires an explicit format and default container; direct-sale and Main Catering contexts reject package configuration.
+- New HTTP package creation fails closed for an unconfigured legacy service. Once configured, package format/default container are inherited and read-only in the editor; forged overrides fail server-side.
+- Existing packages and historical clones retain recorded defaults. Changing the service container affects newly created packages only. Existing mixed-format services require an explicit future setting, never an inferred migration choice.
+- Optional portion, food-price, size and container-exception controls use progressive disclosure. Switching away from configured sizes/amounts requires confirmation; size pricing does not duplicate a general food surcharge.
+- Verify different food counts in one service, fixed-only menus, complete packs/boxes, quantity repetition, numeric/named sizes, immutable revisions/clones, Staff authorization, light-only desktop/mobile layouts, and existing Main Catering/individual-listing regressions. See `23-service-package-configuration.md` for executed results and remaining scope.
+
 - One package editor owns Details, Menu, Pricing & Quantity and Review & Save. Navigation does not create records. Invalid input and stale revision failures roll back the complete save. Publication remains explicit and confirmed.
 - Automatic sole-required-category foods and explicit Always Include form a distinct fixed union counted toward exactly N foods. Main Catering rejects measurements/premiums. Category Select All changes allowance only.
 - Contextual Add Food preselects its category, permits transactional inline category creation and preserves unsaved package state.
@@ -108,3 +116,10 @@ Phase 3 implements **draft-only administrator configuration and price previews**
 - Listing SQL constraints enforce source ownership, one Draft, valid price/quantity facts, immutable publication and forward-only same-owner pointers. Separate Staff editing, pricing, publishing, history and lifecycle permissions are enforced.
 - Fresh-install and 12-to-15 migration verification use ONLY zek_catering_test on 127.0.0.1:5432, preserving representative IDs and package snapshots across the upgrade. Development migration requires owner authorization.
 - Owner testing follows the current guide and verification report; passing tests is not owner acceptance or production certification.
+
+### Phase 3.1 package-builder and Measurement Unit acceptance (2026-10-20)
+
+- An Administrator configures an add-on food through one collapsed **Food Options** section: standard serving, a fixed portion using an active configured Measurement Unit, or size choices where permitted. Portion and packaging remain distinct facts.
+- Newly entered free-text units, inactive units, and malformed portion pairs are rejected by Laravel. An active selected unit is resolved server-side and its abbreviation is frozen into the draft and later snapshot.
+- Moving between a general selection charge and size choices requests confirmation and cannot leave contradictory price data. Main Catering still rejects food portions and food-specific charges.
+- An unused Measurement Unit can be edited, deactivated/reactivated, or deleted by an authorized Administrator. A referenced unit cannot be renamed or deleted through application workflows; deactivation retains history and prevents new selection. Unauthorized Staff HTTP writes fail.

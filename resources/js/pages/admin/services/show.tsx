@@ -106,6 +106,7 @@ export default function ServiceShow({
                     <div className="mb-5 flex flex-wrap gap-4">
                         {canPackages &&
                             canPrice &&
+                            family.package_format &&
                             family.active &&
                             !family.archived_at && (
                                 <PackageEditorButton
@@ -116,6 +117,15 @@ export default function ServiceShow({
                                 </PackageEditorButton>
                             )}
                     </div>
+                    {!family.package_format && (
+                        <p className="mb-5 rounded-lg bg-amber-50 p-3 text-sm">
+                            Before creating a package, use Edit to configure how
+                            foods are provided and the default container.
+                            Existing package history is unchanged.
+                            {!canManage &&
+                                " Ask an Administrator to configure this service."}
+                        </p>
+                    )}
                     {(!canPackages ||
                         !canPrice ||
                         !family.active ||

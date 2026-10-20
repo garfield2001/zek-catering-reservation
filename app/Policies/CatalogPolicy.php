@@ -30,4 +30,9 @@ class CatalogPolicy
     {
         return $this->create($user);
     }
+
+    public function delete(User $user, Model $model): bool
+    {
+        return $this->create($user);
+    }
 }

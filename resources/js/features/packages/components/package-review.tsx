@@ -66,9 +66,9 @@ export function PackageReview({
                 {summary.allowed.map((f) => f.name).join(", ") || "None"}.
             </p>
             <p className="text-sm text-stone-500">
-                This is a preview of unsaved input. Laravel validates and saves
-                all steps together. Use Save Draft to continue later, or
-                explicitly confirm publication to make these terms live.
+                Review your package details before saving. You can save this
+                package as a draft and finish it later, or publish it when
+                everything is ready.
             </p>
             {!main && data.serving_default && (
                 <p>

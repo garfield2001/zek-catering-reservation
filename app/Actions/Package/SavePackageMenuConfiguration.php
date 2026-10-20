@@ -40,7 +40,7 @@ class SavePackageMenuConfiguration
             $normalizedSizes = $sizes->validateInput($version, $data['food_item_ids'], $sizeInput);
             foreach (array_keys($normalizedSizes) as $foodId) {
                 $detail = $details[$foodId] ?? [];
-                if (! empty($detail['included_quantity']) || ! empty($detail['included_unit'])
+                if (! empty($detail['included_quantity']) || ! empty($detail['included_unit']) || ! empty($detail['included_unit_id'])
                     || app(MinorMoney::class)->fromPesos($detail['price_adjustment_pesos'] ?? '0', 'food_details') !== 0) {
                     throw ValidationException::withMessages(['food_sizes' => 'Use the size configuration for this food instead of a separate included amount or general extra price. This prevents duplicate measurements and double charging.']);
                 }

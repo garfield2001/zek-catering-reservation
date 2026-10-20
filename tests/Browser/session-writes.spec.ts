@@ -1,3 +1,4 @@
+import { configureService, customizeFood, openPortions } from "./workflow";
 import { test, expect, type Page } from "@playwright/test";
 import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -130,6 +131,7 @@ test("fresh login creates an Add-on Service once without a document reload", asy
         .getByRole("button", { name: "Create Add-on Service", exact: true })
         .click();
     await page.getByLabel("Service name").fill("Immediate Service");
+    await configureService(page);
     const saved = page.waitForResponse(
         (response) =>
             response.request().method() === "POST" &&
@@ -211,6 +213,7 @@ test("inline food and unit plus package save work after login without losing par
         .getByRole("button", { name: "Create Add-on Service", exact: true })
         .click();
     await page.getByLabel("Service name").fill("Inline Session Service");
+    await configureService(page);
     await page
         .getByRole("button", { name: "Create Service", exact: true })
         .click();
@@ -227,10 +230,12 @@ test("inline food and unit plus package save work after login without losing par
     await expect(page.getByLabel("Package Name", { exact: true })).toHaveValue(
         "Inline Session Package",
     );
-    await page.getByLabel("Container count", { exact: true }).fill("1");
+    await step(page, "Menu");
+    await openPortions(page);
+    await page.getByLabel("Set a default food portion").check();
     await page
         .getByRole("button", {
-            name: "Create New Measurement Unit",
+            name: "Add Measurement Unit",
             exact: true,
         })
         .click();
@@ -304,6 +309,7 @@ test("expired JSON service save gives a clear error and creates no record", asyn
         .getByRole("button", { name: "Create Add-on Service", exact: true })
         .click();
     await page.getByLabel("Service name").fill("Expired Service");
+    await configureService(page);
     await context.clearCookies();
     const failed = page.waitForResponse(
         (response) =>

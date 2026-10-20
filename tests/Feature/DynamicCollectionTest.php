@@ -22,6 +22,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\ServiceConfiguration;
 use Tests\TestCase;
 
 class DynamicCollectionTest extends TestCase
@@ -55,6 +56,7 @@ class DynamicCollectionTest extends TestCase
         $this->post(route('services.store'), [
             'name' => $name, 'description' => null, 'kind' => $kind,
             'behavior_type' => $behavior, 'sort_order' => 0, 'active' => true,
+            ...($behavior === 'direct_sale' ? [] : ['package_configuration' => ServiceConfiguration::input()]),
         ])->assertRedirect();
 
         return ProductFamily::where('name', $name)->whereNull('archived_at')->sole();

@@ -29,7 +29,7 @@ $identity = DB::selectOne('select current_database() as name, inet_server_port()
 if ($identity->name !== 'zek_catering_test' || (int) $identity->port !== 5432) {
     throw new RuntimeException('Unexpected actual database connection.');
 }
-$baseline = array_values(array_filter(glob(database_path('migrations/*.php')), fn ($path) => ! str_contains(basename($path), '000020_add_package_presentation') && ! str_contains(basename($path), '000021_allow_configurable_listing_units')));
+$baseline = array_values(array_filter(glob(database_path('migrations/*.php')), fn ($path) => ! str_contains(basename($path), '000020_add_package_presentation') && ! str_contains(basename($path), '000021_allow_configurable_listing_units') && ! str_contains(basename($path), '000022_add_service_package_configuration')));
 if (Artisan::call('migrate:fresh', ['--path' => $baseline, '--realpath' => true, '--force' => true]) !== 0) {
     throw new RuntimeException('Pre-presentation baseline failed.');
 }

@@ -11,6 +11,7 @@ use App\Actions\Package\SavePackageVersion;
 use App\Actions\Package\SaveProduct;
 use App\Models\Dish;
 use App\Models\DishCategory;
+use App\Models\MeasurementUnit;
 use App\Models\PackageVersion;
 use App\Models\ProductFamily;
 use App\Models\Role;
@@ -72,7 +73,8 @@ class SharedPackageMenuTest extends TestCase
     {
         [$product, $draft, $foods, $data] = $this->menu($this->service('package'));
         $data['draft_revision'] = $draft->draft_revision;
-        $data['food_details'] = [$foods[0]->id => ['is_fixed' => true, 'included_quantity' => '3.000', 'included_unit' => 'kg']];
+        $kilogram = MeasurementUnit::create(['name' => 'Kilogram', 'abbreviation' => 'kg', 'active' => true]);
+        $data['food_details'] = [$foods[0]->id => ['is_fixed' => true, 'included_quantity' => '3.000', 'included_unit_id' => $kilogram->id]];
         app(SavePackageMenuConfiguration::class)->handle($this->admin, $draft, $data);
         $draft = $this->price($draft->fresh(), ['estimated_capacity' => 15]);
         $result = app(PackagePricePreview::class)->calculate($draft, 2, [['quantity' => 2, 'selections' => ['food_items' => $foods->take(2)->pluck('id')->all()]]]);
@@ -109,7 +111,8 @@ class SharedPackageMenuTest extends TestCase
     {
         [$product, $draft, $foods, $data] = $this->menu($this->service('packed_meal'));
         $data['draft_revision'] = $draft->draft_revision;
-        $data['food_details'] = [$foods[2]->id => ['price_adjustment_pesos' => '10.00', 'included_quantity' => '1', 'included_unit' => 'bottle']];
+        $bottle = MeasurementUnit::create(['name' => 'Bottle', 'abbreviation' => 'bottle', 'active' => true]);
+        $data['food_details'] = [$foods[2]->id => ['price_adjustment_pesos' => '10.00', 'included_quantity' => '1', 'included_unit_id' => $bottle->id]];
         app(SavePackageMenuConfiguration::class)->handle($this->admin, $draft, $data);
         $draft = $this->price($draft->fresh(), ['base_price_pesos' => '100.00', 'minimum_quantity' => 50, 'quantity_step' => 10, 'selection_policy' => 'split']);
         $groups = [
@@ -119,6 +122,77 @@ class SharedPackageMenuTest extends TestCase
         $this->assertSame('530000', app(PackagePricePreview::class)->calculate($draft, 50, $groups)['total_minor']);
         $this->expectException(ValidationException::class);
         app(PackagePricePreview::class)->calculate($draft, 60, $groups);
+    }
+
+    public function test_addon_fixed_portions_resolve_active_catalog_units_and_reject_forged_or_inactive_units(): void
+    {
+        [$product, $draft, $foods, $data] = $this->menu($this->service('package'));
+        $pail = MeasurementUnit::create(['name' => 'Pail', 'abbreviation' => 'pail', 'active' => true]);
+        $data['draft_revision'] = $draft->draft_revision;
+        $data['food_details'] = [$foods[0]->id => [
+            'is_fixed' => true,
+            'included_quantity' => '1.500',
+            'included_unit_id' => $pail->id,
+        ]];
+
+        $this->putJson(route('packages.versions.package-menu.update', [$product, $draft]), $data)
+            ->assertRedirect(route('packages.show', $product));
+        $this->assertDatabaseHas('package_version_food_items', [
+            'package_version_id' => $draft->id,
+            'dish_id' => $foods[0]->id,
+            'included_quantity' => '1.500',
+            'included_unit' => 'pail',
+        ]);
+        $this->delete(route('catalog.units.destroy', $pail))
+            ->assertSessionHasErrors('unit');
+
+        $forged = $data;
+        $forged['draft_revision'] = $draft->fresh()->draft_revision;
+        $forged['food_details'] = [$foods[1]->id => ['included_quantity' => '1', 'included_unit' => 'invented']];
+        $this->putJson(route('packages.versions.package-menu.update', [$product, $draft]), $forged)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('food_details');
+
+        $pail->update(['active' => false]);
+        $inactive = $data;
+        $inactive['draft_revision'] = $draft->fresh()->draft_revision;
+        $inactive['food_details'] = [$foods[1]->id => ['included_quantity' => '1', 'included_unit_id' => $pail->id]];
+        $this->putJson(route('packages.versions.package-menu.update', [$product, $draft]), $inactive)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('food_details');
+    }
+
+    public function test_portion_unit_migration_upgrade_preserves_legacy_labels_and_accepts_configured_labels(): void
+    {
+        [$product, $draft, $foods] = $this->menu($this->service('package'));
+        DB::table('package_version_food_items')
+            ->where('package_version_id', $draft->id)
+            ->where('dish_id', $foods[0]->id)
+            ->update(['included_quantity' => '3.000', 'included_unit' => 'kg']);
+        $legacy = DB::table('package_version_food_items')
+            ->where('package_version_id', $draft->id)
+            ->where('dish_id', $foods[0]->id)
+            ->first(['package_version_id', 'dish_id', 'included_quantity', 'included_unit']);
+
+        $migration = require database_path('migrations/2026_10_20_000023_allow_configurable_food_portion_units.php');
+        DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
+        $migration->down();
+        $migration->up();
+        DB::statement('SET CONSTRAINTS ALL DEFERRED');
+
+        $this->assertEquals($legacy, DB::table('package_version_food_items')
+            ->where('package_version_id', $draft->id)
+            ->where('dish_id', $foods[0]->id)
+            ->first(['package_version_id', 'dish_id', 'included_quantity', 'included_unit']));
+        DB::table('package_version_food_items')
+            ->where('package_version_id', $draft->id)
+            ->where('dish_id', $foods[0]->id)
+            ->update(['included_unit' => 'pail']);
+        $this->assertSame('pail', DB::table('package_version_food_items')
+            ->where('package_version_id', $draft->id)
+            ->where('dish_id', $foods[0]->id)
+            ->value('included_unit'));
+        $this->assertSame($product->id, $draft->fresh()->product->id);
     }
 
     public function test_shared_split_menus_merge_identical_choices_before_optional_subgroup_rules(): void

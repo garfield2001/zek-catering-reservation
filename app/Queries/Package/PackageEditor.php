@@ -8,6 +8,7 @@ use App\Models\MeasurementUnit;
 use App\Models\PackageVersion;
 use App\Models\Product;
 use App\Models\ProductFamily;
+use App\Services\Catalog\ServicePackageConfiguration;
 use App\Services\Package\PackageFoodSizes;
 use App\Services\Package\PackagePresentation;
 use App\Services\Package\PackageServingDefaults;
@@ -22,6 +23,7 @@ class PackageEditor
         if (! $product) {
             Gate::authorize('price', PackageVersion::class);
             abort_unless($family->active, 422, 'Enable the service before creating a package.');
+            abort_if($family->is_addon && $family->package_format === null, 422, 'Edit this service and configure how foods are provided before creating a package.');
         }
         $version = $product?->versions()->where('status', 'draft')->first()
             ?? $product?->currentVersion;
@@ -33,7 +35,9 @@ class PackageEditor
         return ['family' => $family, 'product' => $product, 'version' => $version,
             'measurementUnits' => MeasurementUnit::where('active', true)->orderBy('name')->get(['id', 'name', 'abbreviation', 'active']),
             'servingDefault' => $version ? app(PackageServingDefaults::class)->input($version) : null,
-            'presentation' => $version ? app(PackagePresentation::class)->input($version) : null,
+            'presentation' => $version ? app(PackagePresentation::class)->input($version)
+                : ($family->package_format === null ? null : [...app(ServicePackageConfiguration::class)->input($family), 'food_overrides' => (object) []]),
+            'serviceFormatOwned' => $product ? $product->usesServiceFormat() : $family->package_format !== null,
             'foodSizes' => $version ? app(PackageFoodSizes::class)->input($version) : (object) [],
             'canPrice' => Gate::allows('price', PackageVersion::class),
             'canPublish' => Gate::allows('publish', PackageVersion::class),

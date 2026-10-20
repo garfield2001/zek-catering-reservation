@@ -1,3 +1,4 @@
+import { configureService, customizeFood, openPortions } from "./workflow";
 import { test, expect } from "@playwright/test";
 import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -78,6 +79,53 @@ test("unified catalog manages categories, globally available foods and measureme
     });
 });
 
+test("Measurement Unit management supports safe lifecycle for unused units", async ({
+    page,
+}) => {
+    await login(page, run, password);
+    await page.goto("/admin/catalog/measurement-units");
+    await page
+        .getByRole("button", { name: "Add Measurement Unit", exact: true })
+        .click();
+    const dialog = page.getByRole("dialog", {
+        name: "New Measurement Unit",
+        exact: true,
+    });
+    await dialog.getByLabel("Unit name").fill("Test basket");
+    await dialog.getByLabel("Abbreviation").fill("basket");
+    await dialog
+        .getByRole("button", { name: "Create Measurement Unit", exact: true })
+        .click();
+    const row = page.getByRole("row", { name: /Test basket/ });
+    await expect(row).toContainText("Active");
+    await row.getByRole("button", { name: "Edit or deactivate" }).click();
+    await page
+        .getByRole("dialog", { name: "Edit Test basket", exact: true })
+        .getByLabel("Active Measurement Unit")
+        .uncheck();
+    await page
+        .getByRole("dialog", { name: "Edit Test basket", exact: true })
+        .getByRole("button", { name: "Save Measurement Unit", exact: true })
+        .click();
+    await expect(row).toContainText("Inactive");
+    await row.getByRole("button", { name: "Edit or reactivate" }).click();
+    await page
+        .getByRole("dialog", { name: "Edit Test basket", exact: true })
+        .getByLabel("Active Measurement Unit")
+        .check();
+    await page
+        .getByRole("dialog", { name: "Edit Test basket", exact: true })
+        .getByRole("button", { name: "Save Measurement Unit", exact: true })
+        .click();
+    await expect(row).toContainText("Active");
+    await row.getByRole("button", { name: "Delete", exact: true }).click();
+    await page
+        .getByRole("alertdialog", { name: "Delete Measurement Unit?" })
+        .getByRole("button", { name: "Delete Unit", exact: true })
+        .click();
+    await expect(page.getByRole("row", { name: /Test basket/ })).toHaveCount(0);
+});
+
 test("dynamic packed service opens its workspace and creates a service-scoped package", async ({
     page,
 }) => {
@@ -85,6 +133,7 @@ test("dynamic packed service opens its workspace and creates a service-scoped pa
     await page.goto("/admin/add-on-services");
     await page.getByRole("button", { name: "Create Add-on Service" }).click();
     await page.getByLabel("Service name").fill("Lunch Boxes");
+    await configureService(page, "combined_contents", "Meal Box");
     await page.getByRole("radio", { name: /Sold by Package/ }).check();
     await page
         .getByRole("button", { name: "Create Service", exact: true })
@@ -101,27 +150,6 @@ test("dynamic packed service opens its workspace and creates a service-scoped pa
     await page.getByLabel("Total included food selections").fill("2");
     await page.getByLabel("Packed Rice", { exact: true }).check();
     await page.getByLabel("Packed Chicken", { exact: true }).check();
-    await step(page, "Details");
-    await page
-        .getByLabel("What does the customer receive")
-        .selectOption("combined_contents");
-    await page.getByLabel("Container count", { exact: true }).fill("1");
-    await page
-        .getByRole("button", {
-            name: "Create New Measurement Unit",
-            exact: true,
-        })
-        .click();
-    const unitDialog = page.getByRole("dialog", {
-        name: "Create Measurement Unit",
-        exact: true,
-    });
-    await unitDialog.getByLabel("Unit name").fill("Meal Box");
-    await unitDialog.getByLabel("Abbreviation").fill("meal-box");
-    await unitDialog
-        .getByRole("button", { name: "Create Measurement Unit", exact: true })
-        .click();
-    await expect(unitDialog).not.toBeVisible();
     await step(page, "Pricing & Quantity");
     await page.getByLabel("Price per complete Meal Box (PHP)").fill("125.50");
     await page.getByLabel("Minimum complete Meal Box units").fill("10");
@@ -152,6 +180,7 @@ test("Bellychon configurable package uses shared choices, optional kilograms and
     await page.goto("/admin/add-on-services");
     await page.getByRole("button", { name: "Create Add-on Service" }).click();
     await page.getByLabel("Service name").fill("Bellychon Package");
+    await configureService(page);
     await page.getByRole("radio", { name: /Sold by Package/ }).check();
     await page
         .getByRole("button", { name: "Create Service", exact: true })
@@ -174,15 +203,25 @@ test("Bellychon configurable package uses shared choices, optional kilograms and
         .getByRole("group", { name: /^Chicken / })
         .getByLabel("Require at least one")
         .check();
-    await page
-        .getByText("Serving & Additional Pricing for Lechon Belly", {
-            exact: true,
-        })
+    await customizeFood(page, "Lechon Belly");
+    const lechonOptions = page.getByRole("region", {
+        name: "Food Options for Lechon Belly",
+        exact: true,
+    });
+    await lechonOptions.getByLabel("Set a fixed portion").check();
+    await lechonOptions
+        .getByRole("button", { name: "Add Measurement Unit", exact: true })
         .click();
-    await page
-        .getByLabel("Serving Override for Lechon Belly (optional)")
-        .fill("3");
-    await page.getByLabel("Measurement for Lechon Belly").selectOption("kg");
+    const kilogram = page.getByRole("dialog", {
+        name: "Create Measurement Unit",
+        exact: true,
+    });
+    await kilogram.getByLabel("Unit name").fill("Kilogram");
+    await kilogram.getByLabel("Abbreviation").fill("kg");
+    await kilogram
+        .getByRole("button", { name: "Create Measurement Unit", exact: true })
+        .click();
+    await lechonOptions.getByLabel("Amount").fill("3");
     await expect(page.getByLabel("Menu summary")).toContainText(
         "Fixed inclusions: Lechon Belly",
     );
@@ -237,6 +276,7 @@ test("fixed bundles use only included foods without customer-choice controls", a
     await page.goto("/admin/add-on-services");
     await page.getByRole("button", { name: "Create Add-on Service" }).click();
     await page.getByLabel("Service name").fill("Tea Sets");
+    await configureService(page);
     await page.getByRole("radio", { name: /Sold by Package/ }).check();
     await page
         .getByRole("button", { name: "Create Service", exact: true })

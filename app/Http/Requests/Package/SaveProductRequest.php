@@ -30,7 +30,7 @@ class SaveProductRequest extends FormRequest
         $product = $routeProduct instanceof Product ? $routeProduct : null;
 
         return [
-            'family_id' => $this->routeIs('catering.store') ? ['prohibited'] : ($product ? ['required', 'integer', Rule::in([$product->family_id])] : ['required', 'integer', Rule::exists('product_families', 'id')->where('active', true)]),
+            'family_id' => $this->routeIs('catering.store') ? ['prohibited'] : ($product ? ['required', 'integer', Rule::in([$product->family_id])] : ['required', 'integer', Rule::exists('product_families', 'id')->where('active', true)->where(fn ($q) => $q->where(fn ($q) => $q->where('is_addon', false)->orWhereNotNull('package_format')))]),
             'code' => $product ? ['sometimes', 'string', Rule::in([$product->code])] : ['sometimes', 'string', 'max:80'],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
@@ -38,5 +38,10 @@ class SaveProductRequest extends FormRequest
             'active' => ['required', 'boolean'],
             'creation_token' => $product ? ['prohibited'] : ['required', 'uuid'],
         ];
+    }
+
+    public function messages(): array
+    {
+        return ['family_id.exists' => 'Choose an available service with its package format configured. Edit the service to set how foods are provided before creating a package.'];
     }
 }

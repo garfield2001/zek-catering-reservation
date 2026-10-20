@@ -22,6 +22,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\ServiceConfiguration;
 use Tests\TestCase;
 
 class BusinessWorkspaceTest extends TestCase
@@ -94,7 +95,7 @@ class BusinessWorkspaceTest extends TestCase
     public function test_main_creation_has_no_collection_input_and_scoped_lists_never_mix_addons(): void
     {
         $this->post(route('catering.store'), ['name' => 'A', 'active' => true, 'creation_token' => (string) str()->uuid()])->assertRedirect();
-        $this->post(route('services.store'), ['name' => 'Extras', 'kind' => 'addon', 'behavior_type' => 'package', 'active' => true])->assertRedirect();
+        $this->post(route('services.store'), ['name' => 'Extras', 'kind' => 'addon', 'behavior_type' => 'package', 'active' => true, 'package_configuration' => ServiceConfiguration::input()])->assertRedirect();
         $addon = ProductFamily::where('name', 'Extras')->sole();
         app(SaveProduct::class)->handle($this->admin, ['family_id' => $addon->id, 'name' => 'Extra', 'active' => true]);
         $this->get(route('catering.index'))->assertInertia(fn ($page) => $page->has('products.data', 1)->where('products.data.0.name', 'A'));

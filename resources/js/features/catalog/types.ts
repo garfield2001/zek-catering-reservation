@@ -7,6 +7,9 @@ export type FoodCategory = {
     dishes_count?: number;
 };
 export type Collection = {
+    package_format?: "separate_servings" | "combined_contents" | null;
+    default_presentation_quantity?: number | null;
+    default_presentation_unit_id?: number | null;
     id: number;
     code: string;
     name: string;

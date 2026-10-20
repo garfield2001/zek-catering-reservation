@@ -1,3 +1,4 @@
+import { configureService, customizeFood, openPortions } from "./workflow";
 import { test, expect } from "@playwright/test";
 import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -35,6 +36,7 @@ test("canonical package navigation does not mix primary and add-on packages", as
     await page.goto("/admin/add-on-services");
     await page.getByRole("button", { name: "Create Add-on Service" }).click();
     await page.getByLabel("Service name").fill("Party Sets");
+    await configureService(page);
     await page.getByRole("radio", { name: /Sold by Package/ }).check();
     await page
         .getByRole("button", { name: "Create Service", exact: true })

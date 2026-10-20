@@ -38,7 +38,7 @@ $identity = DB::selectOne('select current_database() as name, inet_server_port()
 if ($identity->name !== 'zek_catering_test' || (int) $identity->port !== 5432) {
     throw new RuntimeException('Unexpected actual database connection.');
 }
-$baseline = array_values(array_filter(glob(database_path('migrations/*.php')), fn ($path) => ! str_contains(basename($path), '000017_use_global_food_availability') && ! str_contains(basename($path), '000019_create_listing_selling_options') && ! str_contains(basename($path), '000021_allow_configurable_listing_units')));
+$baseline = array_values(array_filter(glob(database_path('migrations/*.php')), fn ($path) => ! str_contains(basename($path), '000017_use_global_food_availability') && ! str_contains(basename($path), '000019_create_listing_selling_options') && ! str_contains(basename($path), '000021_allow_configurable_listing_units') && ! str_contains(basename($path), '000022_add_service_package_configuration')));
 Artisan::call('migrate:fresh', ['--path' => $baseline, '--realpath' => true, '--force' => true]);
 Artisan::call('db:seed', ['--force' => true]);
 $admin = User::factory()->create();

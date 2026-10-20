@@ -8,6 +8,7 @@ use App\Models\ProductFamily;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Catalog\PackageQuantityRules;
+use App\Services\Catalog\ServicePackageConfiguration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -49,6 +50,11 @@ class SaveProduct
             $before = $product->exists ? $product->only('family_id', 'code', 'name', 'description', 'sort_order', 'active') : null;
             $product->fill(collect($data)->except(['code', 'sort_order', 'creation_token'])->all());
             if (! $product->exists) {
+                if ($family->package_format !== null) {
+                    $configuration = app(ServicePackageConfiguration::class);
+                    $configuration->normalize($family, $configuration->input($family));
+                    $product->forceFill(['service_format_owned' => true]);
+                }
                 $product->code = $data['code'] ?? 'product_'.strtolower((string) Str::ulid());
                 $product->sort_order = (int) Product::where('family_id', $family->id)->max('sort_order') + 1;
                 $product->creation_token = $data['creation_token'] ?? null;
@@ -60,7 +66,9 @@ class SaveProduct
                     'version_number' => 1, 'status' => 'draft', 'draft_revision' => 1,
                     'base_price_minor' => 0, 'currency' => 'PHP', 'price_basis' => $family->behavior()->priceBasis(),
                     'selection_policy' => 'uniform', 'total_selection_count' => $data['total_selection_count'] ?? null,
-                    ...$effective, 'created_by' => $actor->id]);
+                    ...$effective, 'created_by' => $actor->id,
+                    ...($family->package_format === null ? [] : ['package_format' => $family->package_format,
+                        'presentation_quantity' => $family->default_presentation_quantity, 'presentation_unit_id' => $family->default_presentation_unit_id])]);
             }
             $this->audit->record($before ? 'package.product_updated' : 'package.product_created', $actor, $product,
                 $before, $product->only('family_id', 'code', 'name', 'description', 'sort_order', 'active'));

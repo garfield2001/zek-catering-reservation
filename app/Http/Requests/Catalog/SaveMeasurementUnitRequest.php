@@ -32,7 +32,7 @@ class SaveMeasurementUnitRequest extends FormRequest
                 $query->where('id', '!=', $this->route('unit')->id);
             }
             if ($query->exists()) {
-                $fail('This measurement unit '.$attribute.' is already in use.');
+                $fail('A Measurement Unit with this '.($attribute === 'name' ? 'name' : 'symbol').' already exists.');
             }
         };
 

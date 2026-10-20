@@ -1,5 +1,7 @@
 # Add-on selling configuration and Package Format
 
+Historical ownership note: the later [Phase 3 service configuration specification](23-service-package-configuration.md) supersedes package-level format selection for new packages. This document remains the reference for retained version facts, legacy mixed-format compatibility and snapshot schema 5, not an alternative new-package workflow.
+
 Status: implemented and verified on 2026-10-18, starting from committed checkpoint `18891b6`; ready for owner milestone review. The owner-approved refinement supersedes service-wide presentation assumptions. No development migration is authorized. Automated verification is not owner acceptance or commercial-production certification.
 
 ## Approved business rules and reused capabilities

@@ -69,6 +69,7 @@ export function preparePackagePayload(
                               included_quantity:
                                   detail.included_quantity || null,
                               included_unit: detail.included_unit || null,
+                              included_unit_id: detail.included_unit_id || null,
                           },
                 ];
             }),

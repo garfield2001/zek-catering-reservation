@@ -13,6 +13,7 @@ use App\Models\DishCategory;
 use App\Models\MeasurementUnit;
 use App\Models\PackageVersion;
 use App\Models\Product;
+use App\Models\ProductFamily;
 use App\Models\Role;
 use App\Models\User;
 use App\Queries\Catalog\DeactivationImpact;
@@ -189,8 +190,10 @@ class PackagePresentationTest extends TestCase
 
     public function test_new_formats_reject_split_and_presentation_unit_usage_is_visible(): void
     {
+        $family = ProductFamily::findOrFail($this->data['family_id']);
+        $family->forceFill(['package_format' => 'separate_servings', 'default_presentation_quantity' => 1, 'default_presentation_unit_id' => $this->tray->id])->save();
         $this->postJson(route('packages.configurations.store'), [...$this->data, 'price_basis' => 'per_pack', 'selection_policy' => 'split'])
-            ->assertUnprocessable()->assertJsonValidationErrors('presentation');
+            ->assertUnprocessable()->assertJsonValidationErrors('selection_policy');
         $this->assertSame(0, Product::count());
         $version = $this->save();
         $impact = app(DeactivationImpact::class)->forRecord($this->tray);
