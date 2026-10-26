@@ -20,7 +20,7 @@ class FoodCatalogController extends Controller
     {
         Gate::authorize('viewAny', Dish::class);
         $primary->handle();
-        $filters = $request->validate(['q' => ['nullable', 'string', 'max:100'], 'category' => ['nullable', 'integer'], 'status' => ['nullable', 'in:active,inactive'], 'create' => ['nullable', 'in:food,category'], 'edit_food' => ['nullable', 'integer', 'exists:dishes,id'], 'edit_category' => ['nullable', 'integer', 'exists:dish_categories,id']]);
+        $filters = $request->validate(['q' => ['nullable', 'string', 'max:100'], 'category' => ['nullable', 'integer'], 'status' => ['nullable', 'in:active,inactive'], 'sort' => ['nullable', 'in:name_asc,name_desc,recent,category'], 'per_page' => ['nullable', 'integer', 'in:12,24,48'], 'create' => ['nullable', 'in:food,category'], 'edit_food' => ['nullable', 'integer', 'exists:dishes,id'], 'edit_category' => ['nullable', 'integer', 'exists:dish_categories,id']]);
 
         $editor = null;
         if ($request->filled('edit_food')) {

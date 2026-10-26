@@ -58,7 +58,7 @@ test("service-owned combined packs preserve defaults, publish revisions and clon
     await login(page, run, password);
     await page.goto("/admin/add-on-services");
     await page
-        .getByRole("button", { name: "Create Add-on Service", exact: true })
+        .getByRole("link", { name: "Create Add-on Service", exact: true })
         .click();
     await page.getByLabel("Service name").fill("Flexible presentation service");
     await configureService(page, "combined_contents", "Meal Pack");
@@ -66,9 +66,7 @@ test("service-owned combined packs preserve defaults, publish revisions and clon
     await page
         .getByRole("button", { name: "Create Service", exact: true })
         .click();
-    await page
-        .getByRole("link", { name: "Open newly created service" })
-        .click();
+    await expect(page).toHaveURL(/\/admin\/add-on-services\/\d+$/);
     await expect(page).toHaveURL(/\/admin\/add-on-services\/\d+$/);
     const serviceWorkspace = page.url();
     await createPackage(page, "Combined Meal");
@@ -92,7 +90,7 @@ test("service-owned combined packs preserve defaults, publish revisions and clon
     await reviewResponsive(page, "combined-presentation-details");
     await step(page, "Menu");
     await expect(
-        page.getByText("Optional: Default Food Portion", {
+        page.getByText("Advanced Package Settings (optional)", {
             exact: true,
         }),
     ).toBeVisible();
@@ -128,9 +126,7 @@ test("service-owned combined packs preserve defaults, publish revisions and clon
             (food: { is_fixed: boolean }) => food.is_fixed,
         ),
     ).toBe(true);
-    await page
-        .getByRole("button", { name: "Edit Package", exact: true })
-        .click();
+    await page.getByRole("link", { name: "Edit Package", exact: true }).click();
     await expect(page.getByLabel("What does the customer receive")).toHaveCount(
         0,
     );
@@ -165,9 +161,7 @@ test("service-owned combined packs preserve defaults, publish revisions and clon
     await expect(
         page.getByRole("heading", { name: "Saved Draft", exact: true }),
     ).toBeVisible();
-    await page
-        .getByRole("button", { name: "Edit Package", exact: true })
-        .click();
+    await page.getByRole("link", { name: "Edit Package", exact: true }).click();
     await expect(page.getByLabel("What does the customer receive")).toHaveCount(
         0,
     );
@@ -179,13 +173,13 @@ test("service-owned combined packs preserve defaults, publish revisions and clon
     ).toEqual(original);
     await page.keyboard.press("Escape");
     await page.goto(serviceWorkspace);
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.getByRole("link", { name: "Edit Service", exact: true }).click();
     await expect(page.getByLabel("How are foods provided?")).toBeDisabled();
     await configureService(page, "combined_contents", "Meal Box");
     await page
-        .getByRole("button", { name: "Save changes", exact: true })
+        .getByRole("button", { name: "Save Service", exact: true })
         .click();
-    await expect(page.getByRole("dialog")).not.toBeVisible();
+    await expect(page).toHaveURL(serviceWorkspace);
     await createPackage(page, "Two Food Box");
     await page.getByLabel("Total included food selections").fill("2");
     for (const food of ["Format Rice", "Format Drink"]) {
@@ -207,9 +201,7 @@ test("service-owned combined packs preserve defaults, publish revisions and clon
     expect(
         (await persisted(page, workspace)).history[0].published_snapshot,
     ).toEqual(original);
-    await page
-        .getByRole("button", { name: "Edit Package", exact: true })
-        .click();
+    await page.getByRole("link", { name: "Edit Package", exact: true }).click();
     await expect(
         page.getByRole("region", { name: "Inherited service presentation" }),
     ).toContainText("Meal Pack");

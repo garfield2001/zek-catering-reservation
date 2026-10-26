@@ -54,11 +54,15 @@ export function PackageReview({
                 {summary.fixed.map((f) => f.name).join(", ") || "None"}.
             </p>
             <p>
-                Required categories:{" "}
-                {categories
-                    .filter((c) => data.required_category_ids.includes(c.id))
-                    .map((c) => c.name)
-                    .join(", ") || "None"}
+                Customer Choices:{" "}
+                {summary.choiceRules
+                    .map((rule) => {
+                        const category = categories.find(
+                            (item) => item.id === rule.category_id,
+                        );
+                        return `${category?.name ?? "Food Category"}: ${rule.minimum_count === rule.maximum_count ? `exactly ${rule.minimum_count}` : `${rule.minimum_count} to ${rule.maximum_count}`}`;
+                    })
+                    .join(" · ") || "None"}
                 .
             </p>
             <p>

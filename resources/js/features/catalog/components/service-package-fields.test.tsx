@@ -49,7 +49,7 @@ describe("service package settings", () => {
                 /Create another service for a different food format/,
             ),
         ).toBeVisible();
-        expect(screen.getByLabelText("Container count")).not.toBeDisabled();
+        expect(screen.getByLabelText("Quantity")).not.toBeDisabled();
     });
     it("describes complete purchased containers without multiplying by food count", () => {
         render(
@@ -63,9 +63,6 @@ describe("service package settings", () => {
                 /Purchasing 10 units means 10 complete containers/,
             ),
         ).toBeVisible();
-        expect(screen.getByLabelText("Container count")).toHaveAttribute(
-            "max",
-            "1",
-        );
+        expect(screen.getByLabelText("Quantity")).toHaveAttribute("max", "1");
     });
 });

@@ -123,3 +123,20 @@ Phase 3 implements **draft-only administrator configuration and price previews**
 - Newly entered free-text units, inactive units, and malformed portion pairs are rejected by Laravel. An active selected unit is resolved server-side and its abbreviation is frozen into the draft and later snapshot.
 - Moving between a general selection charge and size choices requests confirmation and cannot leave contradictory price data. Main Catering still rejects food portions and food-specific charges.
 - An unused Measurement Unit can be edited, deactivated/reactivated, or deleted by an authorized Administrator. A referenced unit cannot be renamed or deleted through application workflows; deactivation retains history and prevents new selection. Unauthorized Staff HTTP writes fail.
+
+### Phase 5 Add-on experience and local-bootstrap acceptance (2026-10-21)
+
+- An Administrator creates an Add-on Service by entering service details, choosing Sold by Package or Sold Individually, and sees package format and presentation only for package selling. Separate Food Servings and Combined Contents describe actual container behavior without fixed food examples or altered pricing rules.
+- A normal Add-on Package inherits the service presentation and saves without a package-wide food portion. **Advanced Package Settings** is collapsed until a Default Food Portion is intentionally configured; a saved configuration remains discoverable and survives reopening.
+- Food Options remains one collapsed configuration surface per Food Item. Fixed portions, size choices, surcharges and presentation exceptions retain their established mutually compatible validation and never convert packaging into food weight.
+- A Measurement Unit created or changed through either quick creation or Manage Measurement Units persists, updates relevant active selectors without a full reload, and preserves unsaved Service/Package input. Referenced-unit and inactive-unit safeguards remain server-enforced.
+- On an isolated local/test schema with the explicit test flag, the normal `DatabaseSeeder` creates roles, permissions, the primary service, `Admin Tester`, 11 categories, 42 Food Items and four incomplete Draft packages in order. Reruns do not duplicate fixtures or overwrite the known account password or ordinary fixture edits. Normal non-local/test seeding does not create known credentials or commercial fixtures.
+
+### Phase 5.1 catalog experience acceptance (2026-10-21)
+
+- Food Catalog uses a compact List view by default and an optional remembered Grid view. Both use the same server-side search, category/availability filters, ordering and 12/24/48 pagination; category counts are explicitly total catalog counts.
+- The catalog preserves controls during a filter visit, delays result loading feedback to avoid fast-request flashing, and cancels/sequences filter visits so stale responses cannot replace current results.
+- Package Menu food discovery is searchable and category-filtered in a bounded result region. Selected Food Items remain separately visible when filters change. Each visible Customer Choice Group persists a category-specific minimum and maximum count; a category with one eligible choice is promoted to an Included Item on the server. Configured totals, fixed foods, choice bounds and feasibility are validated before a Draft can be saved or published.
+- Direct-sale **Add Foods to Sell** selects active Food Items across one or more categories without expanding existing editors. Shared selling settings are explicit; each selected Food Item keeps an independent price and Draft listing. The transaction rejects unavailable or duplicate sources and retrying an identical payload is idempotent.
+- A presentation exception equal to the inherited default is not saved as a new override; a changed quantity or container remains valid. Existing Draft and Published presentation facts are not rewritten.
+- New Food photos have validated, readable slug-plus-opaque-ID paths; existing paths remain compatible. Internal account photos use opaque paths, ownership/Team-access reads, audit events, safe replacement/removal and initials fallbacks.

@@ -81,7 +81,7 @@ class BusinessWorkspaceTest extends TestCase
         $this->seed(DatabaseSeeder::class);
         $this->assertSame($this->family->id, app(EnsurePrimaryService::class)->handle()->id);
         $this->assertFalse($this->family->fresh()->active);
-        $this->get(route('catering.create'))->assertRedirect(route('catering.index'));
+        $this->get(route('catering.create'))->assertRedirect(route('packages.editor', ['service' => $this->family->id]));
         $this->get(route('catering.index'))->assertInertia(fn ($page) => $page->where('serviceActive', false));
         $this->post(route('catering.store'), ['name' => 'Blocked', 'active' => true, 'creation_token' => (string) str()->uuid()])->assertSessionHasErrors('family_id');
         $this->family->forceFill(['archived_at' => now()])->save();

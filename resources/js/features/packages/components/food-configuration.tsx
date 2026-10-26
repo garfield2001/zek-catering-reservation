@@ -26,6 +26,7 @@ export function FoodConfiguration({
     canPrice,
     onChange,
     onUnitCreated,
+    onUnitsChanged,
     presentation,
     children,
 }: {
@@ -40,6 +41,7 @@ export function FoodConfiguration({
     canPrice: boolean;
     onChange: (detail: FoodDetail, sizes?: FoodSizeInput) => void;
     onUnitCreated?: (unit: MeasurementUnit) => void;
+    onUnitsChanged?: (units: MeasurementUnit[]) => void;
     presentation?: PackagePresentationInput | null;
     children?: ReactNode;
 }) {
@@ -240,6 +242,7 @@ export function FoodConfiguration({
                                             included_unit: "",
                                         });
                                     }}
+                                    onUnitsChanged={onUnitsChanged}
                                 />
                             </div>
                         )}
@@ -252,6 +255,7 @@ export function FoodConfiguration({
                         value={{ [food.id]: sizes ?? emptySizeChoices() }}
                         canPrice={canPrice}
                         onUnitCreated={onUnitCreated}
+                        onUnitsChanged={onUnitsChanged}
                         onChange={(value) => onChange(detail, value[food.id])}
                         selectionOnly
                     />

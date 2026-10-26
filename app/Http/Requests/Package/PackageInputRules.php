@@ -20,7 +20,13 @@ class PackageInputRules
             'food_details.*.included_unit' => ['nullable', 'string', 'max:20'],
             'food_details.*.included_unit_id' => ['nullable', 'integer'],
             'food_details.*.price_adjustment_pesos' => ['sometimes', 'string', 'regex:/^(0|[1-9][0-9]*)(?:\\.[0-9]{1,2})?$/', 'max:20'],
-            'required_category_ids' => ['present', 'array'], 'required_category_ids.*' => ['required', 'integer', 'distinct', 'exists:dish_categories,id']];
+            'required_category_ids' => ['sometimes', 'array'], 'required_category_ids.*' => ['required', 'integer', 'distinct', 'exists:dish_categories,id'],
+            'category_choice_rules' => ['sometimes', 'array'],
+            'category_choice_rules.*.category_id' => ['required', 'integer', 'distinct', 'exists:dish_categories,id'],
+            'category_choice_rules.*.minimum_count' => ['required', 'integer', 'min:0'],
+            'category_choice_rules.*.maximum_count' => ['required', 'integer', 'min:1'],
+            'category_choice_rules.*.maximum_count_explicit' => ['sometimes', 'boolean'],
+        ];
     }
 
     public static function pricing(): array

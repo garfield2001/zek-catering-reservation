@@ -40,6 +40,19 @@ class SaveIndividualListing
 
                     return $existing;
                 }
+                if (($data['offering_option_id'] ?? null) === null) {
+                    DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', [
+                        'listing-source:'.$family->id.':'.$data['dish_id'],
+                    ]);
+                    if (IndividualListing::where('family_id', $family->id)
+                        ->where('dish_id', $data['dish_id'])
+                        ->whereNull('offering_option_id')
+                        ->exists()) {
+                        throw ValidationException::withMessages([
+                            'dish_id' => 'This Food Item is already configured for this service. Edit its existing listing instead.',
+                        ]);
+                    }
+                }
                 $listing = new IndividualListing([...Arr::only($data, ['family_id', 'dish_id', 'offering_option_id', 'creation_token']), 'creation_hash' => $hash, 'code' => 'listing_'.strtolower((string) Str::ulid()), 'active' => true]);
             } else {
                 $listing = IndividualListing::lockForUpdate()->findOrFail($listing->id);

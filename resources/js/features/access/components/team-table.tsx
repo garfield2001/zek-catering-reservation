@@ -1,5 +1,6 @@
 import { Link } from "@inertiajs/react";
 import { DataTable, type DataColumn } from "../../../components/ui/data-table";
+import { UserAvatar } from "../../../components/ui/user-avatar";
 import type { TeamMemberRow } from "../types";
 
 const columns: DataColumn<TeamMemberRow>[] = [
@@ -7,10 +8,17 @@ const columns: DataColumn<TeamMemberRow>[] = [
         accessorKey: "name",
         header: "Account",
         cell: ({ row }) => (
-            <>
-                <div className="font-medium">{row.original.name}</div>
-                <div className="text-slate-500">{row.original.email}</div>
-            </>
+            <div className="flex items-center gap-3">
+                <UserAvatar
+                    name={row.original.name}
+                    src={row.original.avatar_url}
+                    size="sm"
+                />
+                <div>
+                    <div className="font-medium">{row.original.name}</div>
+                    <div className="text-slate-500">{row.original.email}</div>
+                </div>
+            </div>
         ),
     },
     {

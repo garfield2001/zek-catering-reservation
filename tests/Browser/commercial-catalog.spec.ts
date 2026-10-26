@@ -82,8 +82,9 @@ test("food upload preview, viewer, replacement, invalid content and removal pers
     await dialog.getByRole("button", { name: "Save food item" }).click();
     await expect(dialog).not.toBeVisible();
     await page.reload();
-    await expect(viewer.locator("img")).toHaveCount(0);
-    await expect(viewer).toContainText("No image for Image Rice");
+    await expect(
+        page.getByText("No image for Image Rice", { exact: true }),
+    ).toBeVisible();
     await expect(
         page.getByRole("heading", { name: "Image Rice", exact: true }),
     ).toBeVisible();
@@ -95,7 +96,7 @@ test("wizard gates required fields, retains backward edits and explicitly fixed 
     await login(page, run, password);
     await page.goto("/admin/catering-packages");
     await page
-        .getByRole("button", { name: "Create Package", exact: true })
+        .getByRole("link", { name: "Create Package", exact: true })
         .click();
     await page.getByRole("button", { name: "Next: Menu" }).click();
     await expect(
@@ -158,16 +159,20 @@ test("grouped individual selling options publish, isolate revisions, restore his
     test.setTimeout(120000);
     await login(page, run, password);
     await page.goto("/admin/add-on-services");
-    await page.getByRole("button", { name: "Create Add-on Service" }).click();
-    await expect(page.getByRole("dialog").getByRole("radio")).toHaveCount(2);
+    await page.getByRole("link", { name: "Create Add-on Service" }).click();
+    await expect(
+        page
+            .getByRole("group", {
+                name: "How will customers buy this service?",
+            })
+            .getByRole("radio"),
+    ).toHaveCount(2);
     await page.getByLabel("Service name").fill("Individual Trays");
     await page.getByRole("radio", { name: /Sold Individually/ }).check();
     await page
         .getByRole("button", { name: "Create Service", exact: true })
         .click();
-    await page
-        .getByRole("link", { name: "Open newly created service" })
-        .click();
+    await expect(page).toHaveURL(/\/admin\/add-on-services\/\d+$/);
     await expect(page).toHaveURL(/\/admin\/add-on-services\/\d+$/);
     await expect(
         page.getByRole("heading", { name: "Individual Trays", exact: true }),
@@ -177,9 +182,7 @@ test("grouped individual selling options publish, isolate revisions, restore his
     await addCategory(page, "Tray Foods");
     await addFood(page, "Tray Chicken", "Tray Foods", "Individual Trays");
     await page.goto(serviceUrl);
-    await page
-        .getByRole("button", { name: "Create Item", exact: true })
-        .click();
+    await page.getByRole("link", { name: "Create Item", exact: true }).click();
     await page
         .getByLabel("Food Item", { exact: true })
         .selectOption({ label: "Tray Chicken" });
@@ -195,9 +198,7 @@ test("grouped individual selling options publish, isolate revisions, restore his
     await page.getByLabel("Minimum Purchase", { exact: true }).fill("2");
     await reviewResponsive(page, "individual-item-editor");
     await page.getByRole("button", { name: "Save Item Draft" }).click();
-    await expect(page.getByRole("dialog")).not.toBeVisible();
-    await expect(page).toHaveURL(serviceUrl);
-    await page.getByRole("link", { name: "View saved item" }).click();
+    await expect(page).toHaveURL(/\/admin\/items\/\d+$/);
     await expect(page.getByText(/Draft Preview — not published/)).toBeVisible();
     const itemUrl = page.url();
     await expect(
@@ -225,7 +226,7 @@ test("grouped individual selling options publish, isolate revisions, restore his
         path: "test-results/individual-item-details.png",
         fullPage: true,
     });
-    await page.getByRole("button", { name: "Edit Item", exact: true }).click();
+    await page.getByRole("link", { name: "Edit Item", exact: true }).click();
     await page.getByLabel("Price per box (PHP)").fill("1500.00");
     await page.getByLabel("Price for option 2 (PHP)").fill("1800");
     await page.getByRole("button", { name: "Save Item Draft" }).click();

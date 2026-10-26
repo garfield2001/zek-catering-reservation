@@ -29,14 +29,37 @@ use App\Http\Controllers\Admin\Package\PackageMenuController;
 use App\Http\Controllers\Admin\Package\PreviewController as PackagePreviewController;
 use App\Http\Controllers\Admin\Package\ProductController as PackageProductController;
 use App\Http\Controllers\Admin\Package\PublicationController;
+use App\Http\Controllers\Admin\Package\StorefrontPreviewController;
 use App\Http\Controllers\Admin\Package\VersionController as PackageVersionController;
 use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\Admin\ProfileAvatarController;
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\TeamMemberController;
 use App\Http\Controllers\Auth\SessionController;
+use App\Http\Controllers\Storefront\CateringController as StorefrontCateringController;
+use App\Http\Controllers\Storefront\HomeController;
+use App\Http\Controllers\Storefront\SelectionController as StorefrontSelectionController;
+use App\Http\Controllers\Storefront\ServiceController as StorefrontServiceController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/media/foods/{dish}/{size}', FoodImageController::class)->name('catalog.images.show');
-Route::redirect('/', '/admin/home');
+Route::get('/', HomeController::class)->name('storefront.home');
+Route::prefix('catering-packages')->name('storefront.catering.')->group(function () {
+    Route::get('/', [StorefrontCateringController::class, 'index'])->name('index');
+    Route::get('{product}', [StorefrontCateringController::class, 'show'])->name('show');
+    Route::post('{product}/preview', [StorefrontCateringController::class, 'preview'])->middleware('throttle:60,1')->name('preview');
+    Route::post('{product}/selection', [StorefrontCateringController::class, 'select'])->middleware('throttle:30,1')->name('selection');
+});
+Route::prefix('add-on-services')->name('storefront.services.')->group(function () {
+    Route::get('/', [StorefrontServiceController::class, 'index'])->name('index');
+    Route::get('{family}', [StorefrontServiceController::class, 'show'])->name('show');
+    Route::post('{family}/packages/{product}/preview', [StorefrontServiceController::class, 'packagePreview'])->middleware('throttle:60,1')->name('packages.preview');
+    Route::post('{family}/packages/{product}/selection', [StorefrontServiceController::class, 'packageSelect'])->middleware('throttle:30,1')->name('packages.selection');
+    Route::post('{family}/foods/{listing}/preview', [StorefrontServiceController::class, 'listingPreview'])->middleware('throttle:60,1')->name('listings.preview');
+    Route::post('{family}/foods/{listing}/selection', [StorefrontServiceController::class, 'listingSelect'])->middleware('throttle:30,1')->name('listings.selection');
+});
+Route::get('/my-selection', [StorefrontSelectionController::class, 'index'])->name('storefront.selection.index');
+Route::delete('/my-selection/{key}', [StorefrontSelectionController::class, 'destroy'])->where('key', '.+')->name('storefront.selection.destroy');
 Route::middleware('guest')->group(function () {
     Route::get('/login', [SessionController::class, 'create'])->name('login');
     Route::post('/login', [SessionController::class, 'store'])->middleware('throttle:30,1');
@@ -44,6 +67,9 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/admin/home', LandingController::class)->name('admin.home');
     Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
+    Route::get('/admin/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/admin/profile/avatar', [ProfileController::class, 'update'])->name('profile.avatar.update');
+    Route::get('/admin/profile/{user}/avatar', ProfileAvatarController::class)->name('profile.avatar');
     Route::get('/admin', DashboardController::class)->middleware('can:dashboard.view')->name('dashboard');
     Route::get('/admin/guide', GuideController::class)->middleware('can:dashboard.view')->name('guide');
     Route::get('/admin/staff', [TeamMemberController::class, 'index'])->name('staff.index');
@@ -56,9 +82,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/audit', AuditController::class)->name('audit.index');
     Route::get('/admin/food-catalog', FoodCatalogController::class)->name('catalog.workspace');
     Route::get('/admin/add-on-services', [AddonServiceController::class, 'index'])->name('services.index');
+    Route::get('/admin/add-on-services/create', [AddonServiceController::class, 'create'])->name('services.create');
     Route::post('/admin/add-on-services', [AddonServiceController::class, 'store'])->name('services.store');
+    Route::get('/admin/add-on-services/{family}/edit', [AddonServiceController::class, 'edit'])->name('services.edit');
     Route::get('/admin/add-on-services/{family}', [AddonServiceController::class, 'show'])->name('services.show');
     Route::get('/admin/add-on-services/{family}/items/create', [ListingController::class, 'create'])->name('listings.create');
+    Route::get('/admin/add-on-services/{family}/items/bulk', [ListingController::class, 'bulkCreate'])->name('listings.bulk.create');
+    Route::post('/admin/add-on-services/{family}/items/bulk', [ListingController::class, 'bulkStore'])->name('listings.bulk.store');
     Route::prefix('admin/items')->name('listings.')->scopeBindings()->group(function () {
         Route::post('/', [ListingController::class, 'store'])->name('store');
         Route::get('{listing}', [ListingController::class, 'show'])->name('show');
@@ -115,6 +145,7 @@ Route::middleware('auth')->group(function () {
         Route::get('products/{product}/versions/{version}/package-menu/edit', [PackageMenuController::class, 'edit'])->name('versions.package-menu.edit');
         Route::put('products/{product}/versions/{version}/package-menu', [PackageMenuController::class, 'update'])->name('versions.package-menu.update');
         Route::get('products/{product}/versions/{version}/review', [PublicationController::class, 'review'])->name('versions.review');
+        Route::get('products/{product}/versions/{version}/customer-preview', StorefrontPreviewController::class)->name('versions.customer-preview');
         Route::post('products/{product}/versions/{version}/publish', [PublicationController::class, 'publish'])->name('versions.publish');
         Route::post('products/{product}/versions/{version}/revise', [PublicationController::class, 'revise'])->name('versions.revise');
         Route::post('products/{product}/versions/{version}/abandon', [PublicationController::class, 'abandon'])->name('versions.abandon');

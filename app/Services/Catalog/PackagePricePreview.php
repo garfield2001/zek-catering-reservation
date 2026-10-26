@@ -5,6 +5,7 @@ namespace App\Services\Catalog;
 use App\Enums\Catalog\CollectionBehavior;
 use App\Models\GroupOption;
 use App\Models\PackageVersion;
+use App\Services\Package\EffectivePackageAvailability;
 use App\Services\Package\MenuPricePreview;
 use Illuminate\Validation\ValidationException;
 
@@ -18,9 +19,24 @@ class PackagePricePreview
 
     public function calculate(PackageVersion $version, int $quantity, array $groups): array
     {
+        return $this->calculateFor($version, $quantity, $groups, false);
+    }
+
+    /** Customer previews use the same calculation path against the immutable current publication. */
+    public function calculatePublished(PackageVersion $version, int $quantity, array $groups): array
+    {
+        return $this->calculateFor($version, $quantity, $groups, true);
+    }
+
+    private function calculateFor(PackageVersion $version, int $quantity, array $groups, bool $published): array
+    {
         $version->loadMissing(['family', 'product']);
-        if ($version->status !== 'draft' || ! $version->family->active || $version->family->archived_at !== null || ! $version->product->active) {
-            throw ValidationException::withMessages(['package' => "{$version->family->name} or this draft is unavailable for a new preview."]);
+        if (($published && $version->status !== 'published') || (! $published && $version->status !== 'draft')
+            || ! $version->family->active || $version->family->archived_at !== null || ! $version->product->active || $version->product->archived_at !== null) {
+            throw ValidationException::withMessages(['package' => "{$version->family->name} or this package is unavailable for a new preview."]);
+        }
+        if ($published && ! app(EffectivePackageAvailability::class)->forProduct($version->product)['available']) {
+            throw ValidationException::withMessages(['package' => 'This published package is no longer available. Review your selection.']);
         }
         $basis = $version->behavior()->priceBasis();
         if ($basis === null) {
@@ -31,7 +47,10 @@ class PackagePricePreview
         }
         $effective = $this->quantities->validate($version, $quantity);
         if ($version->usesFoodMenu()) {
-            return app(MenuPricePreview::class)->calculate($version, $quantity, $groups, $effective);
+            return array_replace(
+                app(MenuPricePreview::class)->calculate($version, $quantity, $groups, $effective),
+                ['status' => $published ? 'published_preview' : 'draft_preview'],
+            );
         }
         $allocations = $this->selections->validate($version, $quantity, $groups);
         $base = $this->money->parse($version->base_price_minor, 'base_price_minor');
@@ -65,7 +84,7 @@ class PackagePricePreview
                 'line_total_minor' => (string) $lineTotal];
         }
 
-        return ['package_version_id' => $version->id, 'status' => 'draft_preview',
+        return ['package_version_id' => $version->id, 'status' => $published ? 'published_preview' : 'draft_preview',
             'price_basis' => $basis, 'currency' => 'PHP', 'quantity' => $quantity,
             'effective_quantity_rules' => $effective, 'groups' => $breakdown, 'total_minor' => (string) $total];
     }

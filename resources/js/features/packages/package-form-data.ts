@@ -55,6 +55,7 @@ export function preparePackagePayload(
             ? data.food_item_ids.length
             : data.total_selection_count,
         required_category_ids: bundle ? [] : data.required_category_ids,
+        category_choice_rules: bundle ? [] : data.category_choice_rules,
         maximum_quantity: data.maximum_quantity || null,
         estimated_capacity: data.estimated_capacity || null,
         food_details: Object.fromEntries(

@@ -13,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 /** Bounded JPEG re-encoding strips uploaded metadata and executable/polyglot payloads. */
 class FoodImages
 {
-    public function store(UploadedFile $upload): array
+    public function store(UploadedFile $upload, string $foodName): array
     {
         Validator::make(['image' => $upload], ['image' => FoodImageRules::upload()])->validate();
         if (! extension_loaded('gd')) {
@@ -25,7 +25,9 @@ class FoodImages
         }
         $disk = 'public';
         $id = strtolower((string) Str::ulid());
-        $paths = ['image_disk' => $disk, 'image_path' => "foods/{$id}.jpg", 'image_thumbnail_path' => "foods/{$id}-thumb.jpg"];
+        $slug = Str::slug($foodName);
+        $filename = ($slug !== '' ? $slug : 'food').'-'.$id;
+        $paths = ['image_disk' => $disk, 'image_path' => "foods/{$filename}.jpg", 'image_thumbnail_path' => "foods/{$filename}-thumb.jpg"];
         try {
             [$full, $width, $height] = $this->jpeg($source, 1600);
             [$thumbnail] = $this->jpeg($source, 360);
@@ -73,7 +75,7 @@ class FoodImages
         try {
             $paths = array_values(array_filter([$metadata['image_path'] ?? null, $metadata['image_thumbnail_path'] ?? null]));
             foreach ($paths as $path) {
-                if (! preg_match('/^foods\/[a-z0-9]+(?:-thumb)?\.jpg$/D', $path)) {
+                if (! preg_match('/^foods\/[a-z0-9]+(?:-[a-z0-9]+)*(?:-thumb)?\.jpg$/D', $path)) {
                     throw new \RuntimeException('Unexpected image reference.');
                 }
             }

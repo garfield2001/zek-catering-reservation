@@ -1,19 +1,16 @@
 import { PackageFilters } from "../../../features/packages/components/package-filters";
-import { PackageEditorButton } from "../../../features/packages/components/package-editor-modal";
 import { Link, router, usePage } from "@inertiajs/react";
 import { useState } from "react";
 import AdminLayout from "../../../layouts/admin-layout";
 import type { Collection } from "../../../features/catalog/types";
 import type { PackageProduct } from "../../../features/packages/types";
 import { PackageCards } from "../../../features/packages/components/package-cards";
-import { CollectionPresentationForm } from "../../../features/catalog/components/collection-presentation-form";
-import { serviceBehaviors } from "../../../features/catalog/components/collection-create-form";
+import { serviceBehaviors } from "../../../features/catalog/service-behaviors";
 import {
     ListingCards,
     type ListingCard,
 } from "../../../features/listings/components/listing-cards";
 import { ConfirmDialog } from "../../../components/ui/confirm-dialog";
-import { ListingEditorButton } from "../../../features/listings/components/listing-editor-modal";
 export default function ServiceShow({
     family,
     products,
@@ -41,7 +38,15 @@ export default function ServiceShow({
 }) {
     const [archive, setArchive] = useState(false);
     const [archiving, setArchiving] = useState(false);
+    const [listingSearch, setListingSearch] = useState("");
     const { errors } = usePage().props;
+    const visibleListings = listings.filter((listing) => {
+        const version = listing.current_version ?? listing.versions[0];
+        const text =
+            `${listing.dish.name} ${version?.name ?? ""}`.toLocaleLowerCase();
+
+        return text.includes(listingSearch.trim().toLocaleLowerCase());
+    });
     return (
         <AdminLayout
             title={family.name}
@@ -59,11 +64,13 @@ export default function ServiceShow({
                           ? "Enabled"
                           : "Disabled"}
                 </span>
-                {!family.archived_at && (
-                    <CollectionPresentationForm
-                        family={family}
-                        canManage={canManage}
-                    />
+                {canManage && !family.archived_at && (
+                    <Link
+                        href={`/admin/add-on-services/${family.id}/edit`}
+                        className="text-sm font-semibold text-emerald-800 underline"
+                    >
+                        Edit Service
+                    </Link>
                 )}
             </div>
             {Object.values(errors).map((error, i) => (
@@ -80,11 +87,20 @@ export default function ServiceShow({
             {family.behavior_type === "direct_sale" ? (
                 <section className="mb-5 space-y-5">
                     {canListings && family.active && !family.archived_at ? (
-                        <ListingEditorButton
-                            url={`/admin/add-on-services/${family.id}/items/create`}
-                        >
-                            Create Item
-                        </ListingEditorButton>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <Link
+                                href={`/admin/add-on-services/${family.id}/items/bulk`}
+                                className="inline-flex items-center rounded-lg bg-emerald-800 px-4 py-2 font-semibold text-white hover:bg-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2"
+                            >
+                                Add Foods to Sell
+                            </Link>
+                            <Link
+                                href={`/admin/add-on-services/${family.id}/items/create`}
+                                className="text-sm font-semibold text-emerald-800 underline"
+                            >
+                                Create Item
+                            </Link>
+                        </div>
                     ) : (
                         <p className="rounded-lg bg-amber-50 p-3 text-sm">
                             Creating an item requires listing editing and
@@ -92,7 +108,27 @@ export default function ServiceShow({
                             Administrator if you need access.
                         </p>
                     )}
-                    <ListingCards listings={listings} />
+                    {listings.length > 0 && (
+                        <label className="block max-w-md text-sm font-medium">
+                            Search configured products
+                            <input
+                                className="mt-1"
+                                type="search"
+                                value={listingSearch}
+                                onChange={(event) =>
+                                    setListingSearch(event.target.value)
+                                }
+                                placeholder="Food or item name"
+                            />
+                        </label>
+                    )}
+                    <ListingCards listings={visibleListings} />
+                    {listings.length > 0 && visibleListings.length === 0 && (
+                        <p className="rounded-xl border bg-white p-6 text-sm">
+                            No configured products match that search. Clear the
+                            search or add another Food Item.
+                        </p>
+                    )}
                     {!listings.length && (
                         <p className="rounded-xl border bg-white p-6 text-sm">
                             No individual items available to view. Prepare
@@ -109,12 +145,12 @@ export default function ServiceShow({
                             family.package_format &&
                             family.active &&
                             !family.archived_at && (
-                                <PackageEditorButton
-                                    url={`/admin/packages/editor?service=${family.id}`}
+                                <Link
+                                    href={`/admin/packages/editor?service=${family.id}`}
                                     className="rounded-lg bg-emerald-800 px-4 py-2 font-semibold text-white"
                                 >
                                     Create Package
-                                </PackageEditorButton>
+                                </Link>
                             )}
                     </div>
                     {!family.package_format && (

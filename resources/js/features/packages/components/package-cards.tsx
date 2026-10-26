@@ -1,4 +1,4 @@
-import { PackageEditorButton } from "./package-editor-modal";
+import { Link } from "@inertiajs/react";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { PackageDetails } from "./package-details";
@@ -113,9 +113,9 @@ export function PackageCards({
                                 (draft ||
                                     !product.current_version ||
                                     canHistory) && (
-                                    <PackageEditorButton
+                                    <Link
                                         className="inline-flex items-center gap-2 rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white"
-                                        url={`/admin/packages/products/${product.id}/edit`}
+                                        href={`/admin/packages/products/${product.id}/edit`}
                                     >
                                         <Pencil size={16} aria-hidden="true" />
                                         {draft &&
@@ -123,7 +123,7 @@ export function PackageCards({
                                         !draft.total_selection_count
                                             ? "Continue Setup"
                                             : "Edit Package"}
-                                    </PackageEditorButton>
+                                    </Link>
                                 )}
                             {canManage &&
                                 !product.archived_at &&

@@ -43,6 +43,8 @@ test("Admin can grant Staff audit access through the interface", async ({
     ).toHaveCount(1);
     await page.getByRole("button", { name: "Account menu" }).click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
+    await expect(page).toHaveURL("/");
+    await page.goto("/login");
     await page
         .getByLabel("Email address")
         .fill("staff-" + run + "@example.test");

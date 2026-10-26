@@ -15,7 +15,7 @@ class CreateAdmin extends Command
 {
     protected $signature = 'app:create-admin';
 
-    protected $description = 'Interactively bootstrap the first Admin; no credentials are seeded';
+    protected $description = 'Interactively bootstrap the first Administrator outside local development fixtures';
 
     public function handle(AccessMutation $access, AuditLogger $audit): int
     {

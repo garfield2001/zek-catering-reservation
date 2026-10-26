@@ -34,16 +34,14 @@ test("canonical package navigation does not mix primary and add-on packages", as
     await page.getByLabel("Price per pax (PHP)").fill("500.00");
     await savePackage(page);
     await page.goto("/admin/add-on-services");
-    await page.getByRole("button", { name: "Create Add-on Service" }).click();
+    await page.getByRole("link", { name: "Create Add-on Service" }).click();
     await page.getByLabel("Service name").fill("Party Sets");
     await configureService(page);
     await page.getByRole("radio", { name: /Sold by Package/ }).check();
     await page
         .getByRole("button", { name: "Create Service", exact: true })
         .click();
-    await page
-        .getByRole("link", { name: "Open newly created service" })
-        .click();
+    await expect(page).toHaveURL(/\/admin\/add-on-services\/\d+$/);
     await createPackage(page, "Bundle Only");
     await inlineFood(page, "Bundle Food", "Scope Foods");
     await page.getByLabel("Bundle Food", { exact: true }).check();

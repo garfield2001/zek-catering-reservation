@@ -29,9 +29,9 @@ test("fresh install provisions catering without manual Collection setup", async 
     await expect(page.getByText("No packages yet")).toBeVisible();
     await createPackage(page, "Independent Package");
     await expect(page.getByLabel("Add-on service")).toHaveCount(0);
-    expect(new URL(page.url()).pathname).toBe("/admin/catering-packages");
+    expect(new URL(page.url()).pathname).toBe("/admin/packages/editor");
     await expect(
-        page.getByRole("dialog", { name: "Create Package", exact: true }),
+        page.getByRole("heading", { name: "Create Package", exact: true }),
     ).toBeVisible();
 
     await expect(

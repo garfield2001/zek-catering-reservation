@@ -43,7 +43,7 @@ class FoodImageTest extends TestCase
         $this->assertSame('public', $food->image_disk);
         $this->assertSame(1600, $food->image_width);
         $this->assertSame(1067, $food->image_height);
-        $this->assertMatchesRegularExpression('/^foods\/[a-z0-9]+\.jpg$/', $food->image_path);
+        $this->assertMatchesRegularExpression('/^foods\/fried-rice-[a-z0-9]+\.jpg$/', $food->image_path);
         Storage::disk('public')->assertExists([$food->image_path, $food->image_thumbnail_path]);
         $thumb = getimagesizefromstring(Storage::disk('public')->get($food->image_thumbnail_path));
         $this->assertSame(360, $thumb[0]);

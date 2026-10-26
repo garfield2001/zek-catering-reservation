@@ -10,11 +10,20 @@ class User extends Authenticatable
 {
     use HasFactory;
 
+    protected $hidden = ['password', 'remember_token', 'avatar_disk', 'avatar_path', 'avatar_thumbnail_path'];
+
+    protected $appends = ['avatar_url'];
+
     protected $attributes = ['active' => true, 'access_version' => 1];
 
     protected $fillable = ['name', 'email', 'password', 'active'];
 
-    protected $hidden = ['password', 'remember_token'];
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return $this->getAttribute('avatar_thumbnail_path')
+            ? route('profile.avatar', ['user' => $this->id, 'v' => basename($this->getAttribute('avatar_thumbnail_path'))], false)
+            : null;
+    }
 
     protected function casts(): array
     {

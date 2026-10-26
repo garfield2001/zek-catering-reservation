@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link, router } from "@inertiajs/react";
 import { toast } from "sonner";
-import { Plus, Pencil, Search, X } from "lucide-react";
+import { Grid2X2, List, Plus, Pencil, Search, X } from "lucide-react";
 import AdminLayout from "../../../layouts/admin-layout";
 import { Modal } from "../../../components/ui/modal";
 import { Button } from "../../../components/ui/button";
 import { CategoryForm } from "../../../features/catalog/components/category-form";
 import { FoodItemForm } from "../../../features/catalog/components/food-item-form";
 import { FoodCard } from "../../../features/catalog/components/food-card";
+import { FoodList } from "../../../features/catalog/components/food-list";
 import type { FoodUsageRow } from "../../../features/catalog/components/food-usage";
 import { useLiveFilters } from "../../../features/catalog/use-live-filters";
 import type { FoodCategory, FoodItem } from "../../../features/catalog/types";
 import { PaginationControls } from "../../../components/ui/pagination";
+import { MeasurementUnitManager } from "../../../features/catalog/components/measurement-unit-manager";
 import type { Pagination } from "../../../types";
 
 type CatalogEditor =
@@ -28,14 +30,28 @@ export default function FoodCatalog({
 }: {
     items: Pagination<FoodItem>;
     categories: FoodCategory[];
-    filters: { q?: string; category?: string; status?: string };
+    filters: {
+        q?: string;
+        category?: string;
+        status?: string;
+        sort?: string;
+        per_page?: string;
+    };
     canManage: boolean;
     initialEditor: CatalogEditor;
     usedIn: Record<number, FoodUsageRow[]>;
 }) {
     const [editor, setEditor] = useState<CatalogEditor>(initialEditor);
+    const [foodFormRevision, setFoodFormRevision] = useState(0);
     const [savedFood, setSavedFood] = useState<FoodItem | null>(null);
     const [highlighted, setHighlighted] = useState<number | null>(null);
+    const [managingUnits, setManagingUnits] = useState(false);
+    const [view, setView] = useState<"list" | "grid">(() => {
+        if (typeof window === "undefined") return "list";
+        return window.localStorage.getItem("catalog-food-view") === "grid"
+            ? "grid"
+            : "list";
+    });
     useEffect(() => {
         if (highlighted === null) return;
         const timeout = window.setTimeout(() => setHighlighted(null), 3000);
@@ -55,14 +71,25 @@ export default function FoodCatalog({
         );
     };
     const close = () => setEditor(null);
+    const saveAndAddAnother = (food: FoodItem) => {
+        foodPersisted(food);
+        setEditor({ kind: "food", item: null, categoryId: food.category_id });
+        setFoodFormRevision((revision) => revision + 1);
+    };
     const { filters, setFilters, pending } = useLiveFilters(
         "/admin/food-catalog",
         {
             q: initial.q ?? "",
             category: String(initial.category ?? ""),
             status: initial.status ?? "",
+            sort: initial.sort ?? "name_asc",
+            per_page: initial.per_page ?? "24",
         },
     );
+    const changeView = (next: "list" | "grid") => {
+        setView(next);
+        window.localStorage.setItem("catalog-food-view", next);
+    };
     return (
         <AdminLayout
             title="Food Catalog"
@@ -72,44 +99,70 @@ export default function FoodCatalog({
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <p role="status" className="text-sm text-slate-500">
                     {pending
-                        ? "Updating results…"
+                        ? "Loading filtered foods…"
                         : `${items.total} matching foods`}
                 </p>
-                {canManage ? (
-                    <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    <div
+                        className="inline-flex rounded-lg border bg-white p-1"
+                        role="group"
+                        aria-label="Food catalog view"
+                    >
                         <Button
-                            variant="secondary"
-                            onClick={() =>
-                                setEditor({ kind: "category", item: null })
-                            }
+                            type="button"
+                            variant={view === "list" ? "primary" : "ghost"}
+                            aria-pressed={view === "list"}
+                            onClick={() => changeView("list")}
                         >
-                            <Plus size={16} />
-                            Add Category
+                            <List size={16} />
+                            List
                         </Button>
                         <Button
-                            onClick={() =>
-                                setEditor({
-                                    kind: "food",
-                                    item: null,
-                                    categoryId: filters.category
-                                        ? Number(filters.category)
-                                        : undefined,
-                                })
-                            }
+                            type="button"
+                            variant={view === "grid" ? "primary" : "ghost"}
+                            aria-pressed={view === "grid"}
+                            onClick={() => changeView("grid")}
                         >
-                            <Plus size={16} />
-                            Add Food Item
+                            <Grid2X2 size={16} />
+                            Grid
                         </Button>
                     </div>
-                ) : (
-                    <p className="text-sm text-slate-500">
-                        Viewing access only. Ask an Administrator for catalog
-                        editing permission.
-                    </p>
-                )}
+                    {canManage ? (
+                        <>
+                            <Button
+                                variant="secondary"
+                                onClick={() =>
+                                    setEditor({ kind: "category", item: null })
+                                }
+                            >
+                                <Plus size={16} />
+                                Add Category
+                            </Button>
+                            <Button
+                                onClick={() =>
+                                    setEditor({
+                                        kind: "food",
+                                        item: null,
+                                        categoryId: filters.category
+                                            ? Number(filters.category)
+                                            : undefined,
+                                    })
+                                }
+                            >
+                                <Plus size={16} />
+                                Add Food Item
+                            </Button>
+                        </>
+                    ) : (
+                        <p className="text-sm text-slate-500">
+                            Viewing access only. Ask an Administrator for
+                            catalog editing permission.
+                        </p>
+                    )}
+                </div>
             </div>
             <section
-                className="mb-6 grid gap-3 rounded-xl border bg-white p-4 sm:grid-cols-[minmax(0,2fr)_1fr_1fr_auto]"
+                className="mb-6 grid gap-3 rounded-xl border bg-white p-4 sm:grid-cols-[minmax(0,2fr)_1fr_1fr_1fr_1fr_auto]"
                 aria-label="Food filters"
             >
                 <label className="text-xs font-medium text-slate-600">
@@ -148,7 +201,8 @@ export default function FoodCatalog({
                         <option value="">All Foods</option>
                         {categories.map((category) => (
                             <option key={category.id} value={category.id}>
-                                {category.name} ({category.dishes_count ?? 0})
+                                {category.name} ({category.dishes_count ?? 0}{" "}
+                                total)
                                 {!category.active ? " · Inactive" : ""}
                             </option>
                         ))}
@@ -173,32 +227,102 @@ export default function FoodCatalog({
                         </option>
                     </select>
                 </label>
+                <label className="text-xs font-medium text-slate-600">
+                    Sort
+                    <select
+                        className="mt-1"
+                        value={filters.sort}
+                        onChange={(event) =>
+                            setFilters({
+                                ...filters,
+                                sort: event.target.value,
+                            })
+                        }
+                    >
+                        <option value="name_asc">Name A–Z</option>
+                        <option value="name_desc">Name Z–A</option>
+                        <option value="recent">Recently updated</option>
+                        <option value="category">Category</option>
+                    </select>
+                </label>
+                <label className="text-xs font-medium text-slate-600">
+                    Per page
+                    <select
+                        className="mt-1"
+                        value={filters.per_page}
+                        onChange={(event) =>
+                            setFilters({
+                                ...filters,
+                                per_page: event.target.value,
+                            })
+                        }
+                    >
+                        <option value="12">12 foods</option>
+                        <option value="24">24 foods</option>
+                        <option value="48">48 foods</option>
+                    </select>
+                </label>
                 <Button
                     className="self-end"
                     variant="ghost"
                     onClick={() =>
-                        setFilters({ q: "", category: "", status: "" })
+                        setFilters({
+                            q: "",
+                            category: "",
+                            status: "",
+                            sort: "name_asc",
+                            per_page: filters.per_page,
+                        })
                     }
                 >
                     <X size={14} />
                     Clear filters
                 </Button>
             </section>
-            {items.data.length ? (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),280px))] gap-5">
-                    {items.data.map((food) => (
-                        <FoodCard
-                            key={food.id}
-                            item={food}
-                            highlighted={highlighted === food.id}
-                            usage={usedIn[food.id] ?? []}
-                            canManage={canManage}
-                            onEdit={() =>
-                                setEditor({ kind: "food", item: food })
-                            }
-                        />
-                    ))}
+            {pending ? (
+                <div
+                    aria-label={`${view === "list" ? "List" : "Grid"} results loading`}
+                    className={
+                        view === "list"
+                            ? "space-y-2 rounded-2xl border bg-white p-4"
+                            : "grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),280px))] gap-5"
+                    }
+                >
+                    {Array.from({ length: view === "list" ? 6 : 8 }).map(
+                        (_, index) => (
+                            <div
+                                key={index}
+                                className={`animate-pulse rounded-xl bg-slate-100 motion-reduce:animate-none ${view === "list" ? "h-14" : "h-44"}`}
+                            />
+                        ),
+                    )}
                 </div>
+            ) : items.data.length ? (
+                view === "list" ? (
+                    <FoodList
+                        items={items.data}
+                        canManage={canManage}
+                        highlightedId={highlighted}
+                        onEdit={(food) =>
+                            setEditor({ kind: "food", item: food })
+                        }
+                    />
+                ) : (
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),280px))] gap-5">
+                        {items.data.map((food) => (
+                            <FoodCard
+                                key={food.id}
+                                item={food}
+                                highlighted={highlighted === food.id}
+                                usage={usedIn[food.id] ?? []}
+                                canManage={canManage}
+                                onEdit={() =>
+                                    setEditor({ kind: "food", item: food })
+                                }
+                            />
+                        ))}
+                    </div>
+                )
             ) : (
                 <div className="rounded-xl border border-dashed bg-white p-10 text-center">
                     <h2 className="font-semibold">No matching foods</h2>
@@ -230,12 +354,12 @@ export default function FoodCatalog({
                     Catalog Settings
                 </summary>
                 <div className="mt-4 space-y-4">
-                    <Link
-                        href="/admin/catalog/measurement-units"
-                        className="text-sm text-emerald-800 underline"
+                    <Button
+                        variant="secondary"
+                        onClick={() => setManagingUnits(true)}
                     >
-                        Measurement Units
-                    </Link>
+                        Manage Measurement Units
+                    </Button>
                     <div className="flex flex-wrap gap-2">
                         {categories.map((category) => (
                             <div
@@ -285,15 +409,21 @@ export default function FoodCatalog({
                     />
                 ) : editor?.kind === "food" ? (
                     <FoodItemForm
+                        key={`${editor.item?.id ?? "new"}-${foodFormRevision}`}
                         dish={editor.item}
                         categories={categories}
                         initialCategoryId={editor.categoryId}
                         workspace
                         onSaved={close}
                         onPersisted={foodPersisted}
+                        onSavedAnother={saveAndAddAnother}
                     />
                 ) : null}
             </Modal>
+            <MeasurementUnitManager
+                open={managingUnits}
+                onClose={() => setManagingUnits(false)}
+            />
         </AdminLayout>
     );
 }

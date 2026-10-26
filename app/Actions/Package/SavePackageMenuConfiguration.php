@@ -28,7 +28,7 @@ class SavePackageMenuConfiguration
             if ($version->draft_revision !== (int) $data['draft_revision']) {
                 throw ValidationException::withMessages(['draft_revision' => 'This draft changed. Reload before saving.']);
             }
-            $before = ['details' => $version->foodItems()->get()->mapWithKeys(fn ($dish) => [$dish->id => $dish->pivot->toArray()])->all(), 'food_items' => $version->foodItems()->pluck('dishes.id')->all(), 'required_categories' => $version->requiredCategories()->pluck('dish_categories.id')->all(), 'total_selection_count' => $version->total_selection_count];
+            $before = ['details' => $version->foodItems()->get()->mapWithKeys(fn ($dish) => [$dish->id => $dish->pivot->toArray()])->all(), 'food_items' => $version->foodItems()->pluck('dishes.id')->all(), 'category_choice_rules' => $this->categoryRules($version), 'total_selection_count' => $version->total_selection_count];
             $details = $data['food_details'] ?? [];
             $presentation = app(PackagePresentation::class);
             $before['presentation'] = $presentation->snapshot($version);
@@ -64,12 +64,48 @@ class SavePackageMenuConfiguration
             }
             $version->forceFill(['total_selection_count' => $version->family->behavior_type === 'fixed_bundle' ? count($data['food_item_ids']) : (int) $data['total_selection_count']])->save();
             $sizes->clear($version);
-            $this->configuration->replace($version, $data['food_item_ids'], $data['required_category_ids'], $details);
+            $rules = $this->inputCategoryRules($data);
+            // A category with one allowed food is an inclusion, not an
+            // artificial customer decision. Apply this invariant regardless
+            // of whether the request uses the current rule payload or the
+            // backwards-compatible required-category field.
+            $this->configuration->replace($version, $data['food_item_ids'], $rules, $details, true);
             $presentation->save($version, $presentationInput);
             $sizes->replace($version, $normalizedSizes);
             $this->configuration->validateDraft($version->fresh());
             $version->increment('draft_revision');
-            $this->audit->record('package.menu_updated', $actor, $version, $before, ['presentation' => $presentation->snapshot($version), 'details' => $details, 'serving_default' => $servings->snapshot($version), 'food_sizes' => $sizes->snapshot($version), 'food_items' => $data['food_item_ids'], 'required_categories' => $data['required_category_ids'], 'total_selection_count' => $version->total_selection_count]);
+            $this->audit->record('package.menu_updated', $actor, $version, $before, ['presentation' => $presentation->snapshot($version), 'details' => $details, 'serving_default' => $servings->snapshot($version), 'food_sizes' => $sizes->snapshot($version), 'food_items' => $data['food_item_ids'], 'category_choice_rules' => $rules, 'total_selection_count' => $version->total_selection_count]);
         });
+    }
+
+    /** @return list<array{category_id:int,minimum_count:int,maximum_count:int}> */
+    private function inputCategoryRules(array $data): array
+    {
+        if (array_key_exists('category_choice_rules', $data)) {
+            return array_map(fn (array $rule): array => [
+                'category_id' => (int) $rule['category_id'],
+                'minimum_count' => (int) $rule['minimum_count'],
+                'maximum_count' => (int) $rule['maximum_count'],
+                'maximum_count_explicit' => (bool) ($rule['maximum_count_explicit'] ?? true),
+            ], $data['category_choice_rules']);
+        }
+
+        return array_map(fn ($id): array => [
+            'category_id' => (int) $id,
+            'minimum_count' => 1,
+            'maximum_count' => (int) $data['total_selection_count'],
+            'maximum_count_explicit' => false,
+        ], $data['required_category_ids'] ?? []);
+    }
+
+    /** @return list<array{category_id:int,minimum_count:int,maximum_count:int}> */
+    private function categoryRules(PackageVersion $version): array
+    {
+        return $version->requiredCategories()->get()->map(fn ($category): array => [
+            'category_id' => $category->id,
+            'minimum_count' => (int) ($category->pivot->minimum_count ?? 1),
+            'maximum_count' => (int) ($category->pivot->maximum_count ?? 1),
+            'maximum_count_explicit' => (bool) ($category->pivot->maximum_count_explicit ?? false),
+        ])->all();
     }
 }

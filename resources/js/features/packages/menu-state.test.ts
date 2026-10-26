@@ -7,14 +7,22 @@ const foods = [
     { id: 3, name: "Drink", category_id: 2 },
 ];
 describe("menu feedback", () => {
-    it("counts automatic and explicit fixed intent once and keeps categories at least one", () => {
+    it("keeps Always Included foods separate from category customer choices", () => {
         const data = {
             ...initialMenu(),
             total_selection_count: 2,
-            food_item_ids: [1, 3],
-            required_category_ids: [1, 2],
+            food_item_ids: [1, 2, 3],
+            required_category_ids: [1],
+            category_choice_rules: [
+                {
+                    category_id: 1,
+                    minimum_count: 1,
+                    maximum_count: 1,
+                    maximum_count_explicit: true,
+                },
+            ],
             food_details: {
-                1: {
+                3: {
                     is_fixed: true,
                     included_quantity: "",
                     included_unit: "",
@@ -22,11 +30,11 @@ describe("menu feedback", () => {
                 },
             },
         };
-        expect(menuSummary(data, foods).fixed).toHaveLength(2);
+        expect(menuSummary(data, foods).fixed).toHaveLength(1);
         expect(menuSummary(data, foods).impossible).toBe(false);
         expect(
-            menuSummary({ ...data, food_item_ids: [1, 2, 3] }, foods).fixed,
-        ).toHaveLength(2);
+            menuSummary({ ...data, food_item_ids: [3] }, foods).impossible,
+        ).toBe(true);
     });
     it("flags unavailable choices and impossible fixed/category totals", () => {
         const data = {
@@ -34,6 +42,20 @@ describe("menu feedback", () => {
             total_selection_count: 1,
             food_item_ids: [1, 3],
             required_category_ids: [1, 2],
+            category_choice_rules: [
+                {
+                    category_id: 1,
+                    minimum_count: 1,
+                    maximum_count: 1,
+                    maximum_count_explicit: true,
+                },
+                {
+                    category_id: 2,
+                    minimum_count: 1,
+                    maximum_count: 1,
+                    maximum_count_explicit: true,
+                },
+            ],
         };
         expect(menuSummary(data, foods).impossible).toBe(true);
         expect(
@@ -50,5 +72,29 @@ describe("menu feedback", () => {
         );
         expect(result.fixed).toEqual([]);
         expect(result.requiredChoices).toBe(0);
+    });
+    it("shows the sole required category option as included before the server persists it", () => {
+        const result = menuSummary(
+            {
+                ...initialMenu(),
+                total_selection_count: 2,
+                food_item_ids: [1, 3],
+                required_category_ids: [1],
+                category_choice_rules: [
+                    {
+                        category_id: 1,
+                        minimum_count: 1,
+                        maximum_count: 1,
+                        maximum_count_explicit: true,
+                    },
+                ],
+            },
+            foods,
+        );
+
+        expect(result.fixed).toEqual([]);
+        expect(result.effectiveFixed.map((food) => food.name)).toEqual([
+            "Rice A",
+        ]);
     });
 });

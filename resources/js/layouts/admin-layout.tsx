@@ -13,6 +13,7 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Modal } from "../components/ui/modal";
+import { UserAvatar } from "../components/ui/user-avatar";
 import { useFlashToast } from "../components/ui/notifications";
 import type { SharedProps } from "../types";
 
@@ -225,9 +226,11 @@ export default function AdminLayout({
                                 className="flex shrink-0 items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-slate-100"
                                 aria-label="Account menu"
                             >
-                                <span className="grid size-8 place-items-center rounded-full bg-emerald-100 font-semibold text-emerald-900">
-                                    {auth?.user.name.slice(0, 1)}
-                                </span>
+                                <UserAvatar
+                                    name={auth?.user.name ?? "User"}
+                                    src={auth?.user.avatar_url}
+                                    size="sm"
+                                />
                                 <span className="hidden max-w-40 truncate sm:block">
                                     {auth?.user.name}
                                 </span>
@@ -245,6 +248,14 @@ export default function AdminLayout({
                                             : "Staff"}
                                     </DropdownMenu.Label>
                                     <DropdownMenu.Separator className="my-1 h-px bg-slate-100" />
+                                    <DropdownMenu.Item asChild>
+                                        <Link
+                                            href="/admin/profile"
+                                            className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm outline-none data-[highlighted]:bg-slate-100"
+                                        >
+                                            Profile photo
+                                        </Link>
+                                    </DropdownMenu.Item>
                                     <DropdownMenu.Item
                                         onSelect={() => router.post("/logout")}
                                         className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm outline-none data-[highlighted]:bg-slate-100"

@@ -28,6 +28,10 @@ return [
 
     'env' => env('APP_ENV', 'production'),
 
+    // Tests may explicitly enable this to verify the normal local bootstrap.
+    // Non-local environments never use it as a seeding permission.
+    'seed_local_development_data' => (bool) env('LOCAL_DEVELOPMENT_SEED_DATA', false),
+
     /*
     |--------------------------------------------------------------------------
     | Application Debug Mode

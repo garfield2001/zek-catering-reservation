@@ -15,6 +15,7 @@ export function useLiveFilters<T extends Record<string, string>>(
     useEffect(() => {
         cancel.current?.();
         const request = ++sequence.current;
+        let pendingDelay: number | null = null;
         if (previous.current === serialized) return;
         const timer = window.setTimeout(() => {
             router.get(url, JSON.parse(serialized), {
@@ -24,18 +25,35 @@ export function useLiveFilters<T extends Record<string, string>>(
                 onCancelToken: (token) => {
                     cancel.current = () => token.cancel();
                 },
-                onStart: () => setPending(true),
+                onStart: () => {
+                    pendingDelay = window.setTimeout(
+                        () => setPending(true),
+                        200,
+                    );
+                },
                 onSuccess: () => {
                     if (sequence.current === request)
                         previous.current = serialized;
                 },
                 onFinish: () => {
+                    if (pendingDelay !== null) {
+                        window.clearTimeout(pendingDelay);
+                        pendingDelay = null;
+                    }
                     if (sequence.current === request) setPending(false);
                 },
             });
         }, 300);
-        return () => window.clearTimeout(timer);
+        return () => {
+            window.clearTimeout(timer);
+            if (pendingDelay !== null) window.clearTimeout(pendingDelay);
+        };
     }, [serialized, url]);
-    useEffect(() => () => cancel.current?.(), []);
+    useEffect(
+        () => () => {
+            cancel.current?.();
+        },
+        [],
+    );
     return { filters, setFilters, pending };
 }

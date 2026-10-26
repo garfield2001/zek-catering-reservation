@@ -71,7 +71,7 @@ class AccessFoundationTest extends TestCase
         $this->assertNotSame($old, session()->getId());
         $this->assertSame($user->access_version, session('access_version'));
         $this->assertDatabaseHas('audit_events', ['action' => 'auth.login', 'actor_id' => $user->id]);
-        $this->post('/logout')->assertRedirect('/login');
+        $this->post('/logout')->assertRedirect('/');
         $this->assertGuest();
         $this->assertDatabaseHas('audit_events', ['action' => 'auth.logout']);
     }

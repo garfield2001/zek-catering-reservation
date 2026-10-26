@@ -30,6 +30,33 @@ class ListingWorkspace
             'canPrice' => Gate::allows('price', IndividualListing::class)];
     }
 
+    public function bulkEditor(ProductFamily $family): array
+    {
+        Gate::authorize('create', IndividualListing::class);
+        Gate::authorize('price', IndividualListing::class);
+        abort_unless($family->behavior_type === 'direct_sale' && $family->active && ! $family->archived_at, 404);
+        $configured = $family->listings()
+            ->with('dish.category')
+            ->get()
+            ->keyBy('dish_id');
+        $foods = Dish::query()
+            ->where('active', true)
+            ->whereHas('category', fn ($query) => $query->where('active', true))
+            ->with('category')
+            ->orderBy('category_id')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Dish $dish) => [
+                ...$dish->only('id', 'name', 'category_id', 'thumbnail_url'),
+                'category' => $dish->category?->only('id', 'name'),
+                'existing_listing_id' => $configured->get($dish->id)?->id,
+            ]);
+
+        return ['family' => $family, 'foods' => $foods,
+            'categories' => $foods->pluck('category')->filter()->unique('id')->values(),
+            'canPrice' => Gate::allows('price', IndividualListing::class)];
+    }
+
     public function details(IndividualListing $listing, ?int $versionId = null): array
     {
         Gate::authorize('view', $listing);

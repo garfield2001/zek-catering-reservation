@@ -16,5 +16,11 @@ export type MenuFood = {
 export type MenuCategory = FoodCategory;
 export type MenuVersion = PackageVersion & {
     food_items: MenuFood[];
-    required_categories: MenuCategory[];
+    required_categories: (MenuCategory & {
+        pivot?: {
+            minimum_count?: number;
+            maximum_count?: number;
+            maximum_count_explicit?: boolean;
+        };
+    })[];
 };

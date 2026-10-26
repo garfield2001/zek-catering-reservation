@@ -61,9 +61,13 @@ class CommercialComparison
         }
         $default = $menu['serving_default'] ?? null;
         $facts['Default serving'] = $default ? implode(' ', array_filter([$default['quantity'], $default['size_label'] ?? null, $default['measurement_unit']['name']])) : 'Not configured';
-        $required = array_column($menu['required_categories'] ?? [], 'name');
+        $rules = $menu['category_choice_rules'] ?? array_map(
+            fn (array $category): array => [...$category, 'minimum_count' => 1, 'maximum_count' => 1],
+            $menu['required_categories'] ?? [],
+        );
+        $required = array_map(fn (array $rule): string => $rule['name'].' '.$rule['minimum_count'].'–'.$rule['maximum_count'], $rules);
         sort($required);
-        $facts['Required categories'] = implode(', ', $required) ?: 'None';
+        $facts['Customer Choice Categories'] = implode(', ', $required) ?: 'None';
         foreach ($menu['food_items'] ?? [] as $food) {
             $serving = ! empty($food['included_quantity']) ? $food['included_quantity'].' '.($food['included_unit'] ?? '') : 'Package default';
             $sizes = $menu['food_sizes'][$food['id']] ?? null;

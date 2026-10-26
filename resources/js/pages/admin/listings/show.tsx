@@ -3,7 +3,6 @@ import { useState } from "react";
 import AdminLayout from "../../../layouts/admin-layout";
 import { ConfirmDialog } from "../../../components/ui/confirm-dialog";
 import { ListingDetails } from "../../../features/listings/components/listing-details";
-import { ListingEditorButton } from "../../../features/listings/components/listing-editor-modal";
 import { CommercialHistory } from "../../../features/catalog/components/commercial-history";
 import type { ListingDetailsProps } from "../../../features/listings/types";
 
@@ -54,11 +53,12 @@ export default function ListingShow({
                     Back to Service
                 </Link>
                 {canManage && !listing.archived_at && (
-                    <ListingEditorButton
-                        url={`/admin/items/${listing.id}/edit`}
+                    <Link
+                        href={`/admin/items/${listing.id}/edit`}
+                        className="text-sm font-semibold text-emerald-800 underline"
                     >
                         Edit Item
-                    </ListingEditorButton>
+                    </Link>
                 )}
                 {draft_id && version.status === "published" && (
                     <Link

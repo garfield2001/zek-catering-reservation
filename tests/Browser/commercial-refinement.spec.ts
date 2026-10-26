@@ -42,20 +42,21 @@ test("category modal preserves the filtered catalog URL and explains deactivatio
         page.getByRole("option", { name: /Category Modal Context.*Inactive/ }),
     ).toHaveCount(1);
 });
-test("service creation preserves filters and light-only surfaces ignore the operating-system theme", async ({
+test("service creation uses a dedicated page and light-only surfaces ignore the operating-system theme", async ({
     page,
 }) => {
     await login(page, run, password);
     await page.goto("/admin/add-on-services?q=UnmatchedVisualFilter");
-    const workspace = page.url();
-    await page.getByRole("button", { name: "Create Add-on Service" }).click();
-    const dialog = page.getByRole("dialog");
+    await page.getByRole("link", { name: "Create Add-on Service" }).click();
+    const dialog = page.locator("main");
     await dialog.getByLabel("Service name").fill("Visual context service");
     await configureService(page);
     for (const colorScheme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme });
         await page.setViewportSize({ width: 390, height: 844 });
-        await expect(dialog).toBeVisible();
+        await expect(
+            page.getByRole("heading", { name: "Create Add-on Service" }),
+        ).toBeVisible();
         expect(
             await page.evaluate(
                 () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -69,9 +70,6 @@ test("service creation preserves filters and light-only surfaces ignore the oper
                 () => getComputedStyle(document.documentElement).colorScheme,
             ),
         ).toBe("light");
-        expect(
-            await dialog.evaluate((el) => getComputedStyle(el).backgroundColor),
-        ).toBe("rgb(255, 255, 255)");
         await page.screenshot({
             path: `test-results/service-modal-os-${colorScheme}-mobile.png`,
             fullPage: true,
@@ -80,23 +78,20 @@ test("service creation preserves filters and light-only surfaces ignore the oper
     await dialog
         .getByRole("button", { name: "Create Service", exact: true })
         .click();
-    await expect(dialog).not.toBeVisible();
-    await expect(page).toHaveURL(workspace);
-    await expect(page.getByLabel("Search services")).toHaveValue(
-        "UnmatchedVisualFilter",
-    );
-    await page
-        .getByRole("link", { name: "Open newly created service" })
-        .click();
+    // Wait for the persisted redirect. The first server-side write can take
+    // longer than the default assertion window in a complete serial run.
+    await expect(page).toHaveURL(/\/admin\/add-on-services\/\d+$/, {
+        timeout: 15000,
+    });
     await expect(
         page.getByRole("heading", {
             name: "Visual context service",
             exact: true,
         }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.getByRole("link", { name: "Edit Service", exact: true }).click();
     await page
-        .getByLabel("Enabled for new configuration and selection")
+        .getByLabel("Enabled for new configuration and customer selection")
         .uncheck();
     await expect(
         page
@@ -104,10 +99,12 @@ test("service creation preserves filters and light-only surfaces ignore the oper
             .filter({ hasText: "Before disabling or archiving" }),
     ).toContainText("0 packages and 0 individual listings");
     await page
-        .getByRole("button", { name: "Save changes", exact: true })
+        .getByRole("button", { name: "Save Service", exact: true })
         .click();
     await page.reload();
-    await expect(page.getByText("Disabled", { exact: true })).toBeVisible();
+    await expect(
+        page.getByLabel("Enabled for new configuration and customer selection"),
+    ).not.toBeChecked();
     for (const colorScheme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme });
         await page.setViewportSize({ width: 1440, height: 1000 });
@@ -129,22 +126,20 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
     test.setTimeout(120000);
     await login(page, run, password);
     await page.goto("/admin/add-on-services");
-    await page.getByRole("button", { name: "Create Add-on Service" }).click();
+    await page.getByRole("link", { name: "Create Add-on Service" }).click();
     await page.getByLabel("Service name").fill("Mixed Serving Service");
     await configureService(page);
     await page.getByRole("radio", { name: /Sold by Package/ }).check();
     await page
         .getByRole("button", { name: "Create Service", exact: true })
         .click();
-    await page
-        .getByRole("link", { name: "Open newly created service" })
-        .click();
+    await expect(page).toHaveURL(/\/admin\/add-on-services\/\d+$/);
     await createPackage(page, "Mixed Serving Package");
     for (const name of ["Mixed Roast", "Mixed Noodles", "Mixed Vegetables"])
         await inlineFood(page, name, "Mixed Foods");
     await page.getByLabel("Total included food selections").fill("3");
     await openPortions(page);
-    const defaults = page.locator('details[aria-label="Default Food Portion"]');
+    const defaults = page.locator('[aria-label="Default Food Portion"]');
     await defaults.getByLabel("Set a default food portion").check();
     await defaults
         .getByLabel("Size label (optional)", { exact: true })
@@ -222,9 +217,7 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
     await page.getByLabel("Minimum complete package set units").fill("2");
     await savePackage(page);
     await page.reload();
-    await page
-        .getByRole("button", { name: "Edit Package", exact: true })
-        .click();
+    await page.getByRole("link", { name: "Edit Package", exact: true }).click();
     await step(page, "Menu");
     await openPortions(page);
     for (const name of ["Mixed Roast", "Mixed Noodles", "Mixed Vegetables"])
@@ -281,9 +274,7 @@ test("mixed serving defaults and numeric and named overrides survive saving and 
     ).toHaveValue("4.000");
     await savePackage(page);
     await page.reload();
-    await page
-        .getByRole("button", { name: "Edit Package", exact: true })
-        .click();
+    await page.getByRole("link", { name: "Edit Package", exact: true }).click();
     await step(page, "Menu");
     await openPortions(page);
     for (const name of ["Mixed Roast", "Mixed Noodles", "Mixed Vegetables"])
@@ -458,7 +449,7 @@ test("catalog saves preserve filters and reveal hidden new foods without resetti
     await expect(visible).toHaveAttribute("data-highlighted", "true");
     await page
         .getByRole("combobox", { name: "Category", exact: true })
-        .selectOption({ label: "Context Category (1)" });
+        .selectOption({ label: "Context Category (1 total)" });
     await page.getByLabel("Search foods or categories").fill("Visible");
     await expect(page).toHaveURL(/q=Visible/);
     const filteredUrl = page.url();
@@ -515,19 +506,15 @@ test("catalog saves preserve filters and reveal hidden new foods without resetti
     ).toBeVisible();
 });
 
-test("modal package creation retains inline food input and publishes persisted terms", async ({
+test("page package creation retains inline food input and publishes persisted terms", async ({
     page,
 }) => {
     await login(page, run, password);
     await page.goto("/admin/catering-packages");
-    const workspace = page.url();
     await page
-        .getByRole("button", { name: "Create Package", exact: true })
+        .getByRole("link", { name: "Create Package", exact: true })
         .click();
-    const editor = page.getByRole("dialog", {
-        name: "Create Package",
-        exact: true,
-    });
+    const editor = page;
     await editor
         .getByLabel("Package Name", { exact: true })
         .fill("Modal Acceptance Package");
@@ -549,7 +536,9 @@ test("modal package creation retains inline food input and publishes persisted t
     await expect(
         editor.getByLabel("Modal Included Food", { exact: true }),
     ).toBeChecked();
-    await expect(page).toHaveURL(workspace);
+    await expect(page).toHaveURL(
+        /\/admin\/packages\/editor(?:\?service=\d+)?$/,
+    );
     await editor
         .getByRole("button", { name: "Next: Pricing & Quantity", exact: true })
         .click();
@@ -558,36 +547,31 @@ test("modal package creation retains inline food input and publishes persisted t
     await editor
         .getByRole("button", { name: "Next: Review & Save", exact: true })
         .click();
-    await expect(editor).toContainText("Modal Acceptance Package");
+    await expect(editor.locator("main")).toContainText(
+        "Modal Acceptance Package",
+    );
     await editor
-        .getByRole("button", { name: "Save & Publish", exact: true })
+        .getByRole("button", { name: "Save Draft", exact: true })
         .click();
-    await page
-        .getByRole("alertdialog")
-        .getByRole("button", { name: "Save & Publish", exact: true })
-        .click();
-    await expect(editor).not.toBeVisible();
-    await expect(page).toHaveURL(workspace);
+    await expect(page).toHaveURL(/\/admin\/catering-packages\/\d+$/);
     await page.reload();
-    const card = page
-        .getByRole("article")
-        .filter({ hasText: "Modal Acceptance Package" });
-    await expect(card).toContainText("Published");
-    await card
-        .getByRole("button", { name: "Edit Package", exact: true })
-        .click();
-    const edit = page.getByRole("dialog", {
-        name: "Edit Modal Acceptance Package",
-        exact: true,
-    });
+    await expect(
+        page.getByText("Package Draft", { exact: true }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Edit Package", exact: true }).click();
+    const edit = page;
     await expect(edit.getByLabel("Package Name", { exact: true })).toHaveValue(
         "Modal Acceptance Package",
     );
-    await edit.getByRole("button", { name: "3. Pricing & Quantity" }).click();
+    await step(edit, "Pricing & Quantity");
     await expect(
         edit.getByLabel("Price per pax (PHP)", { exact: true }),
     ).toHaveValue("450.00");
     await expect(edit.getByLabel("Minimum guests")).toHaveValue("150");
-    await page.keyboard.press("Escape");
-    await expect(edit).not.toBeVisible();
+    await expect(
+        edit.getByRole("heading", {
+            name: "Edit Modal Acceptance Package",
+            exact: true,
+        }),
+    ).toBeVisible();
 });

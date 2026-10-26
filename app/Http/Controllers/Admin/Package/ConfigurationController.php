@@ -18,9 +18,13 @@ class ConfigurationController extends Controller
 {
     public function create(Request $request, PackageEditor $editor): Response|JsonResponse
     {
-        $data = $request->validate(['service' => ['required', 'integer', 'exists:product_families,id']]);
+        $data = $request->validate([
+            'service' => ['required', 'integer', 'exists:product_families,id'],
+            'step' => ['nullable', 'integer', 'between:0,3'],
+        ]);
 
         $props = $editor->data(ProductFamily::findOrFail($data['service']));
+        $props['initialStep'] = $data['step'] ?? 0;
 
         return $request->expectsJson() ? response()->json($props) : Inertia::render('admin/packages/editor', $props);
     }

@@ -46,7 +46,12 @@ class MeasurementUnitTest extends TestCase
         $this->put(route('catalog.units.update', $unit), ['name' => 'Bowls', 'abbreviation' => 'bwl', 'active' => false])->assertSessionHasNoErrors();
         $this->assertFalse($unit->fresh()->active);
         $this->assertSame(2, AuditEvent::where('action', 'like', 'catalog.measurement_unit_%')->count());
-        $this->get(route('catalog.units.index'))->assertOk();
+        $this->get(route('catalog.units.index'))->assertRedirect(route('catalog.workspace'));
+        $this->getJson(route('catalog.units.index'))
+            ->assertOk()
+            ->assertJsonPath('units.0.name', 'Bowls')
+            ->assertJsonPath('units.0.usage_count', 0)
+            ->assertJsonPath('canManage', true);
         $this->delete(route('catalog.units.destroy', $unit))->assertSessionHasNoErrors();
         $this->assertSame(0, MeasurementUnit::count());
     }
@@ -72,11 +77,14 @@ class MeasurementUnitTest extends TestCase
     public function test_staff_requires_catalog_permissions_and_forged_writes_are_rejected(): void
     {
         $staff = $this->account('staff');
-        $this->get(route('catalog.units.index'))->assertForbidden();
+        $this->getJson(route('catalog.units.index'))->assertForbidden();
         $this->post(route('catalog.units.store'), ['name' => 'Bowls', 'abbreviation' => 'bwl', 'active' => true])->assertForbidden();
         $staff->permissionOverrides()->attach(Permission::where('code', 'catalog.view')->sole(), ['effect' => 'allow']);
         $this->actingAs($staff->fresh());
-        $this->get(route('catalog.units.index'))->assertOk();
+        $this->get(route('catalog.units.index'))->assertRedirect(route('catalog.workspace'));
+        $this->getJson(route('catalog.units.index'))
+            ->assertOk()
+            ->assertJsonPath('canManage', false);
         $this->post(route('catalog.units.store'), ['name' => 'Bowls', 'abbreviation' => 'bwl', 'active' => true])->assertForbidden();
         $this->assertSame(0, MeasurementUnit::count());
     }
@@ -140,5 +148,32 @@ class MeasurementUnitTest extends TestCase
             ->assertSessionHasNoErrors();
         $this->assertTrue($unit->fresh()->active);
         $this->assertSame($family->id, $family->fresh()->id);
+    }
+
+    public function test_json_management_writes_return_current_units_without_bypassing_lifecycle_protection(): void
+    {
+        $admin = $this->account('admin');
+        $unit = MeasurementUnit::create(['name' => 'Box', 'abbreviation' => 'box', 'active' => true]);
+
+        $this->putJson(route('catalog.units.update', $unit), [
+            'name' => 'Boxes', 'abbreviation' => 'box', 'active' => false,
+        ])->assertOk()->assertJsonPath('unit.name', 'Boxes')->assertJsonPath('unit.active', false);
+
+        $this->deleteJson(route('catalog.units.destroy', $unit))
+            ->assertNoContent();
+        $this->assertModelMissing($unit);
+
+        $used = MeasurementUnit::create(['name' => 'Tray', 'abbreviation' => 'tray', 'active' => true]);
+        app(CreateCollection::class)->handle($admin, [
+            'kind' => 'addon', 'name' => 'Used unit service', 'behavior_type' => 'package', 'active' => true,
+            'package_configuration' => ['format' => 'separate_servings', 'quantity' => 1, 'measurement_unit_id' => $used->id],
+        ]);
+
+        $this->getJson(route('catalog.units.index'))
+            ->assertOk()
+            ->assertJsonPath('units.0.usage_count', 1);
+        $this->deleteJson(route('catalog.units.destroy', $used))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('unit');
     }
 }

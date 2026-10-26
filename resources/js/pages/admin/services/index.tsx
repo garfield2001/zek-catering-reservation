@@ -1,14 +1,7 @@
-import { Link, router } from "@inertiajs/react";
-import { toast } from "sonner";
-import { useState } from "react";
+import { Link } from "@inertiajs/react";
 import { useLiveFilters } from "../../../features/catalog/use-live-filters";
 import AdminLayout from "../../../layouts/admin-layout";
-import { Modal } from "../../../components/ui/modal";
-import { Button } from "../../../components/ui/button";
-import {
-    CollectionCreateForm,
-    serviceBehaviors,
-} from "../../../features/catalog/components/collection-create-form";
+import { serviceBehaviors } from "../../../features/catalog/service-behaviors";
 import type { Collection } from "../../../features/catalog/types";
 import { PaginationControls } from "../../../components/ui/pagination";
 export default function ServicesIndex({
@@ -26,10 +19,6 @@ export default function ServicesIndex({
     canManage: boolean;
     filters: { q?: string; archived?: boolean };
 }) {
-    const [create, setCreate] = useState(false);
-    const [created, setCreated] = useState<{ id: number; name: string } | null>(
-        null,
-    );
     const search = useLiveFilters("/admin/add-on-services", {
         q: filters.q ?? "",
         archived: filters.archived ? "1" : "0",
@@ -41,23 +30,12 @@ export default function ServicesIndex({
             section="services"
         >
             {canManage && (
-                <Button onClick={() => setCreate(true)}>
-                    Create Add-on Service
-                </Button>
-            )}
-            {created && (
-                <p
-                    role="status"
-                    className="my-4 rounded-lg bg-emerald-50 p-3 text-sm"
+                <Link
+                    href="/admin/add-on-services/create"
+                    className="inline-flex rounded-lg bg-emerald-800 px-4 py-2 font-semibold text-white hover:bg-emerald-900"
                 >
-                    Saved {created.name}. Your filters are unchanged.{" "}
-                    <Link
-                        className="underline"
-                        href={`/admin/add-on-services/${created.id}`}
-                    >
-                        Open newly created service
-                    </Link>
-                </p>
+                    Create Add-on Service
+                </Link>
             )}
             <div className="my-5 flex flex-wrap items-center gap-3">
                 <input
@@ -157,25 +135,6 @@ export default function ServicesIndex({
                 </p>
             )}
             <PaginationControls {...services} />
-            <Modal
-                open={create}
-                onClose={() => setCreate(false)}
-                title="Create Add-on Service"
-            >
-                {create && (
-                    <CollectionCreateForm
-                        onCreated={(service) => {
-                            setCreated(service);
-                            setCreate(false);
-                            toast.success("Service created.");
-                            setTimeout(
-                                () => router.reload({ only: ["services"] }),
-                                0,
-                            );
-                        }}
-                    />
-                )}
-            </Modal>
         </AdminLayout>
     );
 }

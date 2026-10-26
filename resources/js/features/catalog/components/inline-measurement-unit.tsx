@@ -1,10 +1,10 @@
-import { Link } from "@inertiajs/react";
 import { useState } from "react";
 import { csrfFetch, sessionFailureMessage } from "../../../lib/http";
 import { Modal } from "../../../components/ui/modal";
 import { Button } from "../../../components/ui/button";
 import { useDialogForm } from "../../../components/ui/dialog-form-guard";
 import type { MeasurementUnit } from "./measurement-unit-form";
+import { MeasurementUnitManager } from "./measurement-unit-manager";
 
 function CreateUnit({
     onCreated,
@@ -110,10 +110,13 @@ function CreateUnit({
 
 export function InlineMeasurementUnit({
     onCreated,
+    onUnitsChanged,
 }: {
     onCreated: (unit: MeasurementUnit) => void;
+    onUnitsChanged?: (units: MeasurementUnit[]) => void;
 }) {
     const [open, setOpen] = useState(false);
+    const [managing, setManaging] = useState(false);
     return (
         <>
             <button
@@ -123,12 +126,13 @@ export function InlineMeasurementUnit({
             >
                 Add Measurement Unit
             </button>
-            <Link
-                href="/admin/catalog/measurement-units"
+            <button
+                type="button"
                 className="ml-3 text-sm text-emerald-800 underline"
+                onClick={() => setManaging(true)}
             >
-                Manage units
-            </Link>
+                Manage Measurement Units
+            </button>
             <Modal
                 open={open}
                 onClose={() => setOpen(false)}
@@ -141,6 +145,11 @@ export function InlineMeasurementUnit({
                     }}
                 />
             </Modal>
+            <MeasurementUnitManager
+                open={managing}
+                onClose={() => setManaging(false)}
+                onUnitsChanged={onUnitsChanged}
+            />
         </>
     );
 }

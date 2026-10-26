@@ -17,6 +17,7 @@ export type FoodItemFormProps = {
     onSaved?: () => void;
     onCreated?: (food: FoodItem & { category: FoodCategory }) => void;
     onPersisted?: (food: FoodItem & { category: FoodCategory }) => void;
+    onSavedAnother?: (food: FoodItem & { category: FoodCategory }) => void;
 };
 export function useFoodItemForm({
     dish,
@@ -28,6 +29,7 @@ export function useFoodItemForm({
     editorFamilyId,
     onCreated,
     onPersisted,
+    onSavedAnother,
 }: FoodItemFormProps) {
     const { auth } = usePage<SharedProps>().props;
     const canCreateCategory =
@@ -56,14 +58,8 @@ export function useFoodItemForm({
     const processing = form.processing || saving;
     useDialogForm(form.isDirty, processing);
 
-    async function submit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        event.stopPropagation();
+    async function persist(another: boolean) {
         if (processing) return;
-        const another =
-            (event.nativeEvent as SubmitEvent).submitter?.getAttribute(
-                "value",
-            ) === "another";
         const afterSave = (page: { props: Record<string, unknown> }) => {
             if (another && !dish) {
                 const available = page.props.categories as
@@ -86,11 +82,16 @@ export function useFoodItemForm({
                     new_category_name: "",
                     category_id: category ?? form.data.category_id,
                 };
-                form.setData(reset);
-                form.setDefaults(reset);
-                form.clearErrors();
-                setNewCategory(false);
-                setImageRevision((value) => value + 1);
+                // The workspace intentionally refreshes its catalog props after
+                // persistence. Queue the local reset after that refresh has
+                // been requested so it cannot restore the just-saved values.
+                window.setTimeout(() => {
+                    form.setData(reset);
+                    form.setDefaults(reset);
+                    form.clearErrors();
+                    setNewCategory(false);
+                    setImageRevision((value) => value + 1);
+                }, 0);
             } else onSaved?.();
         };
         if (onPersisted || (onCreated && !dish)) {
@@ -144,6 +145,10 @@ export function useFoodItemForm({
                     return;
                 }
                 const result = await response.json();
+                if (another && !dish && onSavedAnother) {
+                    onSavedAnother(result.food);
+                    return;
+                }
                 (onPersisted ?? onCreated)?.(result.food);
                 afterSave({
                     props: {
@@ -176,6 +181,21 @@ export function useFoodItemForm({
                 onSuccess: afterSave,
             });
     }
+
+    function submit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        event.stopPropagation();
+        const another =
+            (event.nativeEvent as SubmitEvent).submitter?.getAttribute(
+                "value",
+            ) === "another";
+        void persist(another);
+    }
+
+    function saveAndAddAnother() {
+        void persist(true);
+    }
+
     return {
         form,
         newCategory,
@@ -184,6 +204,7 @@ export function useFoodItemForm({
         processing,
         saveError,
         canCreateCategory,
+        saveAndAddAnother,
         submit,
     };
 }

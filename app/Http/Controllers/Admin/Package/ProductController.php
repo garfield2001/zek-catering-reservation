@@ -76,7 +76,9 @@ class ProductController extends Controller
     {
         Gate::authorize('update', $product);
 
+        $data = $request->validate(['step' => ['nullable', 'integer', 'between:0,3']]);
         $props = $editor->data($product->family, $product);
+        $props['initialStep'] = $data['step'] ?? 0;
 
         return $request->expectsJson() ? response()->json($props) : Inertia::render('admin/packages/editor', $props);
     }

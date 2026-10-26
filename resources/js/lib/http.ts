@@ -7,9 +7,7 @@ export function csrfFetch(
     options: RequestInit,
 ): Promise<Response> {
     if (new URL(url, window.location.href).origin !== window.location.origin)
-        throw new Error(
-            "Administrative requests must stay on this application.",
-        );
+        throw new Error("Requests must stay on this application.");
     const headers = new Headers(options.headers);
     headers.delete("X-CSRF-TOKEN");
     headers.delete("X-XSRF-TOKEN");

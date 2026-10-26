@@ -85,6 +85,6 @@ class PackageVersion extends Model
     public function requiredCategories(): BelongsToMany
     {
         return $this->belongsToMany(DishCategory::class, 'package_version_required_categories', 'package_version_id', 'category_id')
-            ->withTimestamps()->orderBy('dish_categories.sort_order')->orderBy('dish_categories.id');
+            ->withPivot('minimum_count', 'maximum_count', 'maximum_count_explicit')->withTimestamps()->orderBy('dish_categories.sort_order')->orderBy('dish_categories.id');
     }
 }

@@ -113,9 +113,21 @@ export function ConfigurationSummary({
                         </p>
                     )}
                     <p className="mt-2">
-                        Required categories:{" "}
-                        {snapshot.menu.required_categories
-                            .map((c) => c.name)
+                        Customer Choices:{" "}
+                        {(
+                            snapshot.menu.category_choice_rules ??
+                            snapshot.menu.required_categories.map(
+                                (category) => ({
+                                    ...category,
+                                    minimum_count: 1,
+                                    maximum_count: 1,
+                                }),
+                            )
+                        )
+                            .map(
+                                (rule) =>
+                                    `${rule.name}: ${rule.minimum_count === rule.maximum_count ? `exactly ${rule.minimum_count}` : `${rule.minimum_count} to ${rule.maximum_count}`}`,
+                            )
                             .join(", ") || "None"}
                     </p>
                     {[

@@ -12,12 +12,14 @@ export function ServingDefaultFields({
     units,
     onChange,
     onUnitCreated,
+    onUnitsChanged,
     secondary = false,
 }: {
     value: ServingDefault | null;
     units: MeasurementUnit[];
     onChange: (value: ServingDefault | null) => void;
     onUnitCreated?: (unit: MeasurementUnit) => void;
+    onUnitsChanged?: (units: MeasurementUnit[]) => void;
     secondary?: boolean;
 }) {
     const Container = secondary ? "details" : "section";
@@ -117,6 +119,7 @@ export function ServingDefaultFields({
                         onUnitCreated(unit);
                         onChange({ ...value, measurement_unit_id: unit.id });
                     }}
+                    onUnitsChanged={onUnitsChanged}
                 />
             )}
         </Container>

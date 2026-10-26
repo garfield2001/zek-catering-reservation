@@ -24,6 +24,14 @@ function data(): PackageFormData {
         total_selection_count: 2,
         food_item_ids: [1, 2],
         required_category_ids: [4],
+        category_choice_rules: [
+            {
+                category_id: 4,
+                minimum_count: 1,
+                maximum_count: 1,
+                maximum_count_explicit: true,
+            },
+        ],
         food_details: {
             1: {
                 ...emptyFoodDetail(),

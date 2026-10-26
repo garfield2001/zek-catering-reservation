@@ -48,6 +48,29 @@ class AddonServiceController extends Controller
         return redirect()->route('services.show', $family)->with('status', 'Add-on service created. Set up its foods and packages below.');
     }
 
+    public function create(): Response
+    {
+        Gate::authorize('manage', ProductFamily::class);
+
+        return Inertia::render('admin/services/editor', [
+            'family' => null,
+            'measurementUnits' => MeasurementUnit::where('active', true)->orderBy('name')->get(['id', 'name', 'abbreviation', 'active']),
+            'canCreateUnit' => Gate::allows('create', MeasurementUnit::class),
+        ]);
+    }
+
+    public function edit(ProductFamily $family): Response
+    {
+        Gate::authorize('manage', ProductFamily::class);
+        abort_unless($family->is_addon, 404);
+
+        return Inertia::render('admin/services/editor', [
+            'family' => $family->loadCount('products'),
+            'measurementUnits' => MeasurementUnit::where('active', true)->orderBy('name')->get(['id', 'name', 'abbreviation', 'active']),
+            'canCreateUnit' => Gate::allows('create', MeasurementUnit::class),
+        ]);
+    }
+
     public function show(Request $request, ProductFamily $family, PackageDirectory $directory): Response
     {
         Gate::authorize('viewAny', ProductFamily::class);

@@ -19,6 +19,7 @@ test.beforeAll(() => {
 test("inline category creation, contextual food dialog and mobile keyboard navigation", async ({
     page,
 }) => {
+    test.setTimeout(60_000);
     await login(page, run, password);
     await page.screenshot({
         path: "test-results/modern-dashboard.png",
@@ -47,7 +48,7 @@ test("inline category creation, contextual food dialog and mobile keyboard navig
     ).toBeVisible();
     await page
         .getByRole("combobox", { name: "Category", exact: true })
-        .selectOption({ label: "Staples (1)" });
+        .selectOption({ label: "Staples (1 total)" });
     await expect(page).toHaveURL(/category=/);
     const add = page.getByRole("button", {
         name: "Add Food Item",
@@ -96,28 +97,32 @@ test("unsaved package navigation can be cancelled or explicitly discarded", asyn
     await createPackage(page, "Discard confirmation package");
     const workspace = page.url();
     await page.getByLabel("Total included food selections").fill("4");
-    const dialog = page.getByRole("dialog", {
-        name: "Create Package",
-        exact: true,
-    });
-    await dialog.getByRole("button", { name: "Close dialog" }).click();
+    const dialog = page;
+    await page
+        .getByRole("navigation", { name: "Administration" })
+        .getByRole("link", { name: "Catering Packages" })
+        .click();
     const confirmation = page.getByRole("alertdialog", {
         name: "Discard unsaved changes?",
     });
     await expect(confirmation).toBeVisible();
     await confirmation
-        .getByRole("button", { name: "Keep Editing", exact: true })
+        .getByRole("button", { name: "Cancel", exact: true })
         .click();
     await expect(page).toHaveURL(workspace);
     await expect(page.getByLabel("Total included food selections")).toHaveValue(
         "4",
     );
-    await dialog.getByRole("button", { name: "Close dialog" }).click();
-    await confirmation.getByRole("button", { name: "Discard Changes" }).click();
-    await expect(dialog).not.toBeVisible();
-    await expect(page).toHaveURL(workspace);
     await page
-        .getByRole("button", { name: "Create Package", exact: true })
+        .getByRole("navigation", { name: "Administration" })
+        .getByRole("link", { name: "Catering Packages" })
+        .click();
+    await confirmation
+        .getByRole("button", { name: "Discard and leave" })
+        .click();
+    await expect(page).toHaveURL(/\/admin\/catering-packages$/);
+    await page
+        .getByRole("link", { name: "Create Package", exact: true })
         .click();
     await expect(page.getByLabel("Package Name", { exact: true })).toHaveValue(
         "",

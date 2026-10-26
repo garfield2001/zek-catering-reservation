@@ -1,4 +1,3 @@
-import { Link } from "@inertiajs/react";
 import type { MeasurementUnit } from "../../catalog/components/measurement-unit-form";
 import { InlineMeasurementUnit } from "../../catalog/components/inline-measurement-unit";
 
@@ -21,6 +20,7 @@ export function FoodSizeFields({
     onChange,
     canPrice,
     onUnitCreated,
+    onUnitsChanged,
     selectionOnly = false,
 }: {
     foods: { id: number; name: string }[];
@@ -29,6 +29,7 @@ export function FoodSizeFields({
     onChange: (value: FoodSizes) => void;
     canPrice: boolean;
     onUnitCreated?: (unit: MeasurementUnit) => void;
+    onUnitsChanged?: (units: MeasurementUnit[]) => void;
     selectionOnly?: boolean;
 }) {
     const update = (id: number, group: FoodSizeInput) =>
@@ -42,15 +43,8 @@ export function FoodSizeFields({
             </p>
             {!units.length && (
                 <p className="rounded-lg bg-amber-50 p-3 text-sm">
-                    Create a Measurement Unit in{" "}
-                    <Link
-                        href="/admin/catalog/measurement-units"
-                        className="underline"
-                    >
-                        Catalog Settings
-                    </Link>{" "}
-                    before offering size choices. Save your Draft before
-                    leaving.
+                    Add a Measurement Unit below before offering size choices.
+                    Your unsaved package input stays open.
                 </p>
             )}
             {!canPrice && (
@@ -140,6 +134,7 @@ export function FoodSizeFields({
                                                 measurement_unit_id: unit.id,
                                             });
                                         }}
+                                        onUnitsChanged={onUnitsChanged}
                                     />
                                 )}
                                 {group.choices.map((choice, index) => (

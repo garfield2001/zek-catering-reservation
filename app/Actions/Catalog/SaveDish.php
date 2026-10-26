@@ -35,7 +35,7 @@ class SaveDish
             $before = $dish->exists ? $this->snapshot($dish) : null;
             $oldImage = $dish->only('image_disk', 'image_path', 'image_thumbnail_path', 'image_width', 'image_height');
             if (($data['image'] ?? null) instanceof UploadedFile) {
-                $image = $this->images->store($data['image']);
+                $image = $this->images->store($data['image'], $data['name']);
                 // Register with every open ancestor: an inner savepoint may succeed
                 // while its enclosing workflow later rolls back.
                 foreach (app('db.transactions')->getPendingTransactions() as $transaction) {

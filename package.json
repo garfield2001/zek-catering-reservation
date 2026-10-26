@@ -10,7 +10,7 @@
         "format": "prettier --write resources/js resources/css *.json vite.config.ts eslint.config.js playwright.config.ts tests/Browser/*.ts",
         "format:check": "prettier --check resources/js resources/css *.json vite.config.ts eslint.config.js playwright.config.ts tests/Browser/*.ts",
         "test": "vitest run",
-        "e2e": "playwright test"
+        "e2e": "node tests/Browser/run.mjs"
     },
     "dependencies": {
         "@inertiajs/react": "^2.0.0",

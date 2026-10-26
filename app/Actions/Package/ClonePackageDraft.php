@@ -55,7 +55,15 @@ class ClonePackageDraft
                 DB::table('package_version_food_items')->insert(['package_version_id' => $draft->id, 'dish_id' => $dish->id, 'is_fixed' => (bool) $fixedByDish->get($dish->id), 'always_include' => (bool) $dish->pivot->getAttribute('always_include'), 'included_quantity' => $dish->pivot->getAttribute('included_quantity'), 'included_unit' => $dish->pivot->getAttribute('included_unit'), 'price_adjustment_minor' => $dish->pivot->getAttribute('price_adjustment_minor'), 'created_at' => now(), 'updated_at' => now()]);
             }
             foreach ($source->requiredCategories as $category) {
-                DB::table('package_version_required_categories')->insert(['package_version_id' => $draft->id, 'category_id' => $category->id, 'created_at' => now(), 'updated_at' => now()]);
+                DB::table('package_version_required_categories')->insert([
+                    'package_version_id' => $draft->id,
+                    'category_id' => $category->id,
+                    'minimum_count' => $category->pivot->minimum_count ?? 1,
+                    'maximum_count' => $category->pivot->maximum_count ?? $source->total_selection_count,
+                    'maximum_count_explicit' => $category->pivot->maximum_count_explicit ?? false,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
             }
             app(PackagePresentation::class)->save($draft, app(PackagePresentation::class)->input($source));
             foreach ($source->sizeGroups()->with('choices')->get() as $group) {

@@ -1,5 +1,6 @@
 import type { MeasurementUnit } from "../../catalog/components/measurement-unit-form";
 import { InlineMeasurementUnit } from "../../catalog/components/inline-measurement-unit";
+import { useState } from "react";
 
 export type PresentationAmount = {
     quantity: number | string | null;
@@ -22,20 +23,28 @@ export function PresentationAmountFields({
     units,
     label,
     onUnitCreated,
+    onUnitsChanged,
     completeContainer = false,
+    quantityLabel = "Container count",
+    unitLabel = "Presentation unit",
+    emptyUnitLabel = "Not specified",
 }: {
     value: PresentationAmount;
     onChange: (value: PresentationAmount) => void;
     units: MeasurementUnit[];
     label: string;
     onUnitCreated?: (unit: MeasurementUnit) => void;
+    onUnitsChanged?: (units: MeasurementUnit[]) => void;
     completeContainer?: boolean;
+    quantityLabel?: string;
+    unitLabel?: string;
+    emptyUnitLabel?: string;
 }) {
     return (
         <fieldset className="grid gap-3 sm:grid-cols-2">
             <legend className="mb-2 text-sm font-medium">{label}</legend>
             <label className="text-sm">
-                Container count
+                {quantityLabel}
                 <input
                     type="number"
                     min="1"
@@ -50,7 +59,7 @@ export function PresentationAmountFields({
                 />
             </label>
             <label className="text-sm">
-                Presentation unit
+                {unitLabel}
                 <select
                     required={completeContainer || Boolean(value.quantity)}
                     value={value.measurement_unit_id ?? ""}
@@ -61,7 +70,7 @@ export function PresentationAmountFields({
                         })
                     }
                 >
-                    <option value="">Not specified</option>
+                    <option value="">{emptyUnitLabel}</option>
                     {units.map((unit) => (
                         <option key={unit.id} value={unit.id}>
                             {unit.name}
@@ -75,6 +84,7 @@ export function PresentationAmountFields({
                         onUnitCreated(unit);
                         onChange({ ...value, measurement_unit_id: unit.id });
                     }}
+                    onUnitsChanged={onUnitsChanged}
                 />
             )}
         </fieldset>
@@ -86,12 +96,14 @@ export function PackagePresentationFields({
     onChange,
     units,
     onUnitCreated,
+    onUnitsChanged,
     legacySplit,
 }: {
     value: PackagePresentationInput | null;
     onChange: (value: PackagePresentationInput | null) => void;
     units: MeasurementUnit[];
     onUnitCreated?: (unit: MeasurementUnit) => void;
+    onUnitsChanged?: (units: MeasurementUnit[]) => void;
     legacySplit: boolean;
 }) {
     if (legacySplit)
@@ -145,6 +157,7 @@ export function PackagePresentationFields({
                         onChange={(amount) => onChange({ ...value, ...amount })}
                         units={units}
                         onUnitCreated={onUnitCreated}
+                        onUnitsChanged={onUnitsChanged}
                         label={
                             value.format === "combined_contents"
                                 ? "One complete purchased unit"
@@ -187,20 +200,32 @@ export function FoodPresentationFields({
     units,
     onChange,
     onUnitCreated,
+    onUnitsChanged,
 }: {
     food: { id: number; name: string };
     value: PackagePresentationInput | null;
     units: MeasurementUnit[];
     onChange: (value: PackagePresentationInput) => void;
     onUnitCreated?: (unit: MeasurementUnit) => void;
+    onUnitsChanged?: (units: MeasurementUnit[]) => void;
 }) {
+    const [editingOverride, setEditingOverride] = useState(false);
     if (value?.format !== "separate_servings") return null;
+    const defaultAmount: PresentationAmount = {
+        quantity: value.quantity ?? 1,
+        measurement_unit_id: value.measurement_unit_id ?? null,
+    };
+    const equivalent = (amount: PresentationAmount) =>
+        String(amount.quantity) === String(defaultAmount.quantity) &&
+        String(amount.measurement_unit_id ?? "") ===
+            String(defaultAmount.measurement_unit_id ?? "");
     const update = (amount?: PresentationAmount) => {
         const overrides = { ...value.food_overrides };
-        if (amount) overrides[food.id] = amount;
+        if (amount && !equivalent(amount)) overrides[food.id] = amount;
         else delete overrides[food.id];
         onChange({ ...value, food_overrides: overrides });
     };
+    const override = value.food_overrides[food.id];
     return (
         <section
             aria-label={`Different packaging for ${food.name}`}
@@ -209,25 +234,44 @@ export function FoodPresentationFields({
             <label className="my-2 flex gap-2">
                 <input
                     type="checkbox"
-                    checked={Boolean(value.food_overrides[food.id])}
-                    onChange={(event) =>
-                        update(
-                            event.target.checked
-                                ? { quantity: 1, measurement_unit_id: null }
-                                : undefined,
-                        )
-                    }
+                    checked={Boolean(override) || editingOverride}
+                    onChange={(event) => {
+                        setEditingOverride(event.target.checked);
+                        if (!event.target.checked) update(undefined);
+                    }}
                 />
                 Use different packaging for this food
             </label>
-            {value.food_overrides[food.id] && (
-                <PresentationAmountFields
-                    label="Different packaging"
-                    value={value.food_overrides[food.id]}
-                    units={units}
-                    onChange={update}
-                    onUnitCreated={onUnitCreated}
-                />
+            {(override || editingOverride) && (
+                <>
+                    <PresentationAmountFields
+                        label="Different packaging"
+                        value={override ?? defaultAmount}
+                        units={units}
+                        onChange={(amount) => {
+                            setEditingOverride(!equivalent(amount));
+                            update(amount);
+                        }}
+                        onUnitCreated={onUnitCreated}
+                        onUnitsChanged={onUnitsChanged}
+                    />
+                    {!override && (
+                        <p className="mt-2 text-xs text-slate-600">
+                            This food already uses {defaultAmount.quantity}{" "}
+                            {units
+                                .find(
+                                    (unit) =>
+                                        unit.id ===
+                                        Number(
+                                            defaultAmount.measurement_unit_id,
+                                        ),
+                                )
+                                ?.name?.toLowerCase() ?? "default container"}
+                            . Choose a different quantity or container to save
+                            an exception.
+                        </p>
+                    )}
+                </>
             )}
         </section>
     );

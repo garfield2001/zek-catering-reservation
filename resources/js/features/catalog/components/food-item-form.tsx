@@ -14,6 +14,7 @@ export function FoodItemForm(props: FoodItemFormProps) {
         processing,
         saveError,
         canCreateCategory,
+        saveAndAddAnother,
         submit,
     } = useFoodItemForm(props);
     const prefix = useId();
@@ -46,10 +47,13 @@ export function FoodItemForm(props: FoodItemFormProps) {
                     id={`${prefix}-category_id`}
                     value={newCategory ? "new" : form.data.category_id}
                     required
-                    onChange={(e) => {
-                        setNewCategory(e.target.value === "new");
-                        if (e.target.value !== "new")
-                            form.setData("category_id", Number(e.target.value));
+                    onChange={(event) => {
+                        setNewCategory(event.target.value === "new");
+                        if (event.target.value !== "new")
+                            form.setData(
+                                "category_id",
+                                Number(event.target.value),
+                            );
                     }}
                 >
                     <option value={0} disabled>
@@ -147,9 +151,9 @@ export function FoodItemForm(props: FoodItemFormProps) {
             </Button>
             {!dish && (
                 <Button
-                    type="submit"
+                    type="button"
                     variant="secondary"
-                    value="another"
+                    onClick={saveAndAddAnother}
                     disabled={processing}
                 >
                     Save & Add Another

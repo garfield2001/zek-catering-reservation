@@ -8,7 +8,10 @@ import {
     createPackage,
     step,
     inlineFood,
+    filterPackageFoodsByCategory,
+    requireOneFromPackageCategory,
     savePackage,
+    selectAllVisiblePackageFoods,
 } from "./workflow";
 const run = randomBytes(6).toString("hex");
 const password = "Browser-" + randomBytes(18).toString("hex") + "A1";
@@ -49,16 +52,21 @@ test("owner creates exact main menu, publishes immutable history, revises and ar
     );
     await step(page, "Menu");
     await page.getByLabel("Total included food selections").fill("5");
-    const beef = page.getByRole("group", { name: /^Beef / });
-    await beef.getByRole("button", { name: "Select All", exact: true }).click();
+    await filterPackageFoodsByCategory(page, "Beef");
+    await selectAllVisiblePackageFoods(page);
     await expect(page.getByLabel("Beef Stew", { exact: true })).toBeChecked();
     await expect(page.getByLabel("Beef Steak", { exact: true })).toBeChecked();
-    await expect(beef.getByLabel("Require at least one")).not.toBeChecked();
-    await beef.getByRole("button", { name: "Clear All", exact: true }).click();
+    await expect(page.getByLabel("Customer Choice Groups")).not.toContainText(
+        "Beef: exactly 1",
+    );
+    await page.getByRole("button", { name: "Clear shown" }).click();
     await expect(
         page.getByLabel("Beef Stew", { exact: true }),
     ).not.toBeChecked();
-    await expect(beef.getByLabel("Require at least one")).not.toBeChecked();
+    await expect(page.getByLabel("Customer Choice Groups")).not.toContainText(
+        "Beef: exactly 1",
+    );
+    await filterPackageFoodsByCategory(page, "All eligible foods");
     for (const food of [
         "Fried Rice",
         "Cola",
@@ -70,17 +78,18 @@ test("owner creates exact main menu, publishes immutable history, revises and ar
     ])
         await page.getByLabel(food, { exact: true }).check();
     for (const category of ["Rice", "Drinks"])
-        await page
-            .getByRole("group", { name: new RegExp("^" + category + " ") })
-            .getByLabel("Require at least one")
-            .check();
+        await requireOneFromPackageCategory(page, category);
     await expect(page.getByLabel("Menu summary")).toContainText("Fried Rice");
     await expect(page.getByLabel("Menu summary")).toContainText(
-        "1 required category choices",
+        "Rice: exactly 1",
     );
     // Inline catalog creation must keep unsaved menu selections.
     await inlineFood(page, "Fruit Salad", "Desserts");
-    await expect(page.getByLabel("Fried Rice", { exact: true })).toBeChecked();
+    await expect(
+        page
+            .getByRole("region", { name: "Selected foods", exact: true })
+            .getByText("Fried Rice", { exact: true }),
+    ).toBeVisible();
     await expect(page.getByLabel("Total included food selections")).toHaveValue(
         "5",
     );
@@ -134,9 +143,7 @@ test("owner creates exact main menu, publishes immutable history, revises and ar
     )
         await page.getByText("Version 1 · Published", { exact: true }).click();
     await expect(page.getByText(/Fried Rice.*Fixed inclusion/)).toBeVisible();
-    await page
-        .getByRole("button", { name: "Edit Package", exact: true })
-        .click();
+    await page.getByRole("link", { name: "Edit Package", exact: true }).click();
     await expect(
         page.getByText(/The current Published Version remains unchanged/),
     ).toBeVisible();

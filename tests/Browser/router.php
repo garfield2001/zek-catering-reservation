@@ -28,11 +28,20 @@ if ($identity->name !== 'zek_catering_test' || (int) $identity->port !== 5432) {
     http_response_code(503);
     exit('Unexpected actual browser database connection.');
 }
+
+// See seed.php. Each request holds a shared lock while Laravel reads the
+// isolated schema; a fixture reset takes the matching exclusive lock.
+const BROWSER_SCHEMA_LOCK = 71005421;
+$app['db']->selectOne('select pg_advisory_lock_shared(?)', [BROWSER_SCHEMA_LOCK]);
 // Never attach browser regression tests to an unrelated running Vite dev server.
 $testHotFile = storage_path('framework/browser-tests-disabled.hot');
 if (is_file($testHotFile)) {
     throw new RuntimeException('Unexpected browser test hot-file marker.');
 }
 $app->make(Vite::class)->useHotFile($testHotFile);
-header('X-Catering-Test-Database: zek_catering_test:5432');
-$app->handleRequest(Request::capture());
+try {
+    header('X-Catering-Test-Database: zek_catering_test:5432');
+    $app->handleRequest(Request::capture());
+} finally {
+    $app['db']->selectOne('select pg_advisory_unlock_shared(?)', [BROWSER_SCHEMA_LOCK]);
+}

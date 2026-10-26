@@ -36,11 +36,11 @@ class CateringController extends Controller
         ]);
     }
 
-    public function create(): RedirectResponse
+    public function create(EnsurePrimaryService $primary): RedirectResponse
     {
         Gate::authorize('create', Product::class);
 
-        return redirect()->route('catering.index');
+        return redirect()->route('packages.editor', ['service' => $primary->handle()->id]);
     }
 
     public function store(SaveProductRequest $request, SaveProduct $save, EnsurePrimaryService $primary): RedirectResponse

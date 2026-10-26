@@ -4,6 +4,7 @@ export type UserAccount = {
     email: string;
     active: boolean;
     access_version: number;
+    avatar_url?: string | null;
     role: "admin" | "staff";
     protectedAdministrator: boolean;
 };

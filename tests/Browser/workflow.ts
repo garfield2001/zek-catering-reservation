@@ -10,7 +10,7 @@ export async function configureService(
         await expect(formatField).toHaveValue(format);
     else await formatField.selectOption(format);
     const select = page.getByRole("combobox", {
-        name: "Presentation unit",
+        name: "Unit",
         exact: true,
     });
     if (
@@ -58,7 +58,9 @@ export async function customizeFood(page: Page, name: string) {
 }
 
 export async function openPortions(page: Page) {
-    const summary = page.getByText(/^Optional: Default Food Portion/);
+    const summary = page
+        .locator('details[aria-label="Advanced Package Settings"]')
+        .getByText(/^Advanced Package Settings/);
     if (
         !(await summary.evaluate(
             (el) => (el.parentElement as HTMLDetailsElement).open,
@@ -135,7 +137,10 @@ export async function login(
     await page.getByLabel("Email address").fill(`${role}-${run}@example.test`);
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL(/\/admin(?:\/home)?$/);
+    // A fresh PostgreSQL schema can still be releasing its advisory lock when
+    // the first real browser login is submitted. Wait for that navigation
+    // rather than treating a slow, valid authentication response as a failure.
+    await expect(page).toHaveURL(/\/admin(?:\/home)?$/, { timeout: 15000 });
 }
 
 export async function addCategory(page: Page, name: string) {
@@ -169,8 +174,9 @@ export async function addFood(
 }
 export async function createPackage(page: Page, name: string) {
     await page
-        .getByRole("button", { name: "Create Package", exact: true })
+        .getByRole("link", { name: "Create Package", exact: true })
         .click();
+    await expect(page).toHaveURL(/\/admin\/packages\/editor\?service=\d+$/);
     await page.getByLabel("Package Name", { exact: true }).fill(name);
     await page.getByRole("button", { name: "Next: Menu", exact: true }).click();
     await expect(
@@ -200,21 +206,13 @@ export async function savePackage(page: Page) {
     const saved = page.waitForResponse(
         (response) =>
             response.request().method() !== "GET" &&
-            /\/configurations?$/.test(new URL(response.url()).pathname) &&
-            response.ok(),
-    );
-    const refreshed = page.waitForResponse(
-        (response) =>
-            response.request().method() === "GET" &&
-            response.request().headers()["x-inertia"] === "true" &&
-            response.ok(),
+            /\/configurations?$/.test(new URL(response.url()).pathname),
     );
     await page.getByRole("button", { name: "Save Draft", exact: true }).click();
-    const result = await (await saved).json();
-    await refreshed;
-    await expect(page.getByRole("dialog")).not.toBeVisible();
-    // Continue through the saved product's history workspace for lifecycle assertions.
-    await page.goto(`/admin/packages/products/${result.id}`);
+    await saved;
+    await expect(page).toHaveURL(
+        /\/admin\/(?:catering-packages|packages\/products)\/\d+$/,
+    );
     await expect(
         page.getByRole("heading", { name: "Saved Draft", exact: true }),
     ).toBeVisible();
@@ -239,5 +237,63 @@ export async function inlineFood(page: Page, name: string, category: string) {
     }
     await dialog.getByRole("button", { name: "Create food item" }).click();
     await expect(dialog).not.toBeVisible();
-    await expect(page.getByLabel(name, { exact: true })).toBeVisible();
+    const categoryPicker = page.getByRole("combobox", {
+        name: /^Category/,
+    });
+    await categoryPicker.click();
+    await categoryPicker.fill(category);
+    await expect(
+        page.getByRole("option", {
+            name: new RegExp(
+                `^${category.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\(`,
+            ),
+        }),
+    ).toBeVisible();
+    await categoryPicker.press("Enter");
+    await expect(
+        page
+            .getByRole("region", { name: "Selected foods", exact: true })
+            .getByText(name, { exact: true }),
+    ).toBeVisible();
+}
+
+/** Uses the Phase 5.1 guided picker instead of the retired category panels. */
+export async function filterPackageFoodsByCategory(page: Page, name: string) {
+    const category = page.getByRole("combobox", {
+        name: /^Category/,
+    });
+    const current = await category.inputValue();
+    if (
+        current === name ||
+        (name !== "All eligible foods" && current.startsWith(`${name} (`))
+    )
+        return;
+    await category.click();
+    await expect(category).toHaveAttribute("aria-expanded", "true");
+    await expect(category).toHaveValue("");
+    await category.fill(name);
+    const option = page.getByRole("option", {
+        name:
+            name === "All eligible foods"
+                ? name
+                : new RegExp(
+                      `^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\(`,
+                  ),
+    });
+    await expect(option).toBeVisible();
+    await option.click();
+}
+
+export async function selectAllVisiblePackageFoods(page: Page) {
+    await page.getByRole("button", { name: "Select all shown" }).click();
+}
+
+export async function requireOneFromPackageCategory(page: Page, name: string) {
+    const group = page
+        .getByLabel("Customer Choice Groups")
+        .locator("article")
+        .filter({ hasText: name });
+    await group
+        .getByRole("button", { name: "Require customer choice", exact: true })
+        .click();
 }

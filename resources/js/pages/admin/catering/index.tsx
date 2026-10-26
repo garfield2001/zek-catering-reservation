@@ -1,7 +1,6 @@
 import { PackageFilters } from "../../../features/packages/components/package-filters";
 import type { Collection } from "../../../features/catalog/types";
-import { CollectionPresentationForm } from "../../../features/catalog/components/collection-presentation-form";
-import { PackageEditorButton } from "../../../features/packages/components/package-editor-modal";
+import { Link } from "@inertiajs/react";
 
 import AdminLayout from "../../../layouts/admin-layout";
 import { PackageCards } from "../../../features/packages/components/package-cards";
@@ -40,12 +39,12 @@ export default function CateringIndex({
             section="catering"
         >
             {canManage && canPrice && serviceActive ? (
-                <PackageEditorButton
-                    url={`/admin/packages/editor?service=${family.id}`}
+                <Link
+                    href={`/admin/packages/editor?service=${family.id}`}
                     className="mb-6 inline-block rounded-lg bg-emerald-800 px-5 py-2.5 font-semibold text-white"
                 >
                     Create Package
-                </PackageEditorButton>
+                </Link>
             ) : (
                 <p className="mb-6 rounded-xl bg-amber-50 p-4 text-sm">
                     {!serviceActive
@@ -71,23 +70,11 @@ export default function CateringIndex({
                 </div>
             )}
             <PaginationControls {...products} />
-            {canManageService && (
-                <details className="mt-8 rounded-xl border bg-white p-5">
-                    <summary className="cursor-pointer text-sm font-semibold">
-                        Catering Service Settings
-                    </summary>
-                    <div className="mt-4 space-y-4">
-                        <p className="text-sm">
-                            {serviceActive
-                                ? "Catering is enabled."
-                                : "Catering is disabled. Use Edit to enable it."}
-                        </p>
-                        <CollectionPresentationForm
-                            family={family}
-                            canManage={canManageService}
-                        />
-                    </div>
-                </details>
+            {canManageService && !serviceActive && (
+                <p className="mt-8 rounded-xl border bg-amber-50 p-5 text-sm">
+                    Catering is currently disabled. Its system-managed service
+                    settings remain separate from package configuration.
+                </p>
             )}
         </AdminLayout>
     );

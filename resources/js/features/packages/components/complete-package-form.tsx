@@ -54,6 +54,7 @@ export type PackageEditorProps = {
     servingDefault: ServingDefault | null;
     presentation?: PackagePresentationInput | null;
     serviceFormatOwned?: boolean;
+    initialStep?: number;
 };
 const steps = ["Details", "Menu", "Pricing & Quantity", "Review & Save"];
 export function CompletePackageForm({
@@ -90,6 +91,8 @@ export function CompletePackageForm({
                   unit,
               ])
         : undefined;
+    const replaceUnits = (units: MeasurementUnit[]) =>
+        setMeasurementUnits(units);
     const main = family.behavior_type === "main_package",
         bundle = family.behavior_type === "fixed_bundle";
     const form = useForm<PackageFormData>({
@@ -389,6 +392,7 @@ export function CompletePackageForm({
                                         }
                                         units={measurementUnits}
                                         onUnitCreated={addUnit}
+                                        onUnitsChanged={replaceUnits}
                                         legacySplit={
                                             form.data.selection_policy ===
                                             "split"
@@ -407,15 +411,27 @@ export function CompletePackageForm({
                         </p>
                     )}
                     {step === 1 && !main && (
-                        <ServingDefaultFields
-                            secondary
-                            onUnitCreated={addUnit}
-                            value={form.data.serving_default}
-                            units={measurementUnits}
-                            onChange={(value) =>
-                                form.setData("serving_default", value)
-                            }
-                        />
+                        <details
+                            className="mb-4 rounded-xl border bg-slate-50 p-4"
+                            aria-label="Advanced Package Settings"
+                            open={Boolean(form.data.serving_default)}
+                        >
+                            <summary className="cursor-pointer font-semibold">
+                                Advanced Package Settings
+                                {form.data.serving_default
+                                    ? ": Common portion configured"
+                                    : " (optional)"}
+                            </summary>
+                            <ServingDefaultFields
+                                onUnitCreated={addUnit}
+                                onUnitsChanged={replaceUnits}
+                                value={form.data.serving_default}
+                                units={measurementUnits}
+                                onChange={(value) =>
+                                    form.setData("serving_default", value)
+                                }
+                            />
+                        </details>
                     )}
                     {step === 1 && (
                         <MenuFields
@@ -453,6 +469,7 @@ export function CompletePackageForm({
                                         canPrice={canPrice}
                                         presentation={form.data.presentation}
                                         onUnitCreated={addUnit}
+                                        onUnitsChanged={replaceUnits}
                                         onChange={(detail, sizes) =>
                                             form.setData((current) => {
                                                 const foodSizes = {
@@ -477,6 +494,7 @@ export function CompletePackageForm({
                                             value={form.data.presentation}
                                             units={measurementUnits}
                                             onUnitCreated={addUnit}
+                                            onUnitsChanged={replaceUnits}
                                             onChange={(value) =>
                                                 form.setData(
                                                     "presentation",

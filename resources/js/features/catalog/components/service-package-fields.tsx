@@ -30,6 +30,15 @@ export function ServicePackageFields({
         canCreateUnit?: boolean;
     }>().props;
     const [units, setUnits] = useState(props.measurementUnits ?? []);
+    const selectedUnit = units.find(
+        (unit) => unit.id === Number(value.measurement_unit_id),
+    );
+    const preview =
+        value.quantity && selectedUnit
+            ? value.format === "combined_contents"
+                ? `Each purchased unit will be provided as ${value.quantity} complete ${selectedUnit.name.toLowerCase()}.`
+                : `Each food will be provided in ${value.quantity} ${selectedUnit.name.toLowerCase()}${Number(value.quantity) === 1 ? "" : "s"}.`
+            : "Choose a quantity and active unit to complete the default presentation.";
     return (
         <section
             aria-label="Service package configuration"
@@ -74,15 +83,29 @@ export function ServicePackageFields({
                 completeContainer={value.format === "combined_contents"}
                 label={
                     value.format === "combined_contents"
-                        ? "One complete purchased container"
-                        : "Default container per food"
+                        ? "Default Presentation per Complete Package Unit"
+                        : "Default Presentation per Food"
                 }
+                quantityLabel="Quantity"
+                unitLabel="Unit"
+                emptyUnitLabel="Choose a unit"
                 onUnitCreated={
                     props.canCreateUnit
-                        ? (unit) => setUnits((current) => [...current, unit])
+                        ? (unit) =>
+                              setUnits((current) => [
+                                  ...current.filter(
+                                      (existing) => existing.id !== unit.id,
+                                  ),
+                                  unit,
+                              ])
                         : undefined
                 }
+                onUnitsChanged={setUnits}
             />
+            <p role="status" className="rounded-lg bg-slate-50 p-3 text-sm">
+                <span className="font-medium">Preview: </span>
+                {preview}
+            </p>
             {!units.length && (
                 <p className="text-sm text-amber-800">
                     Create an active container unit here, or ask an

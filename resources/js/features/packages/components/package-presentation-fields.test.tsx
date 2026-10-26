@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import {
+    FoodPresentationFields,
     PackagePresentationFields,
     purchasedUnit,
     separatePresentation,
@@ -74,5 +75,35 @@ describe("package presentation", () => {
         expect(
             screen.getByText(/legacy package allows different meal groups/),
         ).toBeTruthy();
+    });
+    it("does not save a packaging exception that matches the inherited amount", () => {
+        const onChange = vi.fn();
+        render(
+            <FoodPresentationFields
+                food={{ id: 5, name: "Garlic Chicken" }}
+                value={{
+                    ...separatePresentation(),
+                    quantity: 1,
+                    measurement_unit_id: 1,
+                }}
+                units={units}
+                onChange={onChange}
+            />,
+        );
+        fireEvent.click(
+            screen.getByLabelText("Use different packaging for this food"),
+        );
+        expect(screen.getByText(/already uses 1 meal box/i)).toBeVisible();
+        expect(onChange).not.toHaveBeenCalled();
+        fireEvent.change(screen.getByLabelText("Container count"), {
+            target: { value: "2" },
+        });
+        expect(onChange).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                food_overrides: {
+                    5: { quantity: "2", measurement_unit_id: 1 },
+                },
+            }),
+        );
     });
 });

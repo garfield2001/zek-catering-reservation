@@ -3,7 +3,6 @@ import { useState } from "react";
 import AdminLayout from "../../../layouts/admin-layout";
 import { ConfirmDialog } from "../../../components/ui/confirm-dialog";
 import { PackageDetails } from "../../../features/packages/components/package-details";
-import { PackageEditorButton } from "../../../features/packages/components/package-editor-modal";
 import { PublicationHistory } from "../../../features/packages/components/publication-history";
 import {
     CommercialHistory,
@@ -100,30 +99,36 @@ export default function PackageWorkspace({
                 </p>
                 <div className="mt-4 flex flex-wrap gap-4">
                     {editable && (
-                        <PackageEditorButton
+                        <Link
                             className="text-sm text-emerald-800 underline"
-                            url={`/admin/packages/products/${product.id}/edit`}
+                            href={`/admin/packages/products/${product.id}/edit`}
                         >
                             Edit Package
-                        </PackageEditorButton>
+                        </Link>
                     )}
                     {editable && (
-                        <PackageEditorButton
-                            url={`/admin/packages/products/${product.id}/edit`}
-                            initialStep={1}
+                        <Link
+                            href={`/admin/packages/products/${product.id}/edit?step=1`}
                             className="text-sm text-emerald-800 underline"
                         >
                             Edit Menu
-                        </PackageEditorButton>
+                        </Link>
                     )}
                     {editable && canPrice && (
-                        <PackageEditorButton
-                            url={`/admin/packages/products/${product.id}/edit`}
-                            initialStep={2}
+                        <Link
+                            href={`/admin/packages/products/${product.id}/edit?step=2`}
                             className="text-sm text-emerald-800 underline"
                         >
                             Edit Pricing & Quantity
-                        </PackageEditorButton>
+                        </Link>
+                    )}
+                    {draft && canManage && (
+                        <Link
+                            className="text-sm text-emerald-800 underline"
+                            href={`/admin/packages/products/${product.id}/versions/${draft.id}/customer-preview`}
+                        >
+                            Preview Customer Presentation
+                        </Link>
                     )}
                     {draft &&
                         canPublish &&

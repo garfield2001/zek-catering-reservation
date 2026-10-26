@@ -14,6 +14,7 @@ class FamilyPresentationController extends Controller
     {
         $action->handle($request->user(), $family, $request->validated());
 
-        return redirect()->back(fallback: route($family->is_addon ? 'services.show' : 'catering.index', $family->is_addon ? [$family] : []))->with('status', 'Service details saved.');
+        return redirect()->route($family->is_addon ? 'services.show' : 'catering.index', $family->is_addon ? [$family] : [])
+            ->with('status', 'Service details saved.');
     }
 }

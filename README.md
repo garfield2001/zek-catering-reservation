@@ -1,6 +1,6 @@
 # Zek Catering — Catalog and Package Administration
 
-Laravel 12 + Inertia 2 + React 19/TypeScript + PostgreSQL + Tailwind 4. Phases 1–4 provide authentication, permission-based Admin/Staff administration, append-only audit history, master catalog administration, package drafts, price previews and package publication with immutable version snapshots. Milestone B adds Food Item images, cohesive package editing and individual listings with publication snapshots (verified for Admin/Staff milestone testing). Customer reservations, quotations, payments and notifications remain deferred.
+Laravel 12 + Inertia 2 + React 19/TypeScript + PostgreSQL + Tailwind 4. The application provides internal access control, append-only audit history, catalog/package/listing publication with immutable snapshots, and a public published-offering storefront with server-authoritative planning estimates. Customer accounts, inquiries, reservations, quotations, payments and notifications remain deferred.
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@ Laravel 12 + Inertia 2 + React 19/TypeScript + PostgreSQL + Tailwind 4. Phases 1
 
 ## Current architecture and development safety
 
-The current architecture is Collection → Product → Package Version. There is no Variant layer. Catering and add-ons use a shared category menu builder, independent package quantity rules, inline catalog dialogs and a guided setup workspace. Read [the current specification](docs/docs/15-business-workspaces.md) and [owner walkthrough](docs/docs/11-admin-staff-guide.md).
+The current architecture is Collection → Product → Package Version. There is no Variant layer. Catering and add-ons use a shared category menu builder, independent package quantity rules, inline catalog dialogs and a guided setup workspace. `/` is the public customer storefront and `/login` remains a manually visited internal entry point; internal pages remain protected. Read [the public storefront boundary](docs/docs/28-phase-6-public-storefront.md), [the current specification](docs/docs/15-business-workspaces.md) and [owner walkthrough](docs/docs/11-admin-staff-guide.md).
 
 The owner's development database is `zek_reservation`; never refresh or migrate it without separate approval. The consolidated baseline requires either a controlled export/conversion/import or an explicitly authorized reset. [Migration inventory and transition options](docs/docs/14-clean-schema-migration.md).
 
@@ -19,8 +19,8 @@ The owner's development database is `zek_reservation`; never refresh or migrate 
 1. Run `composer install` and `npm ci`.
 2. Copy `.env.example` to `.env`. Set DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME and DB_PASSWORD for your own PostgreSQL database. No credentials are committed.
 3. Run `php artisan key:generate`.
-4. Run `php artisan migrate --seed`. For a BRAND-NEW database only: the seeder creates roles/permissions and the built-in primary Catering service idempotently, not user credentials, demo add-ons or commercial packages. Do not run this against the owner's existing legacy development database; see the transition decision below.
-5. Run `php artisan app:create-admin` and supply the first Admin's name, email and password interactively.
+4. For a fresh **local** database, run `php artisan migrate:fresh` and then `php artisan db:seed`. The local-only bootstrap creates roles, permissions, the primary Catering service, the `Admin Tester` development Administrator, 11 demo Food Categories, 42 demo Food Items, and four incomplete Main Catering Draft packages. Do not run either command against the owner's existing development database without separate authorization; see the transition decision below.
+5. Sign in locally with `admin@gmail.com` / `adminpass123`, then change or deactivate this development account if it will remain in use. Outside the local environment, use `php artisan app:create-admin` to create the first Administrator interactively.
 6. Start two terminals:
 
 ```sh
@@ -42,6 +42,8 @@ Active Admins have full permission access, while immutable audit and last-active
 Permissions include dashboard, staff, access, audit, catalog and package capabilities. Package publishing, history and lifecycle permissions are separate from draft management and pricing, and are disabled for Staff by default. Explicit Staff deny wins over role grants. Delegated Staff cannot grant powers they lack or manage more privileged users. Account or permission changes revoke existing sessions. Existing users are deactivated instead of deleted.
 
 The catalog manages Food Categories, one canonical Food Item per dish, Collection eligibility, Offerings and Serving Options. Inactive eligibility is retained for history; Offerings and Serving Options have no direct-sale price. See [Phase 4 publication](docs/docs/13-phase-4-package-publication.md) for the draft/version lifecycle, published snapshots and effective availability rules.
+
+Measurement Units are managed contextually from the Food Catalog, Add-on Service form and Package Builder rather than through a standalone page. An active unit created through either **Add Measurement Unit** or **Manage Measurement Units** synchronizes with the current form without a reload. The local-only bootstrap and its production boundary are documented in [Measurement Units and Development Data](docs/docs/25-measurement-units-and-development-data.md).
 
 ## Checks
 
@@ -98,8 +100,8 @@ app/
   Queries/{Access,Catalog,Package}/
   Services/{Access,Audit,Catalog,Package}/
 resources/js/
-  pages/{auth,admin}/
-  features/{auth,access,audit,catalog,packages}/
+  pages/{auth,admin,storefront}/
+  features/{auth,access,audit,catalog,packages,storefront}/
   components/ui/
   layouts/
   types/

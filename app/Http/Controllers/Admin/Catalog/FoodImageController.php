@@ -17,7 +17,7 @@ class FoodImageController extends Controller
         $publiclyVisible = $dish->active && $dish->category->active;
         abort_unless($catalogAccess || $publiclyVisible, 404);
         $path = $dish->getAttribute($size === 'full' ? 'image_path' : 'image_thumbnail_path');
-        abort_unless(is_string($path) && preg_match('/^foods\/[a-z0-9]+(?:-thumb)?\.jpg$/D', $path), 404);
+        abort_unless(is_string($path) && preg_match('/^foods\/[a-z0-9]+(?:-[a-z0-9]+)*(?:-thumb)?\.jpg$/D', $path), 404);
         $disk = Storage::disk($dish->getAttribute('image_disk'));
         abort_unless($disk->exists($path), 404);
 

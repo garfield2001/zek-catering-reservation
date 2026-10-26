@@ -114,6 +114,12 @@ export type PublishedPackageSnapshot = {
             price_adjustment_minor?: string;
         }[];
         required_categories: { id: number; name: string }[];
+        category_choice_rules?: {
+            id: number;
+            name: string;
+            minimum_count: number;
+            maximum_count: number;
+        }[];
     } | null;
     groups: {
         group_code: string;

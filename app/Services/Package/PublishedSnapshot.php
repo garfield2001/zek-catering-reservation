@@ -27,7 +27,7 @@ class PublishedSnapshot
             ->pluck('is_fixed', 'dish_id');
 
         return [
-            'schema' => 5,
+            'schema' => 6,
             'presentation' => app(PackagePresentation::class)->snapshot($version),
             'collection' => $version->family->only('id', 'code', 'name', 'description', 'behavior_type'),
             'product' => $product->only('id', 'code', 'name', 'description'),
@@ -53,7 +53,15 @@ class PublishedSnapshot
                     'included_quantity' => $dish->pivot->getAttribute('included_quantity'), 'included_unit' => $dish->pivot->getAttribute('included_unit'),
                     'price_adjustment_minor' => (string) $dish->pivot->getAttribute('price_adjustment_minor'),
                 ])->values()->all(),
+                // Keep the legacy names for historical consumers while new
+                // customer-choice ranges preserve their explicit counts.
                 'required_categories' => $version->requiredCategories->map(fn (DishCategory $category): array => $category->only('id', 'code', 'name'))->values()->all(),
+                'category_choice_rules' => $version->requiredCategories->map(fn (DishCategory $category): array => [
+                    ...$category->only('id', 'code', 'name'),
+                    'minimum_count' => (int) ($category->pivot->minimum_count ?? 1),
+                    'maximum_count' => (int) ($category->pivot->maximum_count ?? 1),
+                    'maximum_count_explicit' => (bool) ($category->pivot->maximum_count_explicit ?? false),
+                ])->values()->all(),
             ] : null,
             'groups' => $version->groups->sortBy([['sort_order', 'asc'], ['id', 'asc']])->map(fn (SelectionGroup $group): array => [
                 ...$group->only('id', 'group_code', 'name', 'mode', 'slot_kind', 'minimum_count',

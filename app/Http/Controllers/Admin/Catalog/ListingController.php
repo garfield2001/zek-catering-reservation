@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Admin\Catalog;
 
+use App\Actions\Catalog\CreateIndividualListings;
 use App\Actions\Catalog\SaveIndividualListing;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Catalog\BulkCreateListingsRequest;
 use App\Http\Requests\Catalog\SaveListingRequest;
 use App\Models\IndividualListing;
 use App\Models\ProductFamily;
@@ -21,6 +23,21 @@ class ListingController extends Controller
         $data = $workspace->editor($family);
 
         return $request->expectsJson() ? response()->json($data) : Inertia::render('admin/listings/editor', $data);
+    }
+
+    public function bulkCreate(ProductFamily $family, ListingWorkspace $workspace): Response
+    {
+        return Inertia::render('admin/listings/bulk-editor', $workspace->bulkEditor($family));
+    }
+
+    public function bulkStore(BulkCreateListingsRequest $request, ProductFamily $family, CreateIndividualListings $create): RedirectResponse|JsonResponse
+    {
+        $listings = $create->handle($request->user(), $family, $request->validated('listings'));
+        if ($request->expectsJson()) {
+            return response()->json(['ids' => array_map(fn (IndividualListing $listing) => $listing->id, $listings)], 201);
+        }
+
+        return redirect()->route('services.show', $family)->with('status', count($listings).' individual item Drafts created. Review and publish each item separately.');
     }
 
     public function edit(Request $request, IndividualListing $listing, ListingWorkspace $workspace): Response|JsonResponse

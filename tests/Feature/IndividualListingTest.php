@@ -13,6 +13,7 @@ use App\Models\IndividualListing;
 use App\Models\ListingVersion;
 use App\Models\OfferingOption;
 use App\Models\Permission;
+use App\Models\ProductFamily;
 use App\Models\Role;
 use App\Models\User;
 use App\Queries\Catalog\CommercialHistory;
@@ -254,6 +255,42 @@ class IndividualListingTest extends TestCase
         $this->assertSame(1, AuditEvent::where('action', 'listing.published')->count());
         $this->post(route('listings.publish', [$listing, $version]), ['draft_revision' => 1, 'confirm' => true])->assertSessionHasNoErrors();
         $this->assertSame(1, AuditEvent::where('action', 'listing.published')->count());
+    }
+
+    public function test_bulk_creation_uses_active_service_eligibility_is_atomic_and_can_be_safely_retried(): void
+    {
+        $family = ProductFamily::findOrFail($this->input['family_id']);
+        $first = Dish::sole();
+        $second = Dish::create([
+            'code' => 'second_chicken_food',
+            'name' => 'Garlic Chicken',
+            'category_id' => $first->category_id,
+            'active' => true,
+        ]);
+        $ineligible = Dish::create([
+            'code' => 'ineligible_food',
+            'name' => 'Unavailable Food',
+            'category_id' => $first->category_id,
+            'active' => true,
+        ]);
+        $payload = ['listings' => [
+            ['dish_id' => $first->id, 'creation_token' => (string) Str::uuid(), 'selling_unit' => 'tray', 'price_pesos' => '750', 'minimum_quantity' => 1, 'quantity_step' => 1, 'maximum_quantity' => null],
+            ['dish_id' => $second->id, 'creation_token' => (string) Str::uuid(), 'selling_unit' => 'tray', 'price_pesos' => '800', 'minimum_quantity' => 2, 'quantity_step' => 1, 'maximum_quantity' => 10],
+        ]];
+
+        $this->post(route('listings.bulk.store', $family), $payload)->assertSessionHasNoErrors();
+        $this->assertSame(2, IndividualListing::count());
+        $this->post(route('listings.bulk.store', $family), $payload)->assertSessionHasNoErrors();
+        $this->assertSame(2, IndividualListing::count());
+
+        $this->post(route('listings.bulk.store', $family), ['listings' => [[
+            ...$payload['listings'][0], 'creation_token' => (string) Str::uuid(),
+        ]]])->assertSessionHasErrors('listings.0.dish_id');
+        $ineligible->update(['active' => false]);
+        $this->post(route('listings.bulk.store', $family), ['listings' => [[
+            ...$payload['listings'][0], 'dish_id' => $ineligible->id, 'creation_token' => (string) Str::uuid(),
+        ]]])->assertSessionHasErrors('listings.0.dish_id');
+        $this->assertSame(2, IndividualListing::count());
     }
 
     public function test_published_edit_clones_higher_draft_and_history_remains_immutable(): void

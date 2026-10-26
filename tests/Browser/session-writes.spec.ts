@@ -128,7 +128,7 @@ test("fresh login creates an Add-on Service once without a document reload", asy
     });
     await navigation(page, "Add-on Services");
     await page
-        .getByRole("button", { name: "Create Add-on Service", exact: true })
+        .getByRole("link", { name: "Create Add-on Service", exact: true })
         .click();
     await page.getByLabel("Service name").fill("Immediate Service");
     await configureService(page);
@@ -140,10 +140,8 @@ test("fresh login creates an Add-on Service once without a document reload", asy
     await page
         .getByRole("button", { name: "Create Service", exact: true })
         .click();
-    expect((await saved).status()).toBe(201);
-    await expect(
-        page.getByRole("link", { name: "Open newly created service" }),
-    ).toBeVisible();
+    expect((await saved).status()).toBe(302);
+    await expect(page).toHaveURL(/\/admin\/add-on-services\/\d+$/);
     expect(count("product_families", "Immediate Service")).toBe(1);
     expect(documents).toBe(0);
 });
@@ -186,8 +184,9 @@ test("consecutive multipart saves retain category and survive logout login and r
     await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Account menu" }).click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
-    await expect(page).toHaveURL(/\/login$/);
-    // Login from the existing Inertia login page, deliberately no goto/reload.
+    await expect(page).toHaveURL("/");
+    // Internal personnel deliberately navigate to the unadvertised login entry point.
+    await page.goto("/login");
     await page.getByLabel("Email address").fill(`admin-${run}@example.test`);
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
@@ -210,16 +209,14 @@ test("inline food and unit plus package save work after login without losing par
     await login(page, run, password);
     await navigation(page, "Add-on Services");
     await page
-        .getByRole("button", { name: "Create Add-on Service", exact: true })
+        .getByRole("link", { name: "Create Add-on Service", exact: true })
         .click();
     await page.getByLabel("Service name").fill("Inline Session Service");
     await configureService(page);
     await page
         .getByRole("button", { name: "Create Service", exact: true })
         .click();
-    await page
-        .getByRole("link", { name: "Open newly created service" })
-        .click();
+    await expect(page).toHaveURL(/\/admin\/add-on-services\/\d+$/);
     await createPackage(page, "Inline Session Package");
     await inlineFood(page, "Inline Session Food", "Inline Session Category");
     await page.getByLabel("Total included food selections").fill("1");
@@ -260,7 +257,9 @@ test("inline food and unit plus package save work after login without losing par
     );
     await page.getByRole("button", { name: "Save Draft", exact: true }).click();
     expect((await saved).ok()).toBe(true);
-    await expect(page.getByRole("dialog")).not.toBeVisible();
+    await expect(
+        page.getByRole("heading", { name: "Inline Session Package" }),
+    ).toBeVisible();
     expect(count("dishes", "Inline Session Food")).toBe(1);
     expect(count("products", "Inline Session Package")).toBe(1);
 });
@@ -273,6 +272,7 @@ test("invalid session preserves food input without retry and can recover after a
     await navigation(page, "Food Catalog");
     await openFood(page, "Expired Session Food");
     await context.clearCookies();
+    await expect.poll(async () => (await context.cookies()).length).toBe(0);
     let writes = 0;
     page.on("request", (request) => {
         if (
@@ -299,18 +299,19 @@ test("invalid session preserves food input without retry and can recover after a
     expect(writes).toBe(2);
 });
 
-test("expired JSON service save gives a clear error and creates no record", async ({
+test("expired page service save gives a clear error and creates no record", async ({
     page,
     context,
 }) => {
     await login(page, run, password);
     await navigation(page, "Add-on Services");
     await page
-        .getByRole("button", { name: "Create Add-on Service", exact: true })
+        .getByRole("link", { name: "Create Add-on Service", exact: true })
         .click();
     await page.getByLabel("Service name").fill("Expired Service");
     await configureService(page);
     await context.clearCookies();
+    await expect.poll(async () => (await context.cookies()).length).toBe(0);
     const failed = page.waitForResponse(
         (response) =>
             response.request().method() === "POST" &&

@@ -1,6 +1,11 @@
 export type SharedProps = {
     auth: {
-        user: { id: number; name: string; email: string };
+        user: {
+            id: number;
+            name: string;
+            email: string;
+            avatar_url?: string | null;
+        };
         isAdmin: boolean;
         permissions: string[];
     } | null;
