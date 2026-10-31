@@ -13,7 +13,10 @@ class PackageWorkspace
     public function data(Product $product): array
     {
         $product->load('family.orderDefault');
-        $draft = $product->versions()->where('status', 'draft')->first(['id', 'package_product_id', 'status', 'draft_revision', 'version_number']);
+        $draft = $product->versions()->where('status', 'draft')->withCount('foodItems')->first([
+            'id', 'package_product_id', 'status', 'draft_revision',
+            'version_number', 'total_selection_count',
+        ]);
         $canHistory = Gate::allows('history', PackageVersion::class);
         $history = $canHistory ? $product->versions()->where('status', '!=', 'draft')->reorder('version_number')->get() : collect();
         $availability = app(EffectivePackageAvailability::class)->forProduct($product);

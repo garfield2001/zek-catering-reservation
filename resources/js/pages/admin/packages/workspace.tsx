@@ -26,10 +26,16 @@ export default function PackageWorkspace({
     canLifecycle,
 }: {
     product: PackageProduct;
-    draft: Pick<
-        PackageVersion,
-        "id" | "status" | "draft_revision" | "version_number"
-    > | null;
+    draft:
+        | (Pick<
+              PackageVersion,
+              | "id"
+              | "status"
+              | "draft_revision"
+              | "version_number"
+              | "total_selection_count"
+          > & { food_items_count: number })
+        | null;
     history: PackageVersion[];
     commercialHistory: CommercialHistoryData | null;
     availability: { available: boolean; reasons: string[] };
@@ -42,6 +48,12 @@ export default function PackageWorkspace({
     const main = product.family?.behavior_type === "main_package";
     const editable =
         canManage && !product.archived_at && !product.family?.archived_at;
+    const canEditConfiguration = editable && (!main || canPrice);
+    const incompleteMainDraft =
+        main &&
+        !!draft &&
+        (!draft.total_selection_count ||
+            draft.food_items_count < draft.total_selection_count);
     const [details, setDetails] = useState(false);
     const [archive, setArchive] = useState(false);
     const [archiving, setArchiving] = useState(false);
@@ -90,23 +102,47 @@ export default function PackageWorkspace({
             ))}
             <section className="mb-6 rounded-xl border bg-white p-6">
                 <h2 className="font-semibold">
-                    {draft ? "Saved Draft" : "Published configuration"}
+                    {draft
+                        ? incompleteMainDraft
+                            ? "Draft needs configuration"
+                            : "Saved Draft"
+                        : "Published configuration"}
                 </h2>
                 <p className="mt-2 text-sm text-stone-600">
                     {draft
-                        ? "The complete package has been saved. Review and confirm publication separately."
+                        ? incompleteMainDraft
+                            ? "Package details are saved. Add its pricing and menu before reviewing or publishing."
+                            : "The complete package has been saved. Review and confirm publication separately."
                         : "Editing creates a separate Draft when you save. The current publication remains unchanged."}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-4">
-                    {editable && (
+                    {canEditConfiguration && (!main || !!draft) && (
                         <Link
                             className="text-sm text-emerald-800 underline"
-                            href={`/admin/packages/products/${product.id}/edit`}
+                            href={
+                                main
+                                    ? `/admin/catering-packages/${product.id}/details`
+                                    : `/admin/packages/products/${product.id}/edit`
+                            }
                         >
-                            Edit Package
+                            {incompleteMainDraft
+                                ? "Complete Configuration"
+                                : "Edit Package"}
                         </Link>
                     )}
-                    {editable && (
+                    {main && editable && !canPrice && (
+                        <p className="text-sm text-amber-800">
+                            You can view this package, but pricing permission is
+                            required to edit its commercial Draft.
+                        </p>
+                    )}
+                    {main && canEditConfiguration && !draft && (
+                        <p className="text-sm text-slate-600">
+                            Create a new Draft from the published version in
+                            Publication History before editing commercial terms.
+                        </p>
+                    )}
+                    {editable && !main && (
                         <Link
                             href={`/admin/packages/products/${product.id}/edit?step=1`}
                             className="text-sm text-emerald-800 underline"
@@ -114,7 +150,7 @@ export default function PackageWorkspace({
                             Edit Menu
                         </Link>
                     )}
-                    {editable && canPrice && (
+                    {editable && !main && canPrice && (
                         <Link
                             href={`/admin/packages/products/${product.id}/edit?step=2`}
                             className="text-sm text-emerald-800 underline"
@@ -122,23 +158,37 @@ export default function PackageWorkspace({
                             Edit Pricing & Quantity
                         </Link>
                     )}
-                    {draft && canManage && (
-                        <Link
-                            className="text-sm text-emerald-800 underline"
-                            href={`/admin/packages/products/${product.id}/versions/${draft.id}/customer-preview`}
-                        >
-                            Preview Customer Presentation
-                        </Link>
-                    )}
+                    {draft &&
+                        !incompleteMainDraft &&
+                        canManage &&
+                        (!main || canPrice) && (
+                            <Link
+                                className="text-sm text-emerald-800 underline"
+                                href={
+                                    main
+                                        ? `/admin/catering-packages/${product.id}/review`
+                                        : `/admin/packages/products/${product.id}/versions/${draft.id}/customer-preview`
+                                }
+                            >
+                                {main
+                                    ? "Review Draft"
+                                    : "Preview Customer Presentation"}
+                            </Link>
+                        )}
                     {draft &&
                         canPublish &&
+                        !incompleteMainDraft &&
                         product.active &&
                         product.family?.active &&
                         !product.archived_at &&
                         !product.family.archived_at && (
                             <Link
                                 className="rounded-lg bg-emerald-800 px-4 py-2 text-sm text-white"
-                                href={`/admin/packages/products/${product.id}/versions/${draft.id}/review`}
+                                href={
+                                    main && canPrice
+                                        ? `/admin/catering-packages/${product.id}/review`
+                                        : `/admin/packages/products/${product.id}/versions/${draft.id}/review`
+                                }
                             >
                                 Review & Publish
                             </Link>

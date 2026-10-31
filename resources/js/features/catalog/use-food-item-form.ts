@@ -47,7 +47,7 @@ export function useFoodItemForm({
             dish?.category_id ??
             initialCategoryId ??
             categories.find((c) => c.active)?.id ??
-            0,
+            "",
         new_category_name: "",
         active: dish?.active ?? true,
         workspace,

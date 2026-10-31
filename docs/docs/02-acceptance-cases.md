@@ -140,3 +140,39 @@ Phase 3 implements **draft-only administrator configuration and price previews**
 - Direct-sale **Add Foods to Sell** selects active Food Items across one or more categories without expanding existing editors. Shared selling settings are explicit; each selected Food Item keeps an independent price and Draft listing. The transaction rejects unavailable or duplicate sources and retrying an identical payload is idempotent.
 - A presentation exception equal to the inherited default is not saved as a new override; a changed quantity or container remains valid. Existing Draft and Published presentation facts are not rewritten.
 - New Food photos have validated, readable slug-plus-opaque-ID paths; existing paths remain compatible. Internal account photos use opaque paths, ownership/Team-access reads, audit events, safe replacement/removal and initials fallbacks.
+
+### Phase 6.3 routed Main Catering workflow acceptance (2026-10-28)
+
+- Main Catering uses four independently persisted pages: Package Details,
+  Pricing & Guest Quantity, Menu Configuration, and Review & Save. It has no
+  wizard controls or forced progression; Add-on Package workflows retain
+  their established stepper.
+- Main Catering details, pricing, menu and review links preserve their own
+  saved facts. The generic HTML package-editor entry points redirect to this
+  routed workflow, while authorised JSON compatibility is not exposed as a
+  competing browser experience.
+- Main Catering food discovery starts with no selected category and no
+  all-food browse view. It searches the selected category only, presents no
+  more than eight items per page, and keeps selected Food Items in a separate
+  category-grouped configuration section across discovery changes.
+- A Main Catering Customer Choice Category has one exact **Customer must
+  choose** count. Laravel persists that count as the category rule's equal
+  minimum and maximum and remains authoritative for feasibility and
+  customer-selection validation. Existing unequal Draft ranges remain visible
+  and unchanged until an Administrator explicitly replaces them.
+- Always Included Food Items and Customer Choice Groups are visibly distinct.
+  A one-food required category is promoted by Laravel to an inclusion and can
+  be reopened and saved without being rejected as a zero-option choice group.
+- An Administrator can save only a new Main Catering package's identity as an
+  idempotent incomplete Draft, return through **Complete Configuration**, and
+  later save the validated price and menu. The identity-only save does not
+  weaken full Draft or publication validation.
+- Main Catering still rejects per-food premiums, sizes, servings,
+  measurements, non-per-pax selling and split selection modes through the
+  routed HTTP endpoints. Error feedback associates the label, input and
+  message, and a status notification cannot block the next mobile primary
+  action.
+- A development database that predates migration `000025` cannot load the
+  category-choice editor; the owner applies that existing forward migration
+  only after backup/review. Browser and PostgreSQL verification use only
+  `zek_catering_test` on port `5432`.

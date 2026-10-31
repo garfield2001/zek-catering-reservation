@@ -21,7 +21,12 @@ export const emptyFoodDetail = (): FoodDetail => ({
     included_unit_id: "",
     price_adjustment_pesos: "0",
 });
-export function initialMenu(version?: MenuVersion | null): MenuData {
+export function initialMenu(
+    version?:
+        | (Pick<MenuVersion, "food_items" | "required_categories"> &
+              Partial<Pick<MenuVersion, "total_selection_count">>)
+        | null,
+): MenuData {
     return {
         total_selection_count: version?.total_selection_count ?? 1,
         food_item_ids: version?.food_items.map((f) => f.id) ?? [],
@@ -39,7 +44,7 @@ export function initialMenu(version?: MenuVersion | null): MenuData {
             (version?.food_items ?? []).map((f) => [
                 f.id,
                 {
-                    is_fixed: !!f.pivot?.always_include,
+                    is_fixed: !!(f.pivot?.always_include || f.pivot?.is_fixed),
                     included_quantity: f.pivot?.included_quantity ?? "",
                     included_unit: f.pivot?.included_unit ?? "",
                     included_unit_id: "",

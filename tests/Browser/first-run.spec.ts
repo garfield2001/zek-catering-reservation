@@ -29,14 +29,19 @@ test("fresh install provisions catering without manual Collection setup", async 
     await expect(page.getByText("No packages yet")).toBeVisible();
     await createPackage(page, "Independent Package");
     await expect(page.getByLabel("Add-on service")).toHaveCount(0);
-    expect(new URL(page.url()).pathname).toBe("/admin/packages/editor");
+    expect(new URL(page.url()).pathname).toMatch(
+        /^\/admin\/catering-packages\/\d+\/menu$/,
+    );
     await expect(
-        page.getByRole("heading", { name: "Create Package", exact: true }),
+        page.getByRole("heading", {
+            name: "Menu Configuration",
+            exact: true,
+        }),
     ).toBeVisible();
 
     await expect(
         page.getByRole("button", {
-            name: "Add Food or New Category",
+            name: "Add Food Item",
             exact: true,
         }),
     ).toBeVisible();
@@ -52,4 +57,31 @@ test("fresh install provisions catering without manual Collection setup", async 
         path: "test-results/first-package-workspace.png",
         fullPage: true,
     });
+});
+
+test("main package details can be saved as a Draft before menu and pricing configuration", async ({
+    page,
+}) => {
+    await login(page, run, password);
+    await page.goto("/admin/catering-packages");
+    await page
+        .getByRole("link", { name: "Create Package", exact: true })
+        .click();
+    await page
+        .getByLabel("Package Name", { exact: true })
+        .fill("Saved Later Package");
+    await page.getByRole("button", { name: "Save Details & Continue" }).click();
+
+    await expect(page).toHaveURL(/\/pricing$/);
+    await page.getByRole("link", { name: "Back to Package" }).click();
+    await expect(
+        page.getByText("Draft needs configuration", { exact: true }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Complete Configuration" }).click();
+    await expect(page.getByLabel("Package Name", { exact: true })).toHaveValue(
+        "Saved Later Package",
+    );
+    await expect(
+        page.getByRole("navigation", { name: "Package setup steps" }),
+    ).toHaveCount(0);
 });

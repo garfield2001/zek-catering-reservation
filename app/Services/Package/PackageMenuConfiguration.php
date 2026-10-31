@@ -260,9 +260,29 @@ class PackageMenuConfiguration
             if ($minimum < 0 || $maximum < 1 || $minimum > $maximum) {
                 throw ValidationException::withMessages(['category_choice_rules' => 'A Customer Choice minimum cannot exceed its maximum.']);
             }
-            $choiceCount = Dish::whereIn('id', $ids)->where('category_id', $rule['category_id'])
-                ->whereNotIn('id', collect($details)->filter(fn ($detail) => (bool) ($detail['is_fixed'] ?? false))->keys()->map(fn ($id) => (int) $id)->all())
-                ->count();
+            $categoryItems = Dish::whereIn('id', $ids)
+                ->where('category_id', $rule['category_id'])
+                ->pluck('id');
+            $fixedIds = collect($details)
+                ->filter(fn ($detail) => (bool) ($detail['is_fixed'] ?? false))
+                ->keys()
+                ->map(fn ($id) => (int) $id);
+
+            // A required Main Catering category with exactly one allowed Food
+            // Item becomes an inclusion. A subsequent Draft save carries that
+            // item's fixed state back to the server, so it is no longer a
+            // customer choice to validate. Keep the category rule for its
+            // historical configuration, but do not reject the valid,
+            // server-promoted inclusion as a zero-option choice group.
+            $automaticInclusion = $family->behavior_type === 'main_package'
+                && $minimum >= 1
+                && $categoryItems->count() === 1
+                && $fixedIds->contains((int) $categoryItems->first());
+            if ($automaticInclusion) {
+                continue;
+            }
+
+            $choiceCount = $categoryItems->diff($fixedIds)->count();
             if (($rule['maximum_count_explicit'] ?? false) && $choiceCount < $maximum) {
                 throw ValidationException::withMessages(['category_choice_rules' => "This Customer Choice Group needs {$maximum} eligible Food Item option(s), but only {$choiceCount} are available."]);
             }

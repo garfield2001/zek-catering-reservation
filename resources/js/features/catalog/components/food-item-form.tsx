@@ -45,7 +45,11 @@ export function FoodItemForm(props: FoodItemFormProps) {
             >
                 <select
                     id={`${prefix}-category_id`}
-                    value={newCategory ? "new" : form.data.category_id}
+                    value={
+                        newCategory
+                            ? "new"
+                            : String(form.data.category_id ?? "")
+                    }
                     required
                     onChange={(event) => {
                         setNewCategory(event.target.value === "new");
@@ -56,7 +60,7 @@ export function FoodItemForm(props: FoodItemFormProps) {
                             );
                     }}
                 >
-                    <option value={0} disabled>
+                    <option value="" disabled>
                         Choose a category
                     </option>
                     {canCreateCategory && (

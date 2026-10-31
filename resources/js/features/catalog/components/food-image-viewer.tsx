@@ -18,8 +18,11 @@ export function FoodImageViewer({
             <button
                 type="button"
                 aria-label={`View image of ${name}`}
-                className="shrink-0 rounded-xl"
-                onClick={() => setOpen(true)}
+                className="shrink-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                onClick={(event) => {
+                    event.stopPropagation();
+                    setOpen(true);
+                }}
             >
                 <FoodImage compact name={name} src={thumbnailUrl ?? imageUrl} />
             </button>

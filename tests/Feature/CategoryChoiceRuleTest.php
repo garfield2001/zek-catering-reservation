@@ -131,6 +131,20 @@ class CategoryChoiceRuleTest extends TestCase
         ]);
 
         $this->assertTrue((bool) $draft->fresh()->foodItems()->whereKey($friedRice)->sole()->pivot->is_fixed);
+
+        // Reopening and saving the Draft preserves the server-promoted
+        // inclusion. It must not be reinterpreted as a zero-option customer
+        // choice group.
+        $draft->refresh();
+        app(SavePackageMenuConfiguration::class)->handle($this->admin, $draft, [
+            'draft_revision' => $draft->draft_revision,
+            'total_selection_count' => 2,
+            'food_item_ids' => [$friedRice->id, $pasta->id],
+            'food_details' => [$friedRice->id => ['is_fixed' => true]],
+            'category_choice_rules' => [['category_id' => $rice->id, 'minimum_count' => 1, 'maximum_count' => 1, 'maximum_count_explicit' => true]],
+        ]);
+
+        $this->assertTrue((bool) $draft->fresh()->foodItems()->whereKey($friedRice)->sole()->pivot->is_fixed);
     }
 
     private function assertInvalidSelection($version, array $selection): void

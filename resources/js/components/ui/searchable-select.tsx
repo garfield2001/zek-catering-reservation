@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 export type SearchableSelectOption = {
     value: string | number;
@@ -29,6 +29,8 @@ export function SearchableSelect({
     const [activeIndex, setActiveIndex] = useState(0);
     const [searching, setSearching] = useState(false);
     const blurTimer = useRef<number | null>(null);
+    const optionRefs = useRef<Array<HTMLLIElement | null>>([]);
+    const justSelected = useRef(false);
     const selected = options.find(
         (option) => String(option.value) === String(value),
     );
@@ -43,12 +45,17 @@ export function SearchableSelect({
     }, [options, query]);
     const choose = (option: SearchableSelectOption) => {
         if (option.disabled) return;
+        justSelected.current = true;
         onChange(String(option.value));
         setQuery("");
         setOpen(false);
         setSearching(false);
+        window.setTimeout(() => {
+            justSelected.current = false;
+        }, 0);
     };
     const beginSearch = () => {
+        if (justSelected.current) return;
         if (blurTimer.current !== null) {
             window.clearTimeout(blurTimer.current);
             blurTimer.current = null;
@@ -58,6 +65,12 @@ export function SearchableSelect({
         setActiveIndex(0);
         setSearching(true);
     };
+    useEffect(() => {
+        if (!open) return;
+        optionRefs.current[activeIndex]?.scrollIntoView?.({
+            block: "nearest",
+        });
+    }, [activeIndex, open, shown.length]);
 
     return (
         <div className="relative">
@@ -112,6 +125,7 @@ export function SearchableSelect({
                         choose(shown[activeIndex]);
                     }
                     if (event.key === "Escape") {
+                        event.preventDefault();
                         setOpen(false);
                         setQuery("");
                         setSearching(false);
@@ -122,7 +136,7 @@ export function SearchableSelect({
                 <ul
                     id={listId}
                     role="listbox"
-                    className="absolute z-30 mt-1 max-h-52 w-full overflow-y-auto rounded-lg border border-slate-300 bg-white p-1 shadow-lg"
+                    className="subtle-scroll absolute z-30 mt-1 max-h-[11.25rem] w-full overflow-y-auto rounded-lg border border-slate-300 bg-white p-1 shadow-lg"
                 >
                     {shown.map((option, index) => (
                         <li
@@ -133,6 +147,9 @@ export function SearchableSelect({
                                 String(option.value) === String(value)
                             }
                             aria-disabled={option.disabled || undefined}
+                            ref={(element) => {
+                                optionRefs.current[index] = element;
+                            }}
                             className={`cursor-pointer rounded-md px-3 py-2 text-sm ${index === activeIndex ? "bg-emerald-50 text-emerald-950" : ""} ${option.disabled ? "cursor-not-allowed text-slate-400" : ""}`}
                             onMouseDown={(event) => event.preventDefault()}
                             onClick={() => choose(option)}

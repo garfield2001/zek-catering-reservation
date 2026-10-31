@@ -52,44 +52,57 @@ test("owner creates exact main menu, publishes immutable history, revises and ar
     );
     await step(page, "Menu");
     await page.getByLabel("Total included food selections").fill("5");
-    await filterPackageFoodsByCategory(page, "Beef");
-    await selectAllVisiblePackageFoods(page);
-    await expect(page.getByLabel("Beef Stew", { exact: true })).toBeChecked();
-    await expect(page.getByLabel("Beef Steak", { exact: true })).toBeChecked();
-    await expect(page.getByLabel("Customer Choice Groups")).not.toContainText(
-        "Beef: exactly 1",
-    );
-    await page.getByRole("button", { name: "Clear shown" }).click();
+    for (const category of [
+        "Rice",
+        "Drinks",
+        "Beef",
+        "Chicken",
+        "Other Foods",
+    ]) {
+        await filterPackageFoodsByCategory(page, category);
+        await selectAllVisiblePackageFoods(page);
+    }
+    const selectedFoods = page.getByRole("region", {
+        name: "Selected foods",
+        exact: true,
+    });
+    await selectedFoods
+        .getByRole("button", { name: /^Beef \(2\)$/ })
+        .click();
+    const beefConfiguration = page.getByRole("dialog", {
+        name: "Configure Beef Foods",
+    });
     await expect(
-        page.getByLabel("Beef Stew", { exact: true }),
+        beefConfiguration.getByText("Beef Stew", { exact: true }),
+    ).toBeVisible();
+    await expect(
+        beefConfiguration.getByText("Beef Steak", { exact: true }),
+    ).toBeVisible();
+    await expect(
+        beefConfiguration.getByLabel("Always include Beef Stew", {
+            exact: true,
+        }),
     ).not.toBeChecked();
-    await expect(page.getByLabel("Customer Choice Groups")).not.toContainText(
-        "Beef: exactly 1",
-    );
-    await filterPackageFoodsByCategory(page, "All eligible foods");
-    for (const food of [
-        "Fried Rice",
-        "Cola",
-        "Juice",
-        "Beef Stew",
-        "Beef Steak",
-        "Chicken BBQ",
-        "Spring Rolls",
-    ])
-        await page.getByLabel(food, { exact: true }).check();
+    await page.getByRole("button", { name: "Close dialog" }).click();
     for (const category of ["Rice", "Drinks"])
         await requireOneFromPackageCategory(page, category);
-    await expect(page.getByLabel("Menu summary")).toContainText("Fried Rice");
-    await expect(page.getByLabel("Menu summary")).toContainText(
-        "Rice: exactly 1",
-    );
+    await expect(
+        page.getByRole("complementary", { name: "Menu summary" }),
+    ).toContainText("Fried Rice");
+    await expect(
+        page.getByRole("complementary", { name: "Menu summary" }),
+    ).toContainText("Rice: exactly 1");
     // Inline catalog creation must keep unsaved menu selections.
     await inlineFood(page, "Fruit Salad", "Desserts");
+    await selectedFoods
+        .getByRole("button", { name: /^Rice \(1\)$/ })
+        .click();
     await expect(
         page
-            .getByRole("region", { name: "Selected foods", exact: true })
+            .getByRole("dialog", { name: "Configure Rice Foods" })
             .getByText("Fried Rice", { exact: true }),
     ).toBeVisible();
+    await page.getByRole("button", { name: "Close dialog" }).click();
     await expect(page.getByLabel("Total included food selections")).toHaveValue(
         "5",
     );
@@ -99,9 +112,15 @@ test("owner creates exact main menu, publishes immutable history, revises and ar
         path: "test-results/main-configured-menu.png",
         fullPage: true,
     });
-    await step(page, "Pricing & Quantity");
+    await page
+        .getByRole("button", { name: "Save & Continue to Review" })
+        .click();
+    await expect(page).toHaveURL(/\/review$/);
+    await page.getByRole("link", { name: "Edit Pricing", exact: true }).click();
     await page.getByLabel("Price per pax (PHP)").fill("850.00");
     await page.getByLabel("Minimum guests", { exact: true }).fill("150");
+    await page.getByRole("button", { name: "Save & Continue to Menu" }).click();
+    await expect(page).toHaveURL(/\/menu$/);
     await expect(page.locator("#nprogress")).toHaveCount(0);
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({
@@ -111,30 +130,21 @@ test("owner creates exact main menu, publishes immutable history, revises and ar
     await expect(
         page.getByText(/Variant|Selection Group|slot kind/i),
     ).toHaveCount(0);
-    await step(page, "Review & Publish");
-    const workspace = page.url();
     await page
-        .getByRole("link", { name: "Review & Publish", exact: true })
+        .getByRole("link", { name: "Review & Save", exact: true })
         .click();
     await expect(
-        page.getByRole("heading", { name: "Review publication" }),
+        page.locator("main h1").filter({ hasText: "Review & Save" }),
     ).toBeVisible();
-    await expect(
-        page.getByText("Menu: exactly 5 distinct foods"),
-    ).toBeVisible();
+    await expect(page.getByText(/Exactly 5 distinct foods/)).toBeVisible();
     await expect(page.locator("#nprogress")).toHaveCount(0);
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({
         path: "test-results/main-publication-review.png",
         fullPage: true,
     });
-    await page.getByLabel(/I reviewed this configuration/).check();
-    await page.getByRole("button", { name: "Publish Package" }).click();
-    await page
-        .getByRole("alertdialog")
-        .getByRole("button", { name: "Confirm Publication" })
-        .click();
-    await expect(page).toHaveURL(workspace);
+    await page.getByRole("button", { name: "Save & Publish" }).click();
+    await expect(page).toHaveURL(/\/admin\/catering-packages\/\d+$/);
     if (
         (await page
             .locator("#history details")
@@ -143,9 +153,12 @@ test("owner creates exact main menu, publishes immutable history, revises and ar
     )
         await page.getByText("Version 1 · Published", { exact: true }).click();
     await expect(page.getByText(/Fried Rice.*Fixed inclusion/)).toBeVisible();
+    await page
+        .getByRole("button", { name: "Create New Draft from Version 1" })
+        .click();
     await page.getByRole("link", { name: "Edit Package", exact: true }).click();
     await expect(
-        page.getByText(/The current Published Version remains unchanged/),
+        page.getByRole("heading", { name: "Package Details", exact: true }),
     ).toBeVisible();
     await step(page, "Pricing & Quantity");
     await page.getByLabel("Price per pax (PHP)").fill("900.00");

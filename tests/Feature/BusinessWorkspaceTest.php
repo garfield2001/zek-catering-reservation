@@ -81,7 +81,9 @@ class BusinessWorkspaceTest extends TestCase
         $this->seed(DatabaseSeeder::class);
         $this->assertSame($this->family->id, app(EnsurePrimaryService::class)->handle()->id);
         $this->assertFalse($this->family->fresh()->active);
-        $this->get(route('catering.create'))->assertRedirect(route('packages.editor', ['service' => $this->family->id]));
+        $this->get(route('catering.create'))
+            ->assertRedirect(route('catering.index'))
+            ->assertSessionHasErrors('family_id');
         $this->get(route('catering.index'))->assertInertia(fn ($page) => $page->where('serviceActive', false));
         $this->post(route('catering.store'), ['name' => 'Blocked', 'active' => true, 'creation_token' => (string) str()->uuid()])->assertSessionHasErrors('family_id');
         $this->family->forceFill(['archived_at' => now()])->save();
@@ -101,6 +103,120 @@ class BusinessWorkspaceTest extends TestCase
         $this->get(route('catering.index'))->assertInertia(fn ($page) => $page->has('products.data', 1)->where('products.data.0.name', 'A'));
         $this->get(route('services.show', $addon))->assertInertia(fn ($page) => $page->has('products', 1)->where('products.0.name', 'Extra'));
         $this->post(route('catering.store'), ['family_id' => $addon->id, 'name' => 'Forged', 'active' => true, 'creation_token' => (string) str()->uuid()])->assertSessionHasErrors('family_id');
+    }
+
+    public function test_main_package_details_can_be_saved_as_an_incomplete_idempotent_draft(): void
+    {
+        $data = [
+            'name' => 'Save Later Package',
+            'description' => 'Identity saved before menu configuration.',
+            'active' => true,
+            'creation_token' => (string) str()->uuid(),
+        ];
+
+        $this->post(route('catering.store'), $data)->assertRedirect();
+        $product = Product::sole();
+        $draft = $product->versions()->sole();
+
+        $this->assertSame($this->family->id, $product->family_id);
+        $this->assertSame('Save Later Package', $product->name);
+        $this->assertSame('draft', $draft->status);
+        $this->assertNull($draft->total_selection_count);
+        $this->assertSame(0, (int) $draft->base_price_minor);
+        $this->assertNull($product->current_version_id);
+
+        $this->post(route('catering.store'), $data)->assertRedirect();
+        $this->assertSame(1, Product::count());
+        $this->assertSame(1, $product->fresh()->versions()->count());
+    }
+
+    public function test_main_catering_pages_persist_each_draft_section_without_overwriting_the_others(): void
+    {
+        $this->post(route('catering.store'), [
+            'name' => 'Routed Package',
+            'description' => 'A persisted section workflow.',
+            'active' => true,
+            'creation_token' => (string) str()->uuid(),
+        ])->assertRedirect();
+        $product = Product::where('name', 'Routed Package')->sole();
+        $draft = $product->versions()->sole();
+
+        $this->get(route('catering.pricing', $product))
+            ->assertInertia(fn ($page) => $page->component('admin/catering/pricing'));
+        $this->put(route('catering.pricing.update', $product), [
+            'base_price_pesos' => '850.00',
+            'price_basis' => 'per_pax',
+            'selection_policy' => 'uniform',
+            'minimum_quantity' => 150,
+            'quantity_step' => 10,
+            'maximum_quantity' => 300,
+            'estimated_capacity' => null,
+            'draft_revision' => $draft->draft_revision,
+        ])->assertRedirect(route('catering.menu', $product));
+        $draft->refresh();
+        $this->assertSame(85000, (int) $draft->base_price_minor);
+        $this->assertSame(150, $draft->minimum_quantity);
+
+        $rice = DishCategory::create(['code' => 'routed_rice', 'name' => 'Routed Rice', 'active' => true]);
+        $drink = DishCategory::create(['code' => 'routed_drinks', 'name' => 'Routed Drinks', 'active' => true]);
+        $foods = collect([
+            Dish::create(['code' => 'routed_rice_food', 'name' => 'Routed Rice Food', 'category_id' => $rice->id, 'active' => true]),
+            Dish::create(['code' => 'routed_drink_a', 'name' => 'Routed Drink A', 'category_id' => $drink->id, 'active' => true]),
+            Dish::create(['code' => 'routed_drink_b', 'name' => 'Routed Drink B', 'category_id' => $drink->id, 'active' => true]),
+        ]);
+        $this->put(route('catering.menu.update', $product), [
+            'draft_revision' => $draft->draft_revision,
+            'total_selection_count' => 2,
+            'food_item_ids' => $foods->pluck('id')->all(),
+            'food_details' => [$foods[0]->id => ['is_fixed' => true]],
+            'category_choice_rules' => [[
+                'category_id' => $drink->id,
+                'minimum_count' => 1,
+                'maximum_count' => 1,
+                'maximum_count_explicit' => true,
+            ]],
+        ])->assertRedirect(route('catering.review', $product));
+
+        $draft->refresh()->load(['foodItems', 'requiredCategories']);
+        $this->assertSame(85000, (int) $draft->base_price_minor);
+        $this->assertCount(3, $draft->foodItems);
+        $this->assertSame(1, (int) $draft->requiredCategories->sole()->pivot->minimum_count);
+        $this->get(route('catering.review', $product))
+            ->assertInertia(fn ($page) => $page->component('admin/catering/review'));
+    }
+
+    public function test_main_catering_section_endpoints_preserve_main_only_sales_rules(): void
+    {
+        $product = app(SaveProduct::class)->handle($this->admin, [
+            'family_id' => $this->family->id,
+            'name' => 'Protected routed package',
+            'active' => true,
+        ]);
+        $draft = $product->versions()->sole();
+
+        $this->put(route('catering.pricing.update', $product), [
+            'base_price_pesos' => '500.00',
+            'price_basis' => 'per_pack',
+            'selection_policy' => 'split',
+            'minimum_quantity' => 1,
+            'quantity_step' => 1,
+            'maximum_quantity' => null,
+            'draft_revision' => $draft->draft_revision,
+        ])->assertSessionHasErrors('price_basis');
+
+        $category = DishCategory::create(['code' => 'protected_routed', 'name' => 'Protected routed', 'active' => true]);
+        $food = Dish::create(['code' => 'protected_routed_food', 'name' => 'Protected routed food', 'category_id' => $category->id, 'active' => true]);
+        $this->put(route('catering.menu.update', $product), [
+            'draft_revision' => $draft->draft_revision,
+            'total_selection_count' => 1,
+            'food_item_ids' => [$food->id],
+            'food_details' => [$food->id => ['is_fixed' => true, 'price_adjustment_pesos' => '10.00']],
+            'category_choice_rules' => [],
+        ])->assertSessionHasErrors('food_details');
+
+        $draft->refresh();
+        $this->assertSame(0, (int) $draft->base_price_minor);
+        $this->assertSame(1, $draft->draft_revision);
     }
 
     public function test_menu_requires_exact_distinct_foods_and_each_required_category(): void

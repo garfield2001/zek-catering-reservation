@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Package;
 use App\Actions\Package\SaveProduct;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Package\SaveProductRequest;
+use App\Models\PackageVersion;
 use App\Models\Product;
 use App\Models\ProductFamily;
 use App\Queries\Package\PackageEditor;
@@ -72,9 +73,18 @@ class ProductController extends Controller
         return Inertia::render('admin/packages/workspace', $workspace->data($product));
     }
 
-    public function edit(Request $request, Product $product, PackageEditor $editor): Response|JsonResponse
+    public function edit(Request $request, Product $product, PackageEditor $editor): Response|JsonResponse|RedirectResponse
     {
         Gate::authorize('update', $product);
+
+        // Main Catering no longer exposes the generic, single-page editor.
+        // The JSON representation remains a compatibility boundary for
+        // authorised internal consumers; the browser workflow is routed.
+        if (! $request->expectsJson() && $product->family->behavior_type === 'main_package') {
+            Gate::authorize('price', PackageVersion::class);
+
+            return redirect()->route('catering.details', $product);
+        }
 
         $data = $request->validate(['step' => ['nullable', 'integer', 'between:0,3']]);
         $props = $editor->data($product->family, $product);

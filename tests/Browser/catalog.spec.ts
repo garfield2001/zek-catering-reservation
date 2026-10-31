@@ -469,22 +469,35 @@ test("fixed bundles use only included foods without customer-choice controls", a
 test("copied package quantities remain independently editable", async ({
     page,
 }) => {
+    // This persists and revisits two independent Main Catering drafts. Keep
+    // Playwright's timeout aligned with the real commercial workflow rather
+    // than truncating its final persistence assertion.
+    test.setTimeout(120_000);
     await login(page, run, password);
     await page.goto("/admin/catering-packages");
     await createPackage(page, "Quantity Source");
     await inlineFood(page, "Quantity Food", "Quantity Foods");
     await page.getByLabel("Quantity Food", { exact: true }).check();
-    await step(page, "Pricing & Quantity");
+    await page
+        .getByRole("button", { name: "Save & Continue to Review" })
+        .click();
+    await page.getByRole("link", { name: "Edit Pricing", exact: true }).click();
     await page.getByLabel("Minimum guests", { exact: true }).fill("150");
-    await page.getByLabel("Quantity increment", { exact: true }).fill("10");
+    await page
+        .getByLabel("Guest quantity increment", { exact: true })
+        .fill("10");
     await page.getByLabel("Maximum guests (optional)").fill("500");
     await page.getByLabel("Price per pax (PHP)").fill("850.00");
     await savePackage(page);
     const sourceUrl = page.url();
     await page.goto("/admin/catering-packages");
     await createPackage(page, "Independent Copy");
+    await filterPackageFoodsByCategory(page, "Quantity Foods");
     await page.getByLabel("Quantity Food", { exact: true }).check();
-    await step(page, "Pricing & Quantity");
+    await page
+        .getByRole("button", { name: "Save & Continue to Review" })
+        .click();
+    await page.getByRole("link", { name: "Edit Pricing", exact: true }).click();
     await page
         .getByLabel("Copy quantity settings from")
         .selectOption({ label: "Quantity Source" });
@@ -505,4 +518,46 @@ test("copied package quantities remain independently editable", async ({
     await expect(
         page.getByLabel("Minimum guests", { exact: true }),
     ).toHaveValue("150");
+});
+
+test("Main Catering keeps inline catalog creation explicit and configures one selected category in a modal", async ({
+    page,
+}) => {
+    await login(page, run, password);
+    await page.goto("/admin/food-catalog");
+    await expect(page.getByLabel("Rows per page")).toHaveValue("5");
+    await addCategory(page, "List Sort Foods");
+    await addFood(page, "List Sort Rice", "List Sort Foods");
+    await page.getByRole("button", { name: /^Sort by Food item/ }).click();
+    await expect(page).toHaveURL(/direction=asc.*sort=name/);
+
+    await page.goto("/admin/catering-packages");
+    await createPackage(page, "Modal Menu Package");
+    await page.getByRole("button", { name: "Add Food Item" }).click();
+    const dialog = page.getByRole("dialog", { name: "Add Food" });
+    await dialog.getByLabel("Food item name").fill("Unselected Modal Rice");
+    await dialog.getByLabel("Food category").selectOption("new");
+    await dialog.getByLabel("New category name").fill("Modal Rice");
+    await dialog.getByRole("button", { name: "Create food item" }).click();
+    await expect(dialog).not.toBeVisible();
+
+    const category = page.getByRole("combobox", { name: "Category" });
+    await category.click();
+    await category.fill("Modal Rice");
+    await category.press("Enter");
+    await expect(page.getByLabel("Unselected Modal Rice")).not.toBeChecked();
+    await page.getByLabel("Unselected Modal Rice").check();
+    await page.getByRole("button", { name: "Modal Rice (1)" }).click();
+
+    const categoryDialog = page.getByRole("dialog", {
+        name: "Configure Modal Rice Foods",
+    });
+    await categoryDialog.getByLabel("Require customer choice").check();
+    await expect(categoryDialog.getByLabel("Customer must choose")).toHaveValue(
+        "1",
+    );
+    await categoryDialog.getByRole("button", { name: "Close dialog" }).click();
+    await expect(page.getByLabel("Menu summary")).toContainText(
+        "Modal Rice: exactly 1",
+    );
 });

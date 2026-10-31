@@ -82,7 +82,7 @@ export function ServingDefaultFields({
                         Measurement Unit
                         <select
                             required
-                            value={value.measurement_unit_id}
+                            value={value.measurement_unit_id ?? ""}
                             onChange={(event) =>
                                 onChange({
                                     ...value,

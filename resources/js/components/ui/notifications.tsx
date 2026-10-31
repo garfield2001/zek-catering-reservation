@@ -46,7 +46,7 @@ export function Notifications() {
                         : event.detail.response.status === 419 ||
                             event.detail.response.status === 401
                           ? "Your session has expired. Refresh the page and sign in again."
-                          : "The server could not complete this request. Refresh the page and try again.",
+                          : "The request could not be completed. Your current page remains open; retry after checking the server or ask an Administrator for help.",
                     { id: "request-error", duration: 7000 },
                 );
             }),
@@ -63,7 +63,9 @@ export function Notifications() {
             richColors
             closeButton={false}
             duration={4000}
-            toastOptions={{ className: "font-sans" }}
+            // Status messages must not cover the primary action on a narrow
+            // screen. They remain announced but never intercept a click.
+            toastOptions={{ className: "pointer-events-none font-sans" }}
         />
     );
 }

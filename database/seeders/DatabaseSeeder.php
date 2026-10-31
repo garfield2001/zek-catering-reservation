@@ -44,7 +44,7 @@ class DatabaseSeeder extends Seeder
         if ($this->shouldSeedLocalDevelopmentData()) {
             $this->call([
                 LocalDevelopmentAdministratorSeeder::class,
-                DevelopmentDemoSeeder::class,
+                //DevelopmentDemoSeeder::class,
             ]);
         }
     }

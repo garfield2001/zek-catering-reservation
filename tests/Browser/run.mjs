@@ -9,6 +9,11 @@ const php = process.env.PHP_BINARY || "php";
 const testingEnvironment = {
     ...process.env,
     APP_ENV: "testing",
+    // Do not inherit an operator's local Laravel caches. The browser server
+    // must always route from the current source while it serves the isolated
+    // test database.
+    APP_CONFIG_CACHE: resolve("storage/framework/browser-tests-config.php"),
+    APP_ROUTES_CACHE: resolve("storage/framework/browser-tests-routes.php"),
     DB_CONNECTION: "pgsql",
     DB_DATABASE: "zek_catering_test",
     DB_HOST: "127.0.0.1",
@@ -66,28 +71,12 @@ let serverStopped = false;
 const stopProcessTree = (childProcess) => {
     if (childProcess.pid === undefined) return Promise.resolve();
 
-    if (process.platform !== "win32") {
-        if (childProcess.exitCode === null) childProcess.kill("SIGTERM");
+    // The wrapper owns only this PHP server. It does not spawn Playwright
+    // workers, so terminating the direct child is both sufficient and more
+    // reliable than a second Windows process-tree command during teardown.
+    if (childProcess.exitCode === null) childProcess.kill("SIGTERM");
 
-        return Promise.resolve();
-    }
-
-    // `ChildProcess.kill()` only signals the immediate process on Windows.
-    // Playwright can retain Node worker children, which would violate the
-    // one-runner test-database guard on the next invocation. Limit taskkill
-    // to this wrapper-owned PID and its descendants.
-    return new Promise((resolveStop) => {
-        const taskkill = spawn(
-            "taskkill",
-            ["/pid", String(childProcess.pid), "/T", "/F"],
-            { stdio: "ignore", windowsHide: true },
-        );
-        taskkill.once("error", () => {
-            if (childProcess.exitCode === null) childProcess.kill("SIGTERM");
-            resolveStop();
-        });
-        taskkill.once("exit", () => resolveStop());
-    });
+    return Promise.resolve();
 };
 
 const stopServer = () => {
@@ -140,5 +129,5 @@ try {
     await waitForTestingServer();
     process.exitCode = await runPlaywright();
 } finally {
-    stopServer();
+    await stopServer();
 }

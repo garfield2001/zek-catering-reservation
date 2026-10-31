@@ -104,7 +104,7 @@ export function FoodSizeFields({
                                     Measurement Unit for {food.name}
                                     <select
                                         required
-                                        value={group.measurement_unit_id}
+                                        value={group.measurement_unit_id ?? ""}
                                         onChange={(event) =>
                                             update(food.id, {
                                                 ...group,

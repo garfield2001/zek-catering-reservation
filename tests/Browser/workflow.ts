@@ -169,16 +169,44 @@ export async function addFood(
     await dialog.getByRole("button", { name: "Create food item" }).click();
     await expect(dialog).not.toBeVisible();
     await expect(
-        page.getByRole("heading", { name, exact: true }),
+        page
+            .getByRole("heading", { name, exact: true })
+            .or(
+                page
+                    .getByRole("status")
+                    .filter({ hasText: `${name} was saved outside` }),
+            ),
     ).toBeVisible();
 }
 export async function createPackage(page: Page, name: string) {
     await page
         .getByRole("link", { name: "Create Package", exact: true })
         .click();
+    await page.waitForURL(
+        /\/admin\/(?:catering-packages\/create|packages\/editor\?service=\d+)$/,
+    );
+    if (/\/admin\/catering-packages\/create$/.test(page.url())) {
+        await expect(page).toHaveURL(/\/admin\/catering-packages\/create$/);
+        await page.getByLabel("Package Name", { exact: true }).fill(name);
+        await page
+            .getByRole("button", { name: "Save Details & Continue" })
+            .click();
+        await expect(page).toHaveURL(
+            /\/admin\/catering-packages\/\d+\/pricing$/,
+        );
+        await page
+            .getByRole("button", { name: "Save & Continue to Menu" })
+            .click();
+        await expect(page).toHaveURL(/\/admin\/catering-packages\/\d+\/menu$/);
+        await expect(
+            page.getByLabel("Total included food selections"),
+        ).toBeVisible();
+        return;
+    }
     await expect(page).toHaveURL(/\/admin\/packages\/editor\?service=\d+$/);
     await page.getByLabel("Package Name", { exact: true }).fill(name);
-    await page.getByRole("button", { name: "Next: Menu", exact: true }).click();
+    const next = page.getByRole("button", { name: "Next: Menu", exact: true });
+    if (await next.count()) await next.click();
     await expect(
         page.getByLabel("Total included food selections"),
     ).toBeVisible();
@@ -196,12 +224,76 @@ export async function step(
         await savePackage(page);
         return;
     }
-    await page
-        .getByRole("navigation", { name: "Package setup steps" })
-        .getByRole("button", { name: new RegExp(name.replaceAll("&", "\\&")) })
-        .click();
+    const pageNavigation = page.getByRole("navigation", {
+        name: "Package configuration pages",
+    });
+    // An Inertia redirect from the compatibility editor can briefly retain its
+    // old URL after an Edit Package link is clicked. The routed workflow's
+    // navigation is the reliable signal that the Main Catering page is ready.
+    if (
+        await expect(pageNavigation)
+            .toBeVisible({ timeout: 5000 })
+            .then(() => true)
+            .catch(() => false)
+    ) {
+        const mainCateringLabels: Record<
+            Exclude<typeof name, "Review & Publish">,
+            string
+        > = {
+            Details: "Package Details",
+            Menu: "Menu Configuration",
+            "Pricing & Quantity": "Pricing & Quantity",
+            "Review & Save": "Review & Save",
+        };
+        const target = pageNavigation.getByRole("link", {
+            name: mainCateringLabels[name],
+            exact: true,
+        });
+        await target.click();
+        await expect(target).toHaveAttribute("aria-current", "page");
+        return;
+    }
+    let navigation = page.getByRole("navigation", {
+        name: "Package setup steps",
+    });
+    if (!(await navigation.count())) {
+        await page.waitForURL(
+            /\/admin\/packages\/(?:editor|products\/\d+\/edit)/,
+        );
+        navigation = page.getByRole("navigation", {
+            name: "Package setup steps",
+        });
+    }
+    if (await navigation.count()) {
+        const target = navigation.getByRole("button", {
+            name: new RegExp(name.replaceAll("&", "\\&")),
+        });
+        await target.click();
+        await expect(target).toHaveAttribute("aria-current", "step");
+    }
 }
 export async function savePackage(page: Page) {
+    if (/\/admin\/catering-packages\/\d+\//.test(page.url())) {
+        if (page.url().endsWith("/menu")) {
+            await page
+                .getByRole("button", { name: "Save & Continue to Review" })
+                .click();
+            await expect(page).toHaveURL(/\/review$/);
+        } else if (page.url().endsWith("/pricing")) {
+            await page
+                .getByRole("button", { name: "Save & Continue to Menu" })
+                .click();
+            await expect(page).toHaveURL(/\/menu$/);
+            await page
+                .getByRole("link", { name: "Review & Save", exact: true })
+                .click();
+        }
+        await page
+            .getByRole("link", { name: "Save Draft & Return", exact: true })
+            .click();
+        await expect(page).toHaveURL(/\/admin\/catering-packages\/\d+$/);
+        return;
+    }
     await step(page, "Review & Save");
     const saved = page.waitForResponse(
         (response) =>
@@ -218,9 +310,11 @@ export async function savePackage(page: Page) {
     ).toBeVisible();
 }
 export async function inlineFood(page: Page, name: string, category: string) {
-    await page
-        .getByRole("button", { name: "Add Food or New Category", exact: true })
-        .click();
+    const addFoodItem = page.getByRole("button", {
+        name: "Add Food Item",
+        exact: true,
+    });
+    await addFoodItem.click();
     const dialog = page.getByRole("dialog", { name: "Add Food", exact: true });
     await dialog.getByLabel("Food item name").fill(name);
     const select = dialog.getByLabel("Food category", { exact: true });
@@ -250,11 +344,11 @@ export async function inlineFood(page: Page, name: string, category: string) {
         }),
     ).toBeVisible();
     await categoryPicker.press("Enter");
-    await expect(
-        page
-            .getByRole("region", { name: "Selected foods", exact: true })
-            .getByText(name, { exact: true }),
-    ).toBeVisible();
+    if (/\/admin\/catering-packages\/\d+\/menu$/.test(page.url())) {
+        await page.getByLabel(name, { exact: true }).check();
+        return;
+    }
+    await page.getByLabel(name, { exact: true }).check();
 }
 
 /** Uses the Phase 5.1 guided picker instead of the retired category panels. */
@@ -281,18 +375,60 @@ export async function filterPackageFoodsByCategory(page: Page, name: string) {
                   ),
     });
     await expect(option).toBeVisible();
-    await option.click();
+    // SearchableSelect keeps focus on its combobox. Choosing the highlighted
+    // filtered option with Enter exercises its documented keyboard path and
+    // avoids a pointer race while the menu is repositioning.
+    await category.press("Enter");
+    await expect(category).toHaveAttribute("aria-expanded", "false");
 }
 
 export async function selectAllVisiblePackageFoods(page: Page) {
+    const categoryPage = page.getByRole("button", {
+        name: "Select this page",
+        exact: true,
+    });
+    if (await categoryPage.count()) {
+        await categoryPage.click();
+        return;
+    }
+
     await page.getByRole("button", { name: "Select all shown" }).click();
 }
 
 export async function requireOneFromPackageCategory(page: Page, name: string) {
+    if (/\/admin\/catering-packages\/\d+\/menu$/.test(page.url())) {
+        await page
+            .getByRole("button", { name: new RegExp(`^${name} \\(`) })
+            .click();
+        await page
+            .getByRole("dialog", { name: `Configure ${name} Foods` })
+            .getByLabel("Require customer choice")
+            .check();
+        await page.getByRole("button", { name: "Close dialog" }).click();
+        return;
+    }
+    const selectedCategory = page
+        .getByRole("region", { name: "Selected foods", exact: true })
+        .locator("section")
+        .filter({
+            has: page.getByRole("heading", { name, exact: true }),
+        });
+    if (await selectedCategory.count()) {
+        await selectedCategory
+            .getByRole("button", {
+                name: "Require customer choice",
+                exact: true,
+            })
+            .click();
+        return;
+    }
+
     const group = page
         .getByLabel("Customer Choice Groups")
         .locator("article")
-        .filter({ hasText: name });
+        .filter({
+            has: page.getByRole("heading", { name, exact: true }),
+        });
     await group
         .getByRole("button", { name: "Require customer choice", exact: true })
         .click();

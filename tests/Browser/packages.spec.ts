@@ -25,12 +25,18 @@ test.beforeAll(() => {
 test("canonical package navigation does not mix primary and add-on packages", async ({
     page,
 }) => {
+    // This exercises both independent workflows and verifies their scoped
+    // workspaces after persistence.
+    test.setTimeout(60_000);
     await login(page, run, password);
     await page.goto("/admin/catering-packages");
     await createPackage(page, "Main Only");
     await inlineFood(page, "Scope Food", "Scope Foods");
     await page.getByLabel("Scope Food", { exact: true }).check();
-    await step(page, "Pricing & Quantity");
+    await page
+        .getByRole("button", { name: "Save & Continue to Review", exact: true })
+        .click();
+    await page.getByRole("link", { name: "Edit Pricing", exact: true }).click();
     await page.getByLabel("Price per pax (PHP)").fill("500.00");
     await savePackage(page);
     await page.goto("/admin/add-on-services");

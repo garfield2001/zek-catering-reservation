@@ -13,6 +13,7 @@ import type { FoodUsageRow } from "../../../features/catalog/components/food-usa
 import { useLiveFilters } from "../../../features/catalog/use-live-filters";
 import type { FoodCategory, FoodItem } from "../../../features/catalog/types";
 import { PaginationControls } from "../../../components/ui/pagination";
+import { SearchableSelect } from "../../../components/ui/searchable-select";
 import { MeasurementUnitManager } from "../../../features/catalog/components/measurement-unit-manager";
 import type { Pagination } from "../../../types";
 
@@ -35,6 +36,7 @@ export default function FoodCatalog({
         category?: string;
         status?: string;
         sort?: string;
+        direction?: string;
         per_page?: string;
     };
     canManage: boolean;
@@ -82,10 +84,33 @@ export default function FoodCatalog({
             q: initial.q ?? "",
             category: String(initial.category ?? ""),
             status: initial.status ?? "",
-            sort: initial.sort ?? "name_asc",
-            per_page: initial.per_page ?? "24",
+            sort: initial.sort === "name_desc" ? "name" : (initial.sort ?? ""),
+            direction:
+                initial.direction ??
+                (initial.sort === "name_desc" ? "desc" : ""),
+            per_page: initial.per_page ?? "5",
         },
     );
+    const currentSort = ["name", "category", "availability"].includes(
+        filters.sort,
+    )
+        ? (filters.sort as "name" | "category" | "availability")
+        : undefined;
+    const currentDirection =
+        filters.direction === "asc" || filters.direction === "desc"
+            ? filters.direction
+            : undefined;
+    const cycleSort = (column: "name" | "category" | "availability") => {
+        if (currentSort !== column) {
+            setFilters({ ...filters, sort: column, direction: "asc" });
+            return;
+        }
+        if (currentDirection === "asc") {
+            setFilters({ ...filters, direction: "desc" });
+            return;
+        }
+        setFilters({ ...filters, sort: "", direction: "" });
+    };
     const changeView = (next: "list" | "grid") => {
         setView(next);
         window.localStorage.setItem("catalog-food-view", next);
@@ -162,7 +187,7 @@ export default function FoodCatalog({
                 </div>
             </div>
             <section
-                className="mb-6 grid gap-3 rounded-xl border bg-white p-4 sm:grid-cols-[minmax(0,2fr)_1fr_1fr_1fr_1fr_auto]"
+                className="mb-6 grid gap-3 rounded-xl border bg-white p-4 sm:grid-cols-[minmax(0,2fr)_1fr_1fr_auto]"
                 aria-label="Food filters"
             >
                 <label className="text-xs font-medium text-slate-600">
@@ -188,25 +213,21 @@ export default function FoodCatalog({
                 </label>
                 <label className="text-xs font-medium text-slate-600">
                     Category
-                    <select
-                        className="mt-1"
+                    <SearchableSelect
+                        id="catalog-category"
                         value={filters.category}
-                        onChange={(event) =>
-                            setFilters({
-                                ...filters,
-                                category: event.target.value,
-                            })
+                        placeholder="All Foods"
+                        onChange={(value) =>
+                            setFilters({ ...filters, category: value })
                         }
-                    >
-                        <option value="">All Foods</option>
-                        {categories.map((category) => (
-                            <option key={category.id} value={category.id}>
-                                {category.name} ({category.dishes_count ?? 0}{" "}
-                                total)
-                                {!category.active ? " · Inactive" : ""}
-                            </option>
-                        ))}
-                    </select>
+                        options={[
+                            { value: "", label: "All Foods" },
+                            ...categories.map((category) => ({
+                                value: category.id,
+                                label: `${category.name} (${category.dishes_count ?? 0} total)${category.active ? "" : " · Inactive"}`,
+                            })),
+                        ]}
+                    />
                 </label>
                 <label className="text-xs font-medium text-slate-600">
                     Availability
@@ -227,41 +248,6 @@ export default function FoodCatalog({
                         </option>
                     </select>
                 </label>
-                <label className="text-xs font-medium text-slate-600">
-                    Sort
-                    <select
-                        className="mt-1"
-                        value={filters.sort}
-                        onChange={(event) =>
-                            setFilters({
-                                ...filters,
-                                sort: event.target.value,
-                            })
-                        }
-                    >
-                        <option value="name_asc">Name A–Z</option>
-                        <option value="name_desc">Name Z–A</option>
-                        <option value="recent">Recently updated</option>
-                        <option value="category">Category</option>
-                    </select>
-                </label>
-                <label className="text-xs font-medium text-slate-600">
-                    Per page
-                    <select
-                        className="mt-1"
-                        value={filters.per_page}
-                        onChange={(event) =>
-                            setFilters({
-                                ...filters,
-                                per_page: event.target.value,
-                            })
-                        }
-                    >
-                        <option value="12">12 foods</option>
-                        <option value="24">24 foods</option>
-                        <option value="48">48 foods</option>
-                    </select>
-                </label>
                 <Button
                     className="self-end"
                     variant="ghost"
@@ -270,7 +256,8 @@ export default function FoodCatalog({
                             q: "",
                             category: "",
                             status: "",
-                            sort: "name_asc",
+                            sort: "",
+                            direction: "",
                             per_page: filters.per_page,
                         })
                     }
@@ -306,6 +293,9 @@ export default function FoodCatalog({
                         onEdit={(food) =>
                             setEditor({ kind: "food", item: food })
                         }
+                        sort={currentSort}
+                        direction={currentDirection}
+                        onSort={cycleSort}
                     />
                 ) : (
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),280px))] gap-5">
@@ -348,7 +338,38 @@ export default function FoodCatalog({
                         </Link>
                     </p>
                 )}
-            <PaginationControls {...items} />
+            {view === "list" ? (
+                <div className="mt-4 flex flex-wrap items-end justify-between gap-4 rounded-xl border bg-white p-4 text-sm">
+                    <label className="font-medium text-slate-700">
+                        Rows per page
+                        <select
+                            className="mt-1"
+                            value={filters.per_page}
+                            onChange={(event) =>
+                                setFilters({
+                                    ...filters,
+                                    per_page: event.target.value,
+                                })
+                            }
+                        >
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="30">30</option>
+                            <option value="50">50</option>
+                            <option value="all">All</option>
+                        </select>
+                    </label>
+                    <div className="flex flex-wrap items-center gap-4">
+                        <span>
+                            Showing {items.data.length} of {items.total}{" "}
+                            matching foods
+                        </span>
+                        <PaginationControls {...items} />
+                    </div>
+                </div>
+            ) : (
+                <PaginationControls {...items} />
+            )}
             <details className="mt-8 rounded-xl border bg-white p-4">
                 <summary className="cursor-pointer font-medium">
                     Catalog Settings

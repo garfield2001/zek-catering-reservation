@@ -121,7 +121,7 @@ export function PackageCards({
                                         {draft &&
                                         !product.current_version_id &&
                                         !draft.total_selection_count
-                                            ? "Continue Setup"
+                                            ? "Complete Configuration"
                                             : "Edit Package"}
                                     </Link>
                                 )}

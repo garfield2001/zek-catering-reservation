@@ -256,7 +256,10 @@ test("inline food and unit plus package save work after login without losing par
                 "/admin/packages/configurations",
     );
     await page.getByRole("button", { name: "Save Draft", exact: true }).click();
-    expect((await saved).ok()).toBe(true);
+    // Inertia follows the normal Laravel redirect after a successful package
+    // save. Assert that redirect explicitly instead of treating a 302 as an
+    // HTTP failure.
+    expect((await saved).status()).toBe(302);
     await expect(
         page.getByRole("heading", { name: "Inline Session Package" }),
     ).toBeVisible();
@@ -321,9 +324,11 @@ test("expired page service save gives a clear error and creates no record", asyn
         .getByRole("button", { name: "Create Service", exact: true })
         .click();
     expect((await failed).status()).toBe(419);
-    await expect(page.getByRole("alert")).toContainText(
-        "Sign in in another tab",
-    );
+    await expect(
+        page.getByText(
+            "Your session has expired. Refresh the page and sign in again.",
+        ),
+    ).toBeVisible();
     await expect(page.getByLabel("Service name")).toHaveValue(
         "Expired Service",
     );

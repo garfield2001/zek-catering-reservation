@@ -6,8 +6,6 @@ import {
     addCategory,
     addFood,
     inlineFood,
-    step,
-    savePackage,
     reviewResponsive,
 } from "./workflow";
 
@@ -90,7 +88,7 @@ test("food upload preview, viewer, replacement, invalid content and removal pers
     ).toBeVisible();
 });
 
-test("wizard gates required fields, retains backward edits and explicitly fixed food", async ({
+test("routed Main Catering editor persists details, pricing, menu and fixed foods", async ({
     page,
 }) => {
     await login(page, run, password);
@@ -98,29 +96,47 @@ test("wizard gates required fields, retains backward edits and explicitly fixed 
     await page
         .getByRole("link", { name: "Create Package", exact: true })
         .click();
-    await page.getByRole("button", { name: "Next: Menu" }).click();
     await expect(
         page.getByLabel("Package Name", { exact: true }),
     ).toBeVisible();
+    await expect(
+        page.getByRole("navigation", { name: "Package setup steps" }),
+    ).toHaveCount(0);
+    await expect(
+        page.getByText("Choose a Food Category to browse eligible Food Items."),
+    ).toHaveCount(0);
     await page
         .getByLabel("Package Name", { exact: true })
         .fill("Explicit Fixed Package");
-    await page.getByRole("button", { name: "Next: Menu" }).click();
-    await inlineFood(page, "Choice A", "Choice Foods");
-    await inlineFood(page, "Choice B", "Choice Foods");
-    await page.getByLabel("Choice A", { exact: true }).check();
-    await page.getByLabel("Choice B", { exact: true }).check();
-    await page.getByLabel("Always include Choice A", { exact: true }).check();
-    await page.getByLabel("Total included food selections").fill("2");
-    await step(page, "Details");
-    await expect(page.getByLabel("Package Name", { exact: true })).toHaveValue(
-        "Explicit Fixed Package",
-    );
-    await step(page, "Menu");
-    await expect(page.getByLabel("Choice B", { exact: true })).toBeChecked();
+    await page.getByRole("button", { name: "Save Details & Continue" }).click();
+    await expect(page).toHaveURL(/\/pricing$/);
+    await page.getByLabel("Price per pax (PHP)").fill("500.00");
+    await page.getByRole("button", { name: "Save & Continue to Menu" }).click();
+    await expect(page).toHaveURL(/\/menu$/);
     await expect(
-        page.getByLabel("Always include Choice A", { exact: true }),
-    ).toBeChecked();
+        page.getByText("Choose a Food Category to browse eligible Food Items."),
+    ).toBeVisible();
+    await inlineFood(page, "Choice A", "Included Foods");
+    await inlineFood(page, "Choice B", "Choice Foods");
+    await page.getByRole("button", { name: "Included Foods (1)" }).click();
+    const includedFoods = page.getByRole("dialog", {
+        name: "Configure Included Foods Foods",
+    });
+    await includedFoods
+        .getByLabel("Always include Choice A", { exact: true })
+        .check();
+    await includedFoods.getByRole("button", { name: "Close dialog" }).click();
+    await page.getByLabel("Total included food selections").fill("2");
+    await page.getByRole("button", { name: "Choice Foods (1)" }).click();
+    const choiceFoods = page.getByRole("dialog", {
+        name: "Configure Choice Foods Foods",
+    });
+    await choiceFoods.getByLabel("Require customer choice").check();
+    await expect(choiceFoods.getByLabel("Customer must choose")).toHaveValue(
+        "1",
+    );
+    await choiceFoods.getByRole("button", { name: "Close dialog" }).click();
+    await expect(page.getByLabel("Choice B", { exact: true })).toBeChecked();
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({
         path: "test-results/mobile-package-menu.png",
@@ -131,10 +147,14 @@ test("wizard gates required fields, retains backward edits and explicitly fixed 
             () => document.documentElement.scrollWidth <= window.innerWidth,
         ),
     ).toBe(true);
-    await step(page, "Pricing & Quantity");
-    await page.getByLabel("Price per pax (PHP)").fill("500.00");
-    await savePackage(page);
-    await page.reload();
+    await page
+        .getByRole("button", { name: "Save & Continue to Review" })
+        .click();
+    await expect(page).toHaveURL(/\/review$/);
+    await page
+        .getByRole("link", { name: "Save Draft & Return", exact: true })
+        .click();
+    await expect(page).toHaveURL(/\/admin\/catering-packages\/\d+$/);
     await expect(
         page.getByRole("heading", { name: "Saved Draft", exact: true }),
     ).toBeVisible();
@@ -151,6 +171,20 @@ test("wizard gates required fields, retains backward edits and explicitly fixed 
     await expect(
         page.getByRole("button", { name: "View Details", exact: true }),
     ).toBeFocused();
+    await page.getByRole("link", { name: "Edit Package", exact: true }).click();
+    await expect(
+        page.getByRole("navigation", { name: "Package setup steps" }),
+    ).toHaveCount(0);
+    await page
+        .getByRole("link", { name: "Menu Configuration", exact: true })
+        .click();
+    await page.getByRole("button", { name: "Choice Foods (1)" }).click();
+    await expect(
+        page.getByRole("dialog", {
+            name: "Configure Choice Foods Foods",
+        }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Always include Choice B")).toBeChecked();
 });
 
 test("grouped individual selling options publish, isolate revisions, restore history and archive", async ({

@@ -46,9 +46,13 @@ test("inline category creation, contextual food dialog and mobile keyboard navig
     await expect(
         page.getByRole("heading", { name: "Steamed Rice", exact: true }),
     ).toBeVisible();
-    await page
-        .getByRole("combobox", { name: "Category", exact: true })
-        .selectOption({ label: "Staples (1 total)" });
+    const categoryFilter = page.locator("#catalog-category");
+    await categoryFilter.click();
+    await categoryFilter.fill("Staples");
+    await expect(
+        page.getByRole("option", { name: /^Staples \(1 total\)$/ }),
+    ).toBeVisible();
+    await categoryFilter.press("Enter");
     await expect(page).toHaveURL(/category=/);
     const add = page.getByRole("button", {
         name: "Add Food Item",

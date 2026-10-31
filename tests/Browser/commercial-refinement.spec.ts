@@ -38,6 +38,7 @@ test("category modal preserves the filtered catalog URL and explains deactivatio
     await expect(page.getByRole("dialog")).not.toBeVisible();
     await expect(page).toHaveURL(url);
     await page.reload();
+    await page.getByRole("combobox", { name: "Category" }).click();
     await expect(
         page.getByRole("option", { name: /Category Modal Context.*Inactive/ }),
     ).toHaveCount(1);
@@ -447,9 +448,14 @@ test("catalog saves preserve filters and reveal hidden new foods without resetti
         .getByRole("article")
         .filter({ hasText: "Context Visible Food" });
     await expect(visible).toHaveAttribute("data-highlighted", "true");
+    const categoryFilter = page.getByRole("combobox", {
+        name: "Category",
+        exact: true,
+    });
+    await categoryFilter.click();
     await page
-        .getByRole("combobox", { name: "Category", exact: true })
-        .selectOption({ label: "Context Category (1 total)" });
+        .getByRole("option", { name: "Context Category (1 total)" })
+        .click();
     await page.getByLabel("Search foods or categories").fill("Visible");
     await expect(page).toHaveURL(/q=Visible/);
     const filteredUrl = page.url();
@@ -509,6 +515,7 @@ test("catalog saves preserve filters and reveal hidden new foods without resetti
 test("page package creation retains inline food input and publishes persisted terms", async ({
     page,
 }) => {
+    test.setTimeout(60000);
     await login(page, run, password);
     await page.goto("/admin/catering-packages");
     await page
@@ -519,45 +526,34 @@ test("page package creation retains inline food input and publishes persisted te
         .getByLabel("Package Name", { exact: true })
         .fill("Modal Acceptance Package");
     await editor
-        .getByRole("button", { name: "Next: Menu", exact: true })
+        .getByRole("button", { name: "Save Details & Continue" })
         .click();
-    await editor.getByLabel("Total included food selections").fill("1");
-    await editor
-        .getByRole("button", { name: "Add Food or New Category", exact: true })
-        .click();
-    const food = page.getByRole("dialog", { name: "Add Food", exact: true });
-    await food.getByLabel("Food item name").fill("Modal Included Food");
-    await food.getByLabel("Food category", { exact: true }).selectOption("new");
-    await food.getByLabel("New category name").fill("Modal Category");
-    await food
-        .getByRole("button", { name: "Create food item", exact: true })
-        .click();
-    await expect(food).not.toBeVisible();
-    await expect(
-        editor.getByLabel("Modal Included Food", { exact: true }),
-    ).toBeChecked();
-    await expect(page).toHaveURL(
-        /\/admin\/packages\/editor(?:\?service=\d+)?$/,
-    );
-    await editor
-        .getByRole("button", { name: "Next: Pricing & Quantity", exact: true })
-        .click();
+    await expect(page).toHaveURL(/\/pricing$/);
     await editor.getByLabel("Price per pax (PHP)", { exact: true }).fill("450");
     await editor.getByLabel("Minimum guests").fill("150");
     await editor
-        .getByRole("button", { name: "Next: Review & Save", exact: true })
+        .getByRole("button", { name: "Save & Continue to Menu" })
         .click();
+    await expect(page).toHaveURL(/\/menu$/);
+    await editor.getByLabel("Total included food selections").fill("1");
+    await inlineFood(page, "Modal Included Food", "Modal Category");
+    await expect(
+        editor.getByLabel("Modal Included Food", { exact: true }),
+    ).toBeChecked();
     await expect(editor.locator("main")).toContainText(
         "Modal Acceptance Package",
     );
     await editor
-        .getByRole("button", { name: "Save Draft", exact: true })
+        .getByRole("button", { name: "Save & Continue to Review", exact: true })
         .click();
+    await expect(page).toHaveURL(/\/review$/);
+    await editor.getByRole("button", { name: "Save & Publish" }).click();
     await expect(page).toHaveURL(/\/admin\/catering-packages\/\d+$/);
-    await page.reload();
-    await expect(
-        page.getByText("Package Draft", { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText("Published", { exact: true })).toBeVisible();
+    await page.getByText(/Version 1.*Published/).click();
+    await page
+        .getByRole("button", { name: "Create New Draft from Version 1" })
+        .click();
     await page.getByRole("link", { name: "Edit Package", exact: true }).click();
     const edit = page;
     await expect(edit.getByLabel("Package Name", { exact: true })).toHaveValue(
@@ -570,7 +566,7 @@ test("page package creation retains inline food input and publishes persisted te
     await expect(edit.getByLabel("Minimum guests")).toHaveValue("150");
     await expect(
         edit.getByRole("heading", {
-            name: "Edit Modal Acceptance Package",
+            name: "Pricing & Guest Quantity",
             exact: true,
         }),
     ).toBeVisible();

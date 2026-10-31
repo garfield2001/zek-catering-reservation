@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\Package\CateringController;
 use App\Http\Controllers\Admin\Package\ConfigurationController;
 use App\Http\Controllers\Admin\Package\DetailsController;
 use App\Http\Controllers\Admin\Package\GroupController as PackageGroupController;
+use App\Http\Controllers\Admin\Package\MainCateringWorkflowController;
 use App\Http\Controllers\Admin\Package\PackageMenuController;
 use App\Http\Controllers\Admin\Package\PreviewController as PackagePreviewController;
 use App\Http\Controllers\Admin\Package\ProductController as PackageProductController;
@@ -99,8 +100,15 @@ Route::middleware('auth')->group(function () {
         Route::post('{listing}/versions/{version}/revise', [ListingPublicationController::class, 'revise'])->name('revise');
     });
     Route::get('/admin/catering-packages', [CateringController::class, 'index'])->name('catering.index');
-    Route::get('/admin/catering-packages/create', [CateringController::class, 'create'])->name('catering.create');
-    Route::post('/admin/catering-packages', [CateringController::class, 'store'])->name('catering.store');
+    Route::get('/admin/catering-packages/create', [MainCateringWorkflowController::class, 'create'])->name('catering.create');
+    Route::post('/admin/catering-packages', [MainCateringWorkflowController::class, 'store'])->name('catering.store');
+    Route::get('/admin/catering-packages/{product}/details', [MainCateringWorkflowController::class, 'details'])->name('catering.details');
+    Route::put('/admin/catering-packages/{product}/details', [MainCateringWorkflowController::class, 'updateDetails'])->name('catering.details.update');
+    Route::get('/admin/catering-packages/{product}/pricing', [MainCateringWorkflowController::class, 'pricing'])->name('catering.pricing');
+    Route::put('/admin/catering-packages/{product}/pricing', [MainCateringWorkflowController::class, 'updatePricing'])->name('catering.pricing.update');
+    Route::get('/admin/catering-packages/{product}/menu', [MainCateringWorkflowController::class, 'menu'])->name('catering.menu');
+    Route::put('/admin/catering-packages/{product}/menu', [MainCateringWorkflowController::class, 'updateMenu'])->name('catering.menu.update');
+    Route::get('/admin/catering-packages/{product}/review', [MainCateringWorkflowController::class, 'review'])->name('catering.review');
     Route::get('/admin/catering-packages/{product}', [PackageProductController::class, 'workspace'])->name('catering.show');
     Route::prefix('admin/catalog')->name('catalog.')->scopeBindings()->group(function () {
         Route::get('deactivation-impact/{kind}/{id}', DeactivationImpactController::class)->whereNumber('id')->name('deactivation-impact');

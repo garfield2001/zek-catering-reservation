@@ -95,6 +95,7 @@ export function CompletePackageForm({
         setMeasurementUnits(units);
     const main = family.behavior_type === "main_package",
         bundle = family.behavior_type === "fixed_bundle";
+    const singlePage = main;
     const form = useForm<PackageFormData>({
         ...initialMenu(version),
         food_sizes: foodSizes,
@@ -137,6 +138,42 @@ export function CompletePackageForm({
     );
     const panel = useRef<HTMLDivElement>(null);
     const summary = menuSummary(form.data, foods, bundle);
+    const pricingFields = (
+        <>
+            <PricingFields
+                sources={quantitySources}
+                data={form.data}
+                onChange={(values) =>
+                    form.setData((current) => ({
+                        ...current,
+                        ...values,
+                    }))
+                }
+                main={main}
+                configurable={family.behavior_type === "package"}
+                purchaseLabel={
+                    !main && form.data.presentation
+                        ? purchasedUnit(
+                              form.data.presentation,
+                              measurementUnits,
+                          )
+                        : undefined
+                }
+                legacySplit={
+                    version?.selection_policy === "split" &&
+                    !form.data.presentation
+                }
+                disabled={!canPrice}
+            />
+            {singlePage && (
+                <p className="text-sm text-slate-600">
+                    Minimum{" "}
+                    {form.data.minimum_quantity || "guest count not set"}.
+                    Increase in groups of {form.data.quantity_step || "1"}.
+                </p>
+            )}
+        </>
+    );
     const validStep = () => {
         const fields = panel.current?.querySelectorAll<
             HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -173,6 +210,23 @@ export function CompletePackageForm({
         setNotice("");
         setStep(next);
         setFurthest(Math.max(furthest, next));
+    };
+    const savePackageDetailsDraft = () => {
+        if (processing || product) return;
+        setNotice("");
+        form.clearErrors();
+        form.transform((data) => ({
+            name: data.name,
+            description: data.description || null,
+            active: data.active,
+            creation_token: data.creation_token!,
+        }));
+        form.post("/admin/catering-packages", {
+            onError: () =>
+                setNotice(
+                    "The package details were not saved. Correct the highlighted fields and try again.",
+                ),
+        });
     };
     const save = async (publish = false) => {
         if (processing) return;
@@ -234,7 +288,7 @@ export function CompletePackageForm({
             onError: () => {
                 setPublishConfirmation(false);
                 setNotice(
-                    "Nothing was saved. Review the errors below and correct the applicable step.",
+                    "Nothing was saved. Review the highlighted fields and correct the applicable section.",
                 );
             },
         };
@@ -261,32 +315,37 @@ export function CompletePackageForm({
                         creates or updates a separate Draft.
                     </p>
                 )}
-                <nav
-                    aria-label="Package setup steps"
-                    className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4"
-                >
-                    {steps.map((label, index) => (
-                        <button
-                            key={label}
-                            type="button"
-                            aria-current={step === index ? "step" : undefined}
-                            disabled={
-                                processing || (!product && index > furthest + 1)
-                            }
-                            onClick={() => go(index)}
-                            className={`rounded-lg px-3 py-3 text-sm font-semibold disabled:opacity-40 ${step === index ? "bg-emerald-800 text-white" : "bg-stone-100 text-stone-700"}`}
-                        >
-                            {index + 1}. {label}
-                            <span className="block text-xs font-normal">
-                                {index < furthest
-                                    ? "Visited · not yet saved"
-                                    : index > furthest + 1 && !product
-                                      ? "Complete earlier steps first"
-                                      : ""}
-                            </span>
-                        </button>
-                    ))}
-                </nav>
+                {!singlePage && (
+                    <nav
+                        aria-label="Package setup steps"
+                        className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4"
+                    >
+                        {steps.map((label, index) => (
+                            <button
+                                key={label}
+                                type="button"
+                                aria-current={
+                                    step === index ? "step" : undefined
+                                }
+                                disabled={
+                                    processing ||
+                                    (!product && index > furthest + 1)
+                                }
+                                onClick={() => go(index)}
+                                className={`rounded-lg px-3 py-3 text-sm font-semibold disabled:opacity-40 ${step === index ? "bg-emerald-800 text-white" : "bg-stone-100 text-stone-700"}`}
+                            >
+                                {index + 1}. {label}
+                                <span className="block text-xs font-normal">
+                                    {index < furthest
+                                        ? "Visited · not yet saved"
+                                        : index > furthest + 1 && !product
+                                          ? "Complete earlier steps first"
+                                          : ""}
+                                </span>
+                            </button>
+                        ))}
+                    </nav>
+                )}
                 {notice && (
                     <p
                         role="alert"
@@ -304,8 +363,11 @@ export function CompletePackageForm({
                         {error}
                     </p>
                 ))}
-                <div ref={panel}>
-                    {step === 0 && (
+                <div
+                    ref={panel}
+                    className={singlePage ? "space-y-8" : undefined}
+                >
+                    {(singlePage || step === 0) && (
                         <section
                             className="space-y-5"
                             aria-label="Package details"
@@ -340,6 +402,30 @@ export function CompletePackageForm({
                                     }
                                 />
                             </Field>
+                            {!product && (
+                                <div className="rounded-xl bg-slate-50 p-4 text-sm">
+                                    <p className="font-medium">
+                                        Save an unfinished Draft
+                                    </p>
+                                    <p className="mt-1 text-slate-600">
+                                        Save the package name and description
+                                        now, then continue its pricing and menu
+                                        configuration later. Unsaved menu and
+                                        pricing entries remain on this page
+                                        until the complete Save Draft action is
+                                        used.
+                                    </p>
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        className="mt-3"
+                                        disabled={processing}
+                                        onClick={savePackageDetailsDraft}
+                                    >
+                                        Save package details as Draft
+                                    </Button>
+                                </div>
+                            )}
                             {!main && serviceFormatOwned && (
                                 <section
                                     aria-label="Inherited service presentation"
@@ -433,115 +519,128 @@ export function CompletePackageForm({
                             />
                         </details>
                     )}
-                    {step === 1 && (
-                        <MenuFields
-                            data={form.data}
-                            onChange={(values) =>
-                                form.setData((current) => ({
-                                    ...current,
-                                    ...values,
-                                }))
+                    {singlePage && (
+                        <section
+                            aria-label="Pricing and guest quantity"
+                            className="space-y-5 border-t pt-8"
+                        >
+                            <h2 className="text-xl font-semibold">
+                                Pricing & Guest Quantity
+                            </h2>
+                            {pricingFields}
+                        </section>
+                    )}
+                    {(singlePage || step === 1) && (
+                        <section
+                            aria-label="Menu configuration"
+                            className={
+                                singlePage
+                                    ? "space-y-5 border-t pt-8"
+                                    : undefined
                             }
-                            categories={categories}
-                            foods={foods}
-                            main={main}
-                            bundle={bundle}
-                            packed={form.data.price_basis === "per_pack"}
-                            canPrice={canPrice}
-                            renderFoodConfiguration={(food, fixed) => (
-                                <>
-                                    <FoodConfiguration
-                                        food={food}
-                                        fixed={fixed}
-                                        bundle={bundle}
-                                        packed={
-                                            form.data.price_basis === "per_pack"
-                                        }
-                                        detail={
-                                            form.data.food_details[food.id] ??
-                                            emptyFoodDetail()
-                                        }
-                                        sizes={form.data.food_sizes[food.id]}
-                                        servingDefault={
-                                            form.data.serving_default
-                                        }
-                                        units={measurementUnits}
-                                        canPrice={canPrice}
-                                        presentation={form.data.presentation}
-                                        onUnitCreated={addUnit}
-                                        onUnitsChanged={replaceUnits}
-                                        onChange={(detail, sizes) =>
-                                            form.setData((current) => {
-                                                const foodSizes = {
-                                                    ...current.food_sizes,
-                                                };
-                                                if (sizes)
-                                                    foodSizes[food.id] = sizes;
-                                                else delete foodSizes[food.id];
-                                                return {
-                                                    ...current,
-                                                    food_details: {
-                                                        ...current.food_details,
-                                                        [food.id]: detail,
-                                                    },
-                                                    food_sizes: foodSizes,
-                                                };
-                                            })
-                                        }
-                                    >
-                                        <FoodPresentationFields
+                        >
+                            {singlePage && (
+                                <h2 className="text-xl font-semibold">
+                                    Menu Configuration
+                                </h2>
+                            )}
+                            <MenuFields
+                                data={form.data}
+                                onChange={(values) =>
+                                    form.setData((current) => ({
+                                        ...current,
+                                        ...values,
+                                    }))
+                                }
+                                categories={categories}
+                                foods={foods}
+                                main={main}
+                                bundle={bundle}
+                                packed={form.data.price_basis === "per_pack"}
+                                canPrice={canPrice}
+                                renderFoodConfiguration={(food, fixed) => (
+                                    <>
+                                        <FoodConfiguration
                                             food={food}
-                                            value={form.data.presentation}
+                                            fixed={fixed}
+                                            bundle={bundle}
+                                            packed={
+                                                form.data.price_basis ===
+                                                "per_pack"
+                                            }
+                                            detail={
+                                                form.data.food_details[
+                                                    food.id
+                                                ] ?? emptyFoodDetail()
+                                            }
+                                            sizes={
+                                                form.data.food_sizes[food.id]
+                                            }
+                                            servingDefault={
+                                                form.data.serving_default
+                                            }
                                             units={measurementUnits}
+                                            canPrice={canPrice}
+                                            presentation={
+                                                form.data.presentation
+                                            }
                                             onUnitCreated={addUnit}
                                             onUnitsChanged={replaceUnits}
-                                            onChange={(value) =>
-                                                form.setData(
-                                                    "presentation",
-                                                    value,
-                                                )
+                                            onChange={(detail, sizes) =>
+                                                form.setData((current) => {
+                                                    const foodSizes = {
+                                                        ...current.food_sizes,
+                                                    };
+                                                    if (sizes)
+                                                        foodSizes[food.id] =
+                                                            sizes;
+                                                    else
+                                                        delete foodSizes[
+                                                            food.id
+                                                        ];
+                                                    return {
+                                                        ...current,
+                                                        food_details: {
+                                                            ...current.food_details,
+                                                            [food.id]: detail,
+                                                        },
+                                                        food_sizes: foodSizes,
+                                                    };
+                                                })
                                             }
-                                        />
-                                    </FoodConfiguration>
-                                </>
-                            )}
-                            onAddFood={
-                                canCreateFood
-                                    ? (id) => setFoodCategory(id ?? null)
-                                    : undefined
-                            }
-                        />
+                                        >
+                                            <FoodPresentationFields
+                                                food={food}
+                                                value={form.data.presentation}
+                                                units={measurementUnits}
+                                                onUnitCreated={addUnit}
+                                                onUnitsChanged={replaceUnits}
+                                                onChange={(value) =>
+                                                    form.setData(
+                                                        "presentation",
+                                                        value,
+                                                    )
+                                                }
+                                            />
+                                        </FoodConfiguration>
+                                    </>
+                                )}
+                                onAddFood={
+                                    canCreateFood
+                                        ? (id) => setFoodCategory(id ?? null)
+                                        : undefined
+                                }
+                            />
+                        </section>
                     )}
-                    {step === 2 && (
-                        <PricingFields
-                            sources={quantitySources}
-                            data={form.data}
-                            onChange={(values) =>
-                                form.setData((current) => ({
-                                    ...current,
-                                    ...values,
-                                }))
-                            }
-                            main={main}
-                            configurable={family.behavior_type === "package"}
-                            purchaseLabel={
-                                !main && form.data.presentation
-                                    ? purchasedUnit(
-                                          form.data.presentation,
-                                          measurementUnits,
-                                      )
-                                    : undefined
-                            }
-                            legacySplit={
-                                version?.selection_policy === "split" &&
-                                !form.data.presentation
-                            }
-                            disabled={!canPrice}
-                        />
-                    )}
-                    {step === 3 && (
+                    {!singlePage && step === 2 && <>{pricingFields}</>}
+                    {(singlePage || step === 3) && (
                         <section
-                            className="space-y-4"
+                            className={
+                                singlePage
+                                    ? "space-y-4 border-t pt-8"
+                                    : "space-y-4"
+                            }
                             aria-label="Review package"
                         >
                             <PackageReview
@@ -578,25 +677,27 @@ export function CompletePackageForm({
                         </section>
                     )}
                 </div>
-                <div className="mt-6 flex justify-between border-t pt-4">
-                    <button
-                        type="button"
-                        disabled={step === 0 || processing}
-                        onClick={() => go(step - 1)}
-                        className="rounded-lg px-4 py-2 text-sm text-emerald-800 disabled:invisible"
-                    >
-                        Previous
-                    </button>
-                    {step < 3 && (
-                        <Button
+                {!singlePage && (
+                    <div className="mt-6 flex justify-between border-t pt-4">
+                        <button
                             type="button"
-                            disabled={processing}
-                            onClick={() => go(step + 1)}
+                            disabled={step === 0 || processing}
+                            onClick={() => go(step - 1)}
+                            className="rounded-lg px-4 py-2 text-sm text-emerald-800 disabled:invisible"
                         >
-                            Next: {steps[step + 1]}
-                        </Button>
-                    )}
-                </div>
+                            Previous
+                        </button>
+                        {step < 3 && (
+                            <Button
+                                type="button"
+                                disabled={processing}
+                                onClick={() => go(step + 1)}
+                            >
+                                Next: {steps[step + 1]}
+                            </Button>
+                        )}
+                    </div>
+                )}
             </div>
             <Modal
                 open={foodCategory !== undefined}
@@ -618,15 +719,9 @@ export function CompletePackageForm({
                                 ),
                                 food,
                             ]);
-                            form.setData("food_item_ids", [
-                                ...new Set([
-                                    ...form.data.food_item_ids,
-                                    food.id,
-                                ]),
-                            ]);
                         }
                         toast.success(
-                            "Food Item created. Your package remains unsaved.",
+                            "Food Item created. Select it explicitly when you are ready to add it to this package.",
                         );
                     }}
                     dish={null}

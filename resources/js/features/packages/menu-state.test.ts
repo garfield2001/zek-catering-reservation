@@ -7,6 +7,22 @@ const foods = [
     { id: 3, name: "Drink", category_id: 2 },
 ];
 describe("menu feedback", () => {
+    it("restores a server-promoted singleton as an Always Included food", () => {
+        const data = initialMenu({
+            food_items: [
+                {
+                    id: 1,
+                    name: "Rice A",
+                    category_id: 1,
+                    pivot: { is_fixed: true, always_include: false },
+                },
+            ],
+            required_categories: [],
+        });
+
+        expect(data.food_details[1].is_fixed).toBe(true);
+    });
+
     it("keeps Always Included foods separate from category customer choices", () => {
         const data = {
             ...initialMenu(),

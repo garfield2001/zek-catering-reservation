@@ -17,6 +17,7 @@ it("closes an unchanged dialog without a discard prompt", () => {
             <Form />
         </Modal>,
     );
+    expect(screen.getByRole("dialog").className).toContain("subtle-scroll");
     fireEvent.click(screen.getByRole("button", { name: "Close dialog" }));
     expect(close).toHaveBeenCalledOnce();
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();

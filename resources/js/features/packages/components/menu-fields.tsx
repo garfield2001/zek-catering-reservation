@@ -32,20 +32,21 @@ export function MenuFields({
     renderFoodConfiguration?: (food: MenuFood, fixed: boolean) => ReactNode;
 }) {
     const [search, setSearch] = useState("");
-    const [categoryId, setCategoryId] = useState<number | "all">("all");
+    const [categoryId, setCategoryId] = useState<number | null>(null);
     const { allowed, effectiveFixed, choiceRules, total, impossible } =
         menuSummary(data, foods, bundle);
     const visible = useMemo(() => {
         const term = search.trim().toLocaleLowerCase();
         return foods.filter(
             (food) =>
-                (categoryId === "all" || food.category_id === categoryId) &&
+                categoryId !== null &&
+                food.category_id === categoryId &&
                 (!term || food.name.toLocaleLowerCase().includes(term)),
         );
     }, [categoryId, foods, search]);
     const selected = new Set(data.food_item_ids);
     const category =
-        categoryId === "all"
+        categoryId === null
             ? null
             : (categories.find((item) => item.id === categoryId) ?? null);
     const detail = (id: number) => data.food_details[id] ?? emptyFoodDetail();
@@ -65,6 +66,12 @@ export function MenuFields({
     };
     const categoryName = (id: number) =>
         categories.find((item) => item.id === id)?.name ?? "Uncategorized";
+    const alwaysIncluded = allowed.filter(
+        (food) => bundle || detail(food.id).is_fixed,
+    );
+    const automaticallyIncluded = effectiveFixed.filter(
+        (food) => !alwaysIncluded.some((included) => included.id === food.id),
+    );
     const setChoiceRules = (
         rules: {
             category_id: number;
@@ -109,8 +116,8 @@ export function MenuFields({
                     <div>
                         <h3 className="font-semibold">Find foods</h3>
                         <p className="text-sm text-slate-600">
-                            Search eligible foods, select them, then customize
-                            only the foods that need an exception.
+                            Choose a Food Category first. Selecting a Food Item
+                            adds only that item to this package.
                         </p>
                     </div>
                     {onAddFood && (
@@ -119,7 +126,7 @@ export function MenuFields({
                             className="text-sm font-medium text-emerald-800 underline"
                             onClick={() => onAddFood(category?.id)}
                         >
-                            Add Food or New Category
+                            Add Food Item
                         </button>
                     )}
                 </div>
@@ -128,38 +135,42 @@ export function MenuFields({
                         Category
                         <SearchableSelect
                             value={categoryId}
-                            placeholder="All eligible foods"
+                            placeholder="Choose Category"
                             onChange={(value) => {
-                                setCategoryId(
-                                    value === "all" ? "all" : Number(value),
-                                );
+                                setCategoryId(value ? Number(value) : null);
                                 setSearch("");
                             }}
-                            options={[
-                                { value: "all", label: "All eligible foods" },
-                                ...categories.map((item) => ({
-                                    value: item.id,
-                                    label: `${item.name} (${foods.filter((food) => food.category_id === item.id).length})`,
-                                })),
-                            ]}
+                            options={categories.map((item) => ({
+                                value: item.id,
+                                label: `${item.name} (${foods.filter((food) => food.category_id === item.id).length})`,
+                            }))}
                         />
                     </label>
                     <label className="text-sm font-medium">
-                        Search eligible foods
+                        Search this category
                         <input
                             className="mt-1"
                             type="search"
+                            disabled={categoryId === null}
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
-                            placeholder="Type a food name"
+                            placeholder={
+                                categoryId === null
+                                    ? "Choose a category first"
+                                    : "Type a food name"
+                            }
                         />
                     </label>
                 </div>
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
                     <p aria-live="polite" className="text-slate-600">
-                        Showing {visible.length} eligible food
-                        {visible.length === 1 ? "" : "s"}
-                        {search ? " matching this search" : ""}.
+                        {categoryId === null
+                            ? "Choose a Food Category to browse eligible Food Items."
+                            : `Showing ${visible.length} eligible food${visible.length === 1 ? "" : "s"}`}
+                        {categoryId !== null && search
+                            ? " matching this search"
+                            : ""}
+                        {categoryId !== null ? "." : ""}
                     </p>
                     {!!visible.length && (
                         <div className="flex gap-3 text-emerald-800">
@@ -231,6 +242,33 @@ export function MenuFields({
                     </button>
                 </p>
             )}
+            {main && (
+                <section
+                    aria-label="Always included foods"
+                    className="rounded-2xl border bg-emerald-50 p-4"
+                >
+                    <h3 className="font-semibold">Always Included</h3>
+                    <p className="mt-1 text-sm text-slate-600">
+                        These Food Items are part of every package menu and are
+                        not offered as customer choices.
+                    </p>
+                    <p className="mt-3 text-sm">
+                        {alwaysIncluded.length
+                            ? alwaysIncluded.map((food) => food.name).join(", ")
+                            : "No Food Items are marked Always Included yet."}
+                    </p>
+                    {!!automaticallyIncluded.length && (
+                        <p className="mt-3 rounded-lg bg-white/70 p-3 text-sm text-emerald-900">
+                            Automatically included on save:{" "}
+                            {automaticallyIncluded
+                                .map((food) => food.name)
+                                .join(", ")}
+                            . Each belongs to a required Customer Choice Group
+                            with only one eligible option.
+                        </p>
+                    )}
+                </section>
+            )}
             {!bundle && (
                 <section
                     aria-label="Customer Choice Groups"
@@ -261,6 +299,14 @@ export function MenuFields({
                                     food.category_id === item.id &&
                                     !detail(food.id).is_fixed,
                             );
+                            const categoryFoods = allowed.filter(
+                                (food) => food.category_id === item.id,
+                            );
+                            const persistedSingleton =
+                                rule &&
+                                categoryFoods.length === 1 &&
+                                options.length === 0 &&
+                                detail(categoryFoods[0].id).is_fixed;
                             return (
                                 <article
                                     key={item.id}
@@ -317,86 +363,250 @@ export function MenuFields({
                                             </button>
                                         )}
                                     </div>
-                                    {rule && (
-                                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                                            <label className="text-sm font-medium">
-                                                Minimum choices
-                                                <input
-                                                    className="mt-1"
-                                                    type="number"
-                                                    min="0"
-                                                    max={options.length}
-                                                    value={rule.minimum_count}
-                                                    onChange={(event) =>
-                                                        setChoiceRules(
-                                                            choiceRules.map(
-                                                                (current) =>
-                                                                    current.category_id ===
-                                                                    item.id
-                                                                        ? {
-                                                                              ...current,
-                                                                              minimum_count:
-                                                                                  Number(
-                                                                                      event
-                                                                                          .target
-                                                                                          .value,
-                                                                                  ),
-                                                                          }
-                                                                        : current,
-                                                            ),
-                                                        )
-                                                    }
-                                                />
-                                            </label>
-                                            <label className="text-sm font-medium">
-                                                Maximum choices
-                                                <input
-                                                    className="mt-1"
-                                                    type="number"
-                                                    min="1"
-                                                    max={options.length}
-                                                    value={rule.maximum_count}
-                                                    onChange={(event) =>
-                                                        setChoiceRules(
-                                                            choiceRules.map(
-                                                                (current) =>
-                                                                    current.category_id ===
-                                                                    item.id
-                                                                        ? {
-                                                                              ...current,
-                                                                              maximum_count:
-                                                                                  Number(
-                                                                                      event
-                                                                                          .target
-                                                                                          .value,
-                                                                                  ),
-                                                                              maximum_count_explicit: true,
-                                                                          }
-                                                                        : current,
-                                                            ),
-                                                        )
-                                                    }
-                                                />
-                                            </label>
-                                            <p className="text-sm text-slate-600 sm:col-span-2">
-                                                Customers choose{" "}
-                                                {rule.minimum_count ===
-                                                rule.maximum_count
-                                                    ? `exactly ${rule.minimum_count}`
-                                                    : `${rule.minimum_count} to ${rule.maximum_count}`}{" "}
-                                                from {item.name}.
-                                            </p>
-                                            {rule.minimum_count > 0 &&
-                                                options.length === 1 && (
-                                                    <p className="text-sm text-emerald-800 sm:col-span-2">
-                                                        {options[0].name} is
-                                                        automatically included
-                                                        when this package is
-                                                        saved because it is the
-                                                        only eligible choice.
-                                                    </p>
+                                    {persistedSingleton ? (
+                                        <p
+                                            role="status"
+                                            className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900"
+                                        >
+                                            {categoryFoods[0].name} is saved as
+                                            an Always Included Food Item. This
+                                            required group has one configured
+                                            option, so customers are not asked
+                                            to make a choice.
+                                        </p>
+                                    ) : (
+                                        rule && (
+                                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                                {main &&
+                                                rule.minimum_count !==
+                                                    rule.maximum_count ? (
+                                                    <div
+                                                        role="status"
+                                                        className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-2"
+                                                    >
+                                                        <p className="font-medium">
+                                                            Legacy range
+                                                            preserved
+                                                        </p>
+                                                        <p className="mt-1">
+                                                            This Draft currently
+                                                            lets customers
+                                                            choose from{" "}
+                                                            {rule.minimum_count}{" "}
+                                                            to{" "}
+                                                            {rule.maximum_count}{" "}
+                                                            foods. It remains
+                                                            unchanged unless you
+                                                            explicitly replace
+                                                            it with an exact
+                                                            count.
+                                                        </p>
+                                                        <label className="mt-3 block font-medium">
+                                                            Replace with an
+                                                            exact customer
+                                                            choice count
+                                                            <input
+                                                                className="mt-1"
+                                                                type="number"
+                                                                min="1"
+                                                                max={
+                                                                    options.length
+                                                                }
+                                                                defaultValue=""
+                                                                placeholder={String(
+                                                                    rule.minimum_count,
+                                                                )}
+                                                                onChange={(
+                                                                    event,
+                                                                ) => {
+                                                                    if (
+                                                                        event
+                                                                            .target
+                                                                            .value ===
+                                                                        ""
+                                                                    )
+                                                                        return;
+                                                                    const count =
+                                                                        Number(
+                                                                            event
+                                                                                .target
+                                                                                .value,
+                                                                        );
+                                                                    setChoiceRules(
+                                                                        choiceRules.map(
+                                                                            (
+                                                                                current,
+                                                                            ) =>
+                                                                                current.category_id ===
+                                                                                item.id
+                                                                                    ? {
+                                                                                          ...current,
+                                                                                          minimum_count:
+                                                                                              count,
+                                                                                          maximum_count:
+                                                                                              count,
+                                                                                          maximum_count_explicit: true,
+                                                                                      }
+                                                                                    : current,
+                                                                        ),
+                                                                    );
+                                                                }}
+                                                            />
+                                                        </label>
+                                                    </div>
+                                                ) : main ? (
+                                                    <label className="text-sm font-medium">
+                                                        Customer must choose
+                                                        <input
+                                                            className="mt-1"
+                                                            type="number"
+                                                            min="1"
+                                                            max={options.length}
+                                                            value={
+                                                                rule.minimum_count
+                                                            }
+                                                            onChange={(
+                                                                event,
+                                                            ) => {
+                                                                const count =
+                                                                    Number(
+                                                                        event
+                                                                            .target
+                                                                            .value,
+                                                                    );
+                                                                setChoiceRules(
+                                                                    choiceRules.map(
+                                                                        (
+                                                                            current,
+                                                                        ) =>
+                                                                            current.category_id ===
+                                                                            item.id
+                                                                                ? {
+                                                                                      ...current,
+                                                                                      minimum_count:
+                                                                                          count,
+                                                                                      maximum_count:
+                                                                                          count,
+                                                                                      maximum_count_explicit: true,
+                                                                                  }
+                                                                                : current,
+                                                                    ),
+                                                                );
+                                                            }}
+                                                        />
+                                                    </label>
+                                                ) : (
+                                                    <>
+                                                        <label className="text-sm font-medium">
+                                                            Minimum choices
+                                                            <input
+                                                                className="mt-1"
+                                                                type="number"
+                                                                min="0"
+                                                                max={
+                                                                    options.length
+                                                                }
+                                                                value={
+                                                                    rule.minimum_count
+                                                                }
+                                                                onChange={(
+                                                                    event,
+                                                                ) =>
+                                                                    setChoiceRules(
+                                                                        choiceRules.map(
+                                                                            (
+                                                                                current,
+                                                                            ) =>
+                                                                                current.category_id ===
+                                                                                item.id
+                                                                                    ? {
+                                                                                          ...current,
+                                                                                          minimum_count:
+                                                                                              Number(
+                                                                                                  event
+                                                                                                      .target
+                                                                                                      .value,
+                                                                                              ),
+                                                                                      }
+                                                                                    : current,
+                                                                        ),
+                                                                    )
+                                                                }
+                                                            />
+                                                        </label>
+                                                        <label className="text-sm font-medium">
+                                                            Maximum choices
+                                                            <input
+                                                                className="mt-1"
+                                                                type="number"
+                                                                min="1"
+                                                                max={
+                                                                    options.length
+                                                                }
+                                                                value={
+                                                                    rule.maximum_count
+                                                                }
+                                                                onChange={(
+                                                                    event,
+                                                                ) =>
+                                                                    setChoiceRules(
+                                                                        choiceRules.map(
+                                                                            (
+                                                                                current,
+                                                                            ) =>
+                                                                                current.category_id ===
+                                                                                item.id
+                                                                                    ? {
+                                                                                          ...current,
+                                                                                          maximum_count:
+                                                                                              Number(
+                                                                                                  event
+                                                                                                      .target
+                                                                                                      .value,
+                                                                                              ),
+                                                                                          maximum_count_explicit: true,
+                                                                                      }
+                                                                                    : current,
+                                                                        ),
+                                                                    )
+                                                                }
+                                                            />
+                                                        </label>
+                                                    </>
                                                 )}
-                                        </div>
+                                                <p className="text-sm text-slate-600 sm:col-span-2">
+                                                    Customers choose{" "}
+                                                    {rule.minimum_count ===
+                                                    rule.maximum_count
+                                                        ? `exactly ${rule.minimum_count}`
+                                                        : `${rule.minimum_count} to ${rule.maximum_count}`}{" "}
+                                                    from {item.name}.
+                                                </p>
+                                                <p className="text-xs text-slate-600 sm:col-span-2">
+                                                    Available:{" "}
+                                                    {options
+                                                        .map(
+                                                            (food) => food.name,
+                                                        )
+                                                        .join(", ") || "None"}
+                                                    .
+                                                </p>
+                                                {rule.minimum_count > 0 &&
+                                                    categoryFoods.length ===
+                                                        1 &&
+                                                    options.length === 1 && (
+                                                        <p className="text-sm text-emerald-800 sm:col-span-2">
+                                                            {options[0].name} is
+                                                            automatically
+                                                            included when this
+                                                            package is saved
+                                                            because it is the
+                                                            only eligible
+                                                            choice.
+                                                        </p>
+                                                    )}
+                                            </div>
+                                        )
                                     )}
                                 </article>
                             );
@@ -531,6 +741,16 @@ export function MenuFields({
                         ? choiceRules
                               .map((rule) => {
                                   const name = categoryName(rule.category_id);
+                                  const categoryFoods = allowed.filter(
+                                      (food) =>
+                                          food.category_id === rule.category_id,
+                                  );
+                                  const isPersistedSingleton =
+                                      categoryFoods.length === 1 &&
+                                      detail(categoryFoods[0].id).is_fixed;
+                                  if (isPersistedSingleton)
+                                      return `${name}: automatically included`;
+
                                   return `${name}: ${rule.minimum_count === rule.maximum_count ? `exactly ${rule.minimum_count}` : `${rule.minimum_count} to ${rule.maximum_count}`}`;
                               })
                               .join(" · ")

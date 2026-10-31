@@ -186,7 +186,8 @@ class CompletePackageSaveTest extends TestCase
 
     public function test_editor_get_writes_nothing_and_details_keep_publication_separate_from_draft(): void
     {
-        $this->get(route('packages.editor', ['service' => $this->input['family_id']]))->assertOk();
+        $this->get(route('packages.editor', ['service' => $this->input['family_id']]))
+            ->assertRedirect(route('catering.create'));
         $this->assertSame(0, Product::count());
         $this->post(route('packages.configurations.store'), $this->input)->assertSessionHasNoErrors();
         $product = Product::sole();

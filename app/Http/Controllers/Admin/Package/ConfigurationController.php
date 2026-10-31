@@ -5,25 +5,38 @@ namespace App\Http\Controllers\Admin\Package;
 use App\Actions\Package\SaveCompletePackage;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Package\SaveCompletePackageRequest;
+use App\Models\PackageVersion;
 use App\Models\Product;
 use App\Models\ProductFamily;
 use App\Queries\Package\PackageEditor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ConfigurationController extends Controller
 {
-    public function create(Request $request, PackageEditor $editor): Response|JsonResponse
+    public function create(Request $request, PackageEditor $editor): Response|JsonResponse|RedirectResponse
     {
         $data = $request->validate([
             'service' => ['required', 'integer', 'exists:product_families,id'],
             'step' => ['nullable', 'integer', 'between:0,3'],
         ]);
 
-        $props = $editor->data(ProductFamily::findOrFail($data['service']));
+        $family = ProductFamily::findOrFail($data['service']);
+        // Browser-based Main Catering work belongs to its persisted page
+        // workflow. Keep the JSON shape available to existing internal
+        // consumers, but never present the former all-in-one editor.
+        if (! $request->expectsJson() && $family->behavior_type === 'main_package') {
+            Gate::authorize('create', Product::class);
+            Gate::authorize('price', PackageVersion::class);
+
+            return redirect()->route('catering.create');
+        }
+
+        $props = $editor->data($family);
         $props['initialStep'] = $data['step'] ?? 0;
 
         return $request->expectsJson() ? response()->json($props) : Inertia::render('admin/packages/editor', $props);

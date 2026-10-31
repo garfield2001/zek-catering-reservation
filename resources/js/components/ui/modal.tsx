@@ -59,8 +59,8 @@ export function Modal({
                         }}
                         className={
                             sheet
-                                ? "fixed inset-y-0 left-0 z-50 w-[min(86vw,20rem)] overflow-y-auto bg-white p-5 shadow-xl"
-                                : `fixed left-1/2 top-1/2 z-50 max-h-[90dvh] ${wide ? "w-[min(94vw,56rem)]" : "w-[min(94vw,40rem)]"} -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl`
+                                ? "subtle-scroll fixed inset-y-0 left-0 z-50 w-[min(86vw,20rem)] overflow-y-auto bg-white p-5 shadow-xl"
+                                : `subtle-scroll fixed left-1/2 top-1/2 z-50 max-h-[90dvh] ${wide ? "w-[min(94vw,56rem)]" : "w-[min(94vw,40rem)]"} -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl`
                         }
                     >
                         <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-100 bg-white px-6 py-4">
