@@ -241,3 +241,17 @@ Re-confirming a change reuses `reservations`, `reservation_confirmation_events`,
 the cancelled actor/time/note facts and its integrity constraint supports only
 mutually exclusive confirmed, completed, or cancelled fact sets. Capacity reads
 only confirmed rows, so no pending case can release capacity.
+
+## Pencil bookings and internal request provenance (2026-11-10)
+
+| Entity | Fields | Keys and integrity |
+| --- | --- | --- |
+| `pencil_bookings` | idempotency UUID, active/closed/did-not-proceed/converted status, customer/event/follow-up facts, creator/updater, converted request/time | Nonblank customer and at least one contact method; positive guest count when present. Converted state requires both conversion facts and every other state prohibits them. A unique restrictive FK permits one converted request only. |
+| `pencil_booking_events` | booking FK, event type, non-sensitive details JSON, optional actor, timestamp | Index on booking/history order. PostgreSQL trigger rejects UPDATE and DELETE, making lifecycle chronology append-only. |
+| `reservation_requests` provenance | `origin`, nullable `pencil_booking_id`, nullable `created_by` | `origin` is `public`, `manual`, or `pencil_booking`. A check binds each origin to its permitted actor/booking combination; the booking FK is unique and restrictive. Public request access-code behavior is unchanged. |
+
+The conversion action locks its Pencil Booking and delegates to the same
+published-catalog selection, pricing, snapshot, and request persistence path as
+public intake. It writes the Request, provenance link, converted state,
+lifecycle event, and audit record atomically. The source tables never claim or
+consume operational capacity.

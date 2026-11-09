@@ -61,4 +61,22 @@ updates in Track Your Request but never internal notes or evidence.
 
 Administrators retain full access. Staff access is capability-based; catalog, service, package, pricing, publication, history and lifecycle permissions remain separate, server-enforced capabilities. Account and permission changes retain last fully authorized Administrator protection.
 
-Customer inquiries, reservations, quotations, checkout, payments, notifications, inventory and scheduling are deferred. This is an Admin/Staff catalog milestone, not a commercial-production or customer-acceptance release.
+## Pencil Bookings and internal Reservation Requests
+
+Use **Pencil Bookings** for a non-binding prospect or follow-up. Save contact
+and tentative event facts, then use its detail page to update, close, mark Did
+Not Proceed, or—only when the booking remains active—create a Reservation
+Request. A Pencil Booking never holds capacity.
+
+Users with both Pencil Booking management and Reservation Request management
+can configure a request from the booking or choose **Create request** from the
+Reservation Requests list. Both paths require exactly one current published
+Main Catering package and apply the same package/add-on food selection and
+price checks as the public inquiry. The resulting request identifies whether it
+was created manually or converted from a Pencil Booking and links to its source
+record. Continue through the ordinary quotation, payment, and Administrator
+confirmation workflow; no internal shortcut records those later facts.
+
+Customer-facing account registration, notifications, inventory and scheduling
+remain deferred. Pencil Booking is an internal pre-inquiry workflow, not a
+capacity or customer-reservation promise.

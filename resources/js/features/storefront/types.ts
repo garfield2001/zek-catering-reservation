@@ -62,6 +62,7 @@ export type PublicGroup = {
 
 export type PublicListing = {
     id: number;
+    version_id: number;
     name: string;
     description: string | null;
     food: PublicFood;

@@ -122,6 +122,7 @@ class PublicOfferingDirectory
 
         return [
             'id' => $listing->id,
+            'version_id' => $listing->currentVersion->id,
             'name' => $facts['name'],
             'description' => $facts['description'],
             'food' => [...$facts['food'], 'thumbnail_url' => $listing->dish->thumbnail_url, 'image_url' => $listing->dish->image_url],

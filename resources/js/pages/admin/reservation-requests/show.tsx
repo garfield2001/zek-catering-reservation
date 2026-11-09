@@ -36,6 +36,8 @@ type ReservationRequest = {
     venue_information: string;
     event_notes: string | null;
     estimated_subtotal_minor: string;
+    origin: "public" | "manual" | "pencil_booking";
+    pencil_booking: { id: number } | null;
     lines: RequestLine[];
     status_events: StatusEvent[];
     quotation: {
@@ -77,6 +79,28 @@ export default function ReservationRequestShow({
             <div className="grid gap-6 lg:grid-cols-2">
                 <section className="rounded-2xl border bg-white p-5">
                     <h2 className="font-semibold">Customer and event</h2>
+                    <p className="mt-2 text-sm text-slate-600">
+                        Origin:{" "}
+                        <strong>
+                            {request.origin === "pencil_booking"
+                                ? "Pencil booking conversion"
+                                : request.origin === "manual"
+                                  ? "Internal request"
+                                  : "Customer website"}
+                        </strong>
+                        {request.pencil_booking && (
+                            <>
+                                {" "}
+                                ·{" "}
+                                <Link
+                                    href={`/admin/pencil-bookings/${request.pencil_booking.id}`}
+                                    className="font-semibold text-emerald-800 underline"
+                                >
+                                    View pencil booking
+                                </Link>
+                            </>
+                        )}
+                    </p>
                     <dl className="mt-4 space-y-2 text-sm">
                         <div>
                             <dt className="text-slate-500">Customer</dt>

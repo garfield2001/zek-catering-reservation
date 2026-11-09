@@ -15,6 +15,11 @@ class ReservationRequestPolicy
         return $this->permissions->allows($user, 'reservation_request.view') || $this->permissions->allows($user, 'reservation_request.manage');
     }
 
+    public function create(User $user): bool
+    {
+        return $this->permissions->allows($user, 'reservation_request.manage');
+    }
+
     public function view(User $user, ReservationRequest $request): bool
     {
         return $this->viewAny($user);

@@ -80,6 +80,12 @@ These scenarios are the approved acceptance target; some Phase 1-3 cases have au
 | CAT-67 | Query addon/catalog listing pages with many rows | pagination and eager loading prevent per-row query growth; unpublished values and internal audit data absent from public props |
 | CAT-68 | Disable a permission or account during active session | next authorized request uses fresh access version; stale cached grants cannot authorize writes |
 | CAT-69 | Clean PostgreSQL migration, rollback of unpublished scaffold, backup restore and media recovery | verified in disposable/staging environments before launch; never use destructive reset on production data |
+| RQ-01 | Authorized Staff saves a Pencil Booking | one non-binding active prospect is persisted with contact/event facts and append-only created history; it does not consume capacity or create commercial records |
+| RQ-02 | Authorized Staff closes or marks a Pencil Booking Did Not Proceed | lifecycle history and audit retain actor/reason; conversion is no longer available and no date capacity is released because none was held |
+| RQ-03 | User with only Pencil Booking management attempts conversion | server rejects the request unless the user also has Reservation Request management; UI explains the required authority |
+| RQ-04 | Authorized user creates an internal request | exactly one current published Main Catering package and optional valid add-ons/listings use the same live validation, pricing, and immutable snapshots as public intake; source is `manual` with creator provenance |
+| RQ-05 | Active Pencil Booking converts twice or concurrently | PostgreSQL row locking and unique provenance return one linked Reservation Request, one conversion event, and no duplicate lines, quotation, payment, or capacity record |
+| RQ-06 | Converted request continues into quotation/payment/confirmation | all existing gates still apply; conversion does not fabricate acceptance/payment facts or bypass Administrator capacity confirmation |
 
 ## Test data policy
 ALL prices and serving claims in these scenarios, including 280/300/320/340 main catering, hypothetical 5000 Lechon, +20 Coke and 4500 Pica-Pica, are deterministic test examples until explicitly approved in the production configuration matrix. The Main Catering minimum of 150 is the approved default, not a test-only assumption. Use factories and clearly labeled demo fixtures; do not silently seed example prices as production publications. Mock storage and prohibit external network calls in automated tests. Run DB constraints/triggers/concurrency tests against PostgreSQL, not SQLite. Concurrency tests use independent connections and synchronized transactions.
@@ -190,7 +196,7 @@ Phase 3 implements **draft-only administrator configuration and price previews**
 - A Food Item thumbnail opens an accessible preview without selecting the item. The preview supports a full controlled image when available, zoom controls, Escape, and an explicit close control.
 - A public inquiry can contain one Main Catering package and optional add-ons. Replacing the Main Catering package requires explicit confirmation; add-on-only event/contact submission is rejected server-side. Existing session selections are revalidated against current published availability and package rules.
 - The review step and acknowledgment use guided inquiry wording rather than a prominent cart navigation. The acknowledgment copies only the raw reference code with accessible success/fallback feedback. Logout returns internal users to `/login`, while public pages still do not advertise internal authentication.
-- Pencil Booking, confirmed reservations, capacity holds, scheduling, notifications, and inventory remain future policies. Manual and request-sourced quotations and manual payment verification are implemented under the controlled quotation scope below.
+- Pencil Booking and internal manual Reservation Request creation are implemented under the later controlled workflow scope. A Pencil Booking remains non-binding: capacity holds, scheduling, notifications, and inventory remain separate policies. Manual and request-sourced quotations and manual payment verification are implemented under the controlled quotation scope below.
 
 ### Reservation, quotation and customer-progress correction (2026-11-04)
 

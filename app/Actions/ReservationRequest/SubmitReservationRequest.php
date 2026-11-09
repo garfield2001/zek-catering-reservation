@@ -4,10 +4,12 @@ namespace App\Actions\ReservationRequest;
 
 use App\Enums\ReservationRequestStatus;
 use App\Models\IndividualListing;
+use App\Models\PencilBooking;
 use App\Models\Product;
 use App\Models\ReservationRequest;
 use App\Models\ReservationRequestLine;
 use App\Models\ReservationRequestStatusEvent;
+use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\BusinessPolicies\CurrentBusinessPolicy;
 use App\Services\Catalog\ListingConfiguration;
@@ -26,17 +28,27 @@ class SubmitReservationRequest
 {
     public function __construct(private Selection $selection, private PackagePricePreview $packages, private ListingConfiguration $listings, private MinorMoney $money, private AuditLogger $audit, private CurrentBusinessPolicy $policies, private CustomerAccessCode $accessCodes) {}
 
-    /** @return array{request: ReservationRequest, created: bool, access_code: ?string} */
-    public function handle(Request $httpRequest, array $data): array
+    /**
+     * Public submissions deliberately obtain their commercial selection from the
+     * storefront session. Internal workflows supply an explicit selection so they
+     * cannot read or overwrite a customer's browser planning session.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  list<array<string, mixed>>|null  $selection
+     * @return array{request: ReservationRequest, created: bool, access_code: ?string}
+     */
+    public function handle(Request $httpRequest, array $data, ?array $selection = null, ?User $actor = null, string $origin = 'public', ?PencilBooking $pencilBooking = null): array
     {
+        $this->assertOrigin($origin, $actor, $pencilBooking);
+
         try {
-            return DB::transaction(function () use ($httpRequest, $data): array {
+            return DB::transaction(function () use ($httpRequest, $data, $selection, $actor, $origin, $pencilBooking): array {
                 $existing = ReservationRequest::query()->where('idempotency_key', $data['idempotency_key'])->lockForUpdate()->first();
                 if ($existing) {
                     return ['request' => $existing, 'created' => false, 'access_code' => null];
                 }
 
-                $stored = array_values($this->selection->all($httpRequest));
+                $stored = array_values($selection ?? $this->selection->all($httpRequest));
                 if ($stored === []) {
                     throw ValidationException::withMessages(['selection' => 'Choose one Main Catering package before submitting a request.']);
                 }
@@ -44,8 +56,14 @@ class SubmitReservationRequest
                 $lines = [];
                 $main = null;
                 $total = 0;
+                $selectionKeys = [];
                 foreach ($stored as $item) {
                     if (($item['type'] ?? null) === 'package') {
+                        $key = 'package:'.($item['product_id'] ?? '');
+                        if (isset($selectionKeys[$key])) {
+                            throw ValidationException::withMessages(['selection' => 'Each package can be selected only once. Review your selection.']);
+                        }
+                        $selectionKeys[$key] = true;
                         $product = Product::query()->lockForUpdate()->with(['family', 'currentVersion'])->find($item['product_id'] ?? null);
                         if (! $product || ! $product->currentVersion || $product->current_version_id !== ($item['version_id'] ?? null) || $product->currentVersion->status !== 'published') {
                             throw ValidationException::withMessages(['selection' => 'A selected package changed or is no longer available. Review your selection.']);
@@ -68,6 +86,11 @@ class SubmitReservationRequest
                         continue;
                     }
                     if (($item['type'] ?? null) === 'listing') {
+                        $key = 'listing:'.($item['listing_id'] ?? '').':'.($item['selling_option_id'] ?? 'base');
+                        if (isset($selectionKeys[$key])) {
+                            throw ValidationException::withMessages(['selection' => 'Each item option can be selected only once. Review your selection.']);
+                        }
+                        $selectionKeys[$key] = true;
                         $listing = IndividualListing::query()->lockForUpdate()->with(['family', 'currentVersion'])->find($item['listing_id'] ?? null);
                         if (! $listing || ! $listing->family->is_addon || ! $listing->currentVersion || $listing->current_version_id !== ($item['version_id'] ?? null) || $listing->currentVersion->status !== 'published' || ! $this->listings->availability($listing)['available']) {
                             throw ValidationException::withMessages(['selection' => 'A selected add-on item changed or is no longer available. Review your selection.']);
@@ -94,17 +117,18 @@ class SubmitReservationRequest
                 $end = $start->addHours($policy->event_duration_hours);
                 $accessCode = $this->accessCodes->generate();
                 $request = ReservationRequest::create(['reference' => 'ZEK-'.Str::upper(Str::random(12)), 'idempotency_key' => $data['idempotency_key'], 'status' => ReservationRequestStatus::Submitted,
+                    'origin' => $origin, 'pencil_booking_id' => $pencilBooking?->id, 'created_by' => $actor?->id,
                     'customer_access_code_hash' => $this->accessCodes->hash($accessCode),
                     'customer_name' => trim($data['full_name']), 'customer_mobile' => trim($data['mobile_number']), 'customer_email' => filled($data['email'] ?? null) ? strtolower(trim($data['email'])) : null,
                     'event_date' => $start->toDateString(), 'event_start_time' => $start->format('H:i:s'), 'event_end_time' => $end->format('H:i:s'), 'event_ends_next_day' => ! $start->isSameDay($end), 'timezone' => 'Asia/Manila',
                     'venue_information' => trim($data['venue_information']), 'event_notes' => filled($data['event_notes'] ?? null) ? trim($data['event_notes']) : null,
                     'guest_count' => $main['guest_count'], 'main_package_version_id' => $main['version_id'], 'estimated_subtotal_minor' => $total, 'currency' => 'PHP',
-                    'commercial_snapshot' => ['schema' => 1, 'submitted_at' => now()->toIso8601String(), 'main_package_version_id' => $main['version_id'], 'estimated_subtotal_minor' => (string) $total, 'currency' => 'PHP']]);
+                    'commercial_snapshot' => array_filter(['schema' => 1, 'submitted_at' => now()->toIso8601String(), 'origin' => $origin === 'public' ? null : $origin, 'main_package_version_id' => $main['version_id'], 'estimated_subtotal_minor' => (string) $total, 'currency' => 'PHP'], static fn (mixed $value): bool => $value !== null)]);
                 foreach ($lines as $index => $line) {
                     ReservationRequestLine::create(['reservation_request_id' => $request->id, 'line_number' => $index + 1, 'line_type' => $line['type'], 'package_version_id' => $line['package_version_id'], 'listing_version_id' => $line['listing_version_id'], 'quantity' => $line['quantity'], 'estimated_total_minor' => $line['total_minor'], 'commercial_snapshot' => $line['snapshot']]);
                 }
-                ReservationRequestStatusEvent::create(['reservation_request_id' => $request->id, 'from_status' => null, 'to_status' => ReservationRequestStatus::Submitted]);
-                $this->audit->record('reservation_request.submitted', null, $request, null, ['reference' => $request->reference, 'status' => $request->status->value, 'estimated_subtotal_minor' => (string) $total]);
+                ReservationRequestStatusEvent::create(['reservation_request_id' => $request->id, 'from_status' => null, 'to_status' => ReservationRequestStatus::Submitted, 'changed_by' => $actor?->id]);
+                $this->audit->record('reservation_request.submitted', $actor, $request, null, array_filter(['reference' => $request->reference, 'origin' => $origin === 'public' ? null : $origin, 'status' => $request->status->value, 'estimated_subtotal_minor' => (string) $total], static fn (mixed $value): bool => $value !== null));
 
                 return ['request' => $request, 'created' => true, 'access_code' => $accessCode];
             }, 3);
@@ -117,6 +141,21 @@ class SubmitReservationRequest
             }
 
             throw $exception;
+        }
+    }
+
+    private function assertOrigin(string $origin, ?User $actor, ?PencilBooking $pencilBooking): void
+    {
+        if ($origin === 'public' && $actor === null && $pencilBooking === null) {
+            return;
+        }
+
+        if (! in_array($origin, ['manual', 'pencil_booking'], true)
+            || $actor === null
+            || ! $actor->active
+            || ($origin === 'pencil_booking' && $pencilBooking === null)
+            || ($origin === 'manual' && $pencilBooking !== null)) {
+            throw new \LogicException('The reservation request origin context is invalid.');
         }
     }
 }

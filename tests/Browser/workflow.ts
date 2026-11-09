@@ -137,10 +137,11 @@ export async function login(
     await page.getByLabel("Email address").fill(`${role}-${run}@example.test`);
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    // A fresh PostgreSQL schema can still be releasing its advisory lock when
-    // the first real browser login is submitted. Wait for that navigation
-    // rather than treating a slow, valid authentication response as a failure.
-    await expect(page).toHaveURL(/\/admin(?:\/home)?$/, { timeout: 15000 });
+    // A serial suite can still be draining the guarded PostgreSQL schema lock
+    // after a prior browser context closes. The observed full-suite request was
+    // valid but remained pending beyond 15 seconds; preserve the exact landing
+    // assertion while allowing that bounded local hand-off to complete.
+    await expect(page).toHaveURL(/\/admin(?:\/home)?$/, { timeout: 30000 });
 }
 
 export async function addCategory(page: Page, name: string) {

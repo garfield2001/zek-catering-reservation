@@ -5,6 +5,7 @@ import AdminLayout from "../../../layouts/admin-layout";
 type RequestSummary = {
     id: number;
     reference: string;
+    origin: "public" | "manual" | "pencil_booking";
     status: string;
     status_label: string;
     customer_name: string;
@@ -24,10 +25,12 @@ export default function ReservationRequestsIndex({
     requests,
     status,
     statuses,
+    canCreate,
 }: {
     requests: { data: RequestSummary[] };
     status: string;
     statuses: StatusOption[];
+    canCreate: boolean;
 }) {
     return (
         <AdminLayout
@@ -35,6 +38,14 @@ export default function ReservationRequestsIndex({
             description="Inquiry-only customer requests awaiting review. A request does not reserve an event date."
             section="requests"
         >
+            {canCreate && (
+                <Link
+                    href="/admin/reservation-requests/create"
+                    className="mb-5 inline-block rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white"
+                >
+                    Create internal request
+                </Link>
+            )}
             <label className="block max-w-xs text-sm font-medium">
                 Status
                 <select
@@ -81,6 +92,13 @@ export default function ReservationRequestsIndex({
                                     </Link>
                                     <span className="mt-1 block text-slate-500">
                                         {item.status_label}
+                                    </span>
+                                    <span className="mt-1 block text-xs text-slate-500">
+                                        {item.origin === "pencil_booking"
+                                            ? "From pencil booking"
+                                            : item.origin === "manual"
+                                              ? "Internal request"
+                                              : "Customer website"}
                                     </span>
                                 </td>
                                 <td className="p-4">

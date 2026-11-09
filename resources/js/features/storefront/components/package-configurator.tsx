@@ -20,13 +20,16 @@ type Props = {
     selectionUrl?: string;
     activeMainProductId?: number | null;
     onSelected?: (count: number) => void;
-    onConfigurationSaved?: (configuration: {
-        quantity: number;
-        groups: Array<{
+    onConfigurationSaved?: (
+        configuration: {
             quantity: number;
-            selections: Record<string, number[] | Record<string, number>>;
-        }>;
-    }) => void;
+            groups: Array<{
+                quantity: number;
+                selections: Record<string, number[] | Record<string, number>>;
+            }>;
+        },
+        preview: PricePreview,
+    ) => void;
     selectionLabel?: string;
     initialQuantity?: number;
     initialGroups?: Array<{
@@ -192,7 +195,7 @@ export function PackageConfigurator({
                     return;
                 }
                 setPreview(data as PricePreview);
-                onConfigurationSaved(payload);
+                onConfigurationSaved(payload, data as PricePreview);
                 setSaved(true);
             } catch {
                 setErrors({

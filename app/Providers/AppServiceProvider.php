@@ -15,6 +15,7 @@ use App\Models\OfferingOption;
 use App\Models\PackageVersion;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
+use App\Models\PencilBooking;
 use App\Models\Product;
 use App\Models\ProductFamily;
 use App\Models\Quotation;
@@ -32,6 +33,7 @@ use App\Policies\FamilyOrderDefaultPolicy;
 use App\Policies\ListingPolicy;
 use App\Policies\PackagePolicy;
 use App\Policies\PaymentPolicy;
+use App\Policies\PencilBookingPolicy;
 use App\Policies\ProductFamilyPolicy;
 use App\Policies\QuotationPolicy;
 use App\Policies\QuotationTermsVersionPolicy;
@@ -62,6 +64,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(BusinessPolicy::class, BusinessPolicyPolicy::class);
         Gate::policy(Payment::class, PaymentPolicy::class);
         Gate::policy(PaymentMethod::class, PaymentPolicy::class);
+        Gate::policy(PencilBooking::class, PencilBookingPolicy::class);
         Gate::policy(QuotationTermsVersion::class, QuotationTermsVersionPolicy::class);
         foreach ([Quotation::class, QuotationVersion::class, QuotationAdjustmentRequest::class] as $model) {
             Gate::policy($model, QuotationPolicy::class);

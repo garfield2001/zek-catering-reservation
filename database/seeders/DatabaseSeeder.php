@@ -37,6 +37,8 @@ class DatabaseSeeder extends Seeder
                     'reservation.view' => 'View reservation confirmation and availability information',
                     'reservation.change.manage' => 'Prepare and submit reservation change requests for review',
                     'cancellation.manage' => 'Prepare and view cancellation and refund requests',
+                    'pencil_booking.view' => 'View pencil bookings',
+                    'pencil_booking.manage' => 'Create, update, close and convert pencil bookings',
                     'quotation.view' => 'View quotations',
                     'quotation.manage' => 'Create and manage quotation drafts',
                     'quotation.issue' => 'Issue standard quotations',

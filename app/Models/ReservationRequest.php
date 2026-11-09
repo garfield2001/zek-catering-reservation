@@ -61,4 +61,16 @@ class ReservationRequest extends Model
     {
         return $this->hasMany(CancellationRequest::class)->orderBy('id');
     }
+
+    /** @return BelongsTo<PencilBooking, $this> */
+    public function pencilBooking(): BelongsTo
+    {
+        return $this->belongsTo(PencilBooking::class);
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

@@ -54,6 +54,12 @@ const navigation = [
         icon: CalendarClock,
     },
     {
+        label: "Pencil Bookings",
+        href: "/admin/pencil-bookings",
+        permissions: ["pencil_booking.view", "pencil_booking.manage"],
+        icon: CalendarClock,
+    },
+    {
         label: "Quotations",
         href: "/admin/quotations",
         permissions: ["quotation.view", "quotation.manage"],
