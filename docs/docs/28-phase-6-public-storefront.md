@@ -6,8 +6,8 @@ Phase 6 introduces public browsing of the currently available commercial catalog
 
 - `/` is the public ZEK Catering home page for guests and authenticated internal users alike. It does not redirect to the administration workspace.
 - `/login` remains an intentionally direct, internal-only entry point for Administrators and Staff. Public navigation, footer and mobile navigation never advertise it. Hiding the link is presentation only; Laravel authentication, throttling, session rotation, Policies and internal route middleware remain authoritative.
-- `/catering-packages`, `/add-on-services` and `/my-selection` are public. Management routes remain under authenticated `/admin` routes.
-- Logout invalidates the authenticated session and returns to the public home page. It does not grant access to management routes.
+- `/catering-packages`, `/add-on-services` and the compatibility review route `/my-selection` are public. Management routes remain under authenticated `/admin` routes.
+- Logout invalidates the authenticated session and returns to `/login`. It does not grant access to management routes.
 
 ## Public commercial boundary
 
@@ -25,7 +25,7 @@ The visible copy calls the result a planning estimate and explains that it is no
 
 ## User experience
 
-- The public site uses a separate responsive customer layout with Home, Catering Packages, Add-on Services and My Selection.
+- The public site uses a separate responsive customer layout with Home, Catering Packages and Add-on Services. The temporary review route is part of the guided inquiry, not prominent primary navigation.
 - Main catering and package services expose included items and customer choices without internal Selection Group terminology.
 - Individually sold items show their own absolute published price, option, and quantity constraints; they are not presented as a package add-on premium.
 - Images use the existing safe Food Item image derivative/fallback component. Existing media access rules are unchanged.

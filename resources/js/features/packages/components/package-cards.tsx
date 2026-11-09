@@ -1,4 +1,4 @@
-import { Link } from "@inertiajs/react";
+import { Link, router } from "@inertiajs/react";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { PackageDetails } from "./package-details";
@@ -110,9 +110,7 @@ export function PackageCards({
                         <div className="mt-5 flex flex-wrap items-center gap-4">
                             {canManage &&
                                 !product.archived_at &&
-                                (draft ||
-                                    !product.current_version ||
-                                    canHistory) && (
+                                (draft || !product.current_version) && (
                                     <Link
                                         className="inline-flex items-center gap-2 rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white"
                                         href={`/admin/packages/products/${product.id}/edit`}
@@ -124,6 +122,24 @@ export function PackageCards({
                                             ? "Complete Configuration"
                                             : "Edit Package"}
                                     </Link>
+                                )}
+                            {canManage &&
+                                !product.archived_at &&
+                                !draft &&
+                                product.current_version &&
+                                canHistory && (
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            router.post(
+                                                `/admin/catering-packages/${product.id}/draft`,
+                                            )
+                                        }
+                                        className="inline-flex items-center gap-2 rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white"
+                                    >
+                                        <Pencil size={16} aria-hidden="true" />
+                                        Create editable draft
+                                    </button>
                                 )}
                             {canManage &&
                                 !product.archived_at &&

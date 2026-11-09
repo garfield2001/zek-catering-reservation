@@ -1,3 +1,5 @@
 <?php
 
-// Console commands are discovered from app/Console/Commands.
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('quotations:expire')->hourly()->withoutOverlapping();

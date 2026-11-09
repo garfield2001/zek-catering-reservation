@@ -86,10 +86,11 @@ class PublicOfferingDirectory
         $dishIds = collect($snapshot['menu']['food_items'] ?? [])->pluck('id')
             ->merge(collect($snapshot['groups'] ?? [])->pluck('options')->flatten(1)->pluck('food_item.id'))->filter()->unique()->values();
         $images = Dish::whereIn('id', $dishIds)->get()->keyBy('id');
-        $image = fn (array $item) => $images->get($item['id'])?->thumbnail_url;
+        $thumbnail = fn (array $item) => $images->get($item['id'])?->thumbnail_url;
+        $image = fn (array $item) => $images->get($item['id'])?->image_url;
         $menu = $snapshot['menu'];
         if (is_array($menu)) {
-            $menu['food_items'] = array_map(fn (array $item) => [...$item, 'thumbnail_url' => $image($item)], $menu['food_items']);
+            $menu['food_items'] = array_map(fn (array $item) => [...$item, 'thumbnail_url' => $thumbnail($item), 'image_url' => $image($item)], $menu['food_items']);
         }
 
         return [
@@ -123,7 +124,7 @@ class PublicOfferingDirectory
             'id' => $listing->id,
             'name' => $facts['name'],
             'description' => $facts['description'],
-            'food' => [...$facts['food'], 'thumbnail_url' => $listing->dish->thumbnail_url],
+            'food' => [...$facts['food'], 'thumbnail_url' => $listing->dish->thumbnail_url, 'image_url' => $listing->dish->image_url],
             'category' => $facts['category'],
             'selling_unit' => $facts['selling_unit'],
             'price_minor' => (string) $facts['price_minor'],

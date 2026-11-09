@@ -16,11 +16,11 @@ Create a dynamically named service in this business order:
 
 1. Enter **Service details**: name and optional description.
 2. Choose **How will you sell this service?**
-   - **Sold by Package** creates complete packages with fixed or customer-selectable Food Items.
-   - **Sold Individually** keeps the individual listing workflow and does not show package-format controls.
+    - **Sold by Package** creates complete packages with fixed or customer-selectable Food Items.
+    - **Sold Individually** keeps the individual listing workflow and does not show package-format controls.
 3. For a packaged service, choose **How are foods provided?**
-   - **Separate Food Servings** means each Food Item uses the service presentation unless a Food Option explicitly changes packaging.
-   - **Combined Contents** means each purchased unit is one complete pack or box. Its physical container is never multiplied by its Food Item count.
+    - **Separate Food Servings** means each Food Item uses the service presentation unless a Food Option explicitly changes packaging.
+    - **Combined Contents** means each purchased unit is one complete pack or box. Its physical container is never multiplied by its Food Item count.
 4. Select the default physical presentation quantity and Measurement Unit. The preview explains the actual entered facts. This packaging setting does not describe food weight or food portion.
 
 For a standard package: create the package, select Food Items, set the exact menu total and pricing, then save. Selected Food Items inherit the service presentation without repeated input. **Food Options** is one collapsed surface per Food Item for intentional advanced choices: standard serving, fixed portion, size choices, selection charge and a packaging exception. Existing rules keep incompatible configurations from being saved together.
@@ -39,7 +39,23 @@ Use **Add Measurement Unit** to create and select a new active unit in the curre
 
 ## Local development initialization
 
-For a disposable local database only, run `php artisan migrate:fresh`, then `php artisan db:seed`. The local-only bootstrap creates roles, permissions, the primary service, `Admin Tester` (`admin@gmail.com` / `adminpass123`), 11 Food Categories, 42 Food Items and four incomplete Main Catering Draft packages. It can be rerun without duplicate records or overwriting the known Administrator password or ordinary fixture edits. Outside the local environment, provision the first Administrator with `php artisan app:create-admin`.
+For a disposable local database only, run `php artisan migrate:fresh`, then `php artisan db:seed`. The local-only bootstrap creates roles, permissions, the primary service, `Admin Tester` (`admin@gmail.com` / `adminpass123`), 11 Food Categories, 42 Food Items and four published Main Catering packages. Packages A–D require 4–7 distinct customer choices, including exactly one Rice and one Drink; they can be used immediately in the normal public inquiry flow. The untouched initial policy requires a 20% reservation payment. Rerunning the seed does not duplicate fixtures or overwrite the known Administrator password, an edited fixture, or an Administrator-managed Business Policy. Outside the local environment, provision the first Administrator with `php artisan app:create-admin`.
+
+## Cancellation and refunds
+
+Open a quotation from **Reservations** to prepare a cancellation request, or
+use **Cancellations & Refunds** to find cases awaiting review. Staff with the
+explicit cancellation permission can prepare or view a case but cannot
+finalize it, approve a refund, record a completed disbursement, or open private
+refund evidence. An Administrator reviews a reason before finalizing; only a
+finalized confirmed-reservation cancellation releases date capacity.
+
+Where verified money exists, create a full or partial refund against its
+matching payment. Approval is not proof of money returned. Record completion
+only after the offline transfer/cash return actually happened, and attach
+private evidence if available. If the recorded completed amount is wrong, add a
+reasoned correction rather than editing history. The customer sees safe status
+updates in Track Your Request but never internal notes or evidence.
 
 ## Staff and current limitations
 

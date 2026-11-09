@@ -7,6 +7,11 @@ import {
     LogOut,
     Users,
     Boxes,
+    CalendarClock,
+    FileText,
+    CreditCard,
+    CalendarCheck2,
+    CircleDollarSign,
     Menu,
     ChevronDown,
 } from "lucide-react";
@@ -43,6 +48,42 @@ const navigation = [
         icon: Boxes,
     },
     {
+        label: "Reservation Requests",
+        href: "/admin/reservation-requests",
+        permissions: ["reservation_request.view", "reservation_request.manage"],
+        icon: CalendarClock,
+    },
+    {
+        label: "Quotations",
+        href: "/admin/quotations",
+        permissions: ["quotation.view", "quotation.manage"],
+        icon: FileText,
+    },
+    {
+        label: "Reservations",
+        href: "/admin/reservations",
+        permissions: ["reservation.view"],
+        icon: CalendarCheck2,
+    },
+    {
+        label: "Cancellations & Refunds",
+        href: "/admin/cancellations",
+        permissions: ["cancellation.manage"],
+        icon: CircleDollarSign,
+    },
+    {
+        label: "Business Policies",
+        href: "/admin/business-policies",
+        permissions: ["quotation.view", "quotation.manage"],
+        icon: FileText,
+    },
+    {
+        label: "Payments",
+        href: "/admin/payments",
+        permissions: ["payment.view", "payment.record"],
+        icon: CreditCard,
+    },
+    {
         label: "Team & Access",
         href: "/admin/staff",
         permissions: ["staff.view"],
@@ -65,7 +106,13 @@ export default function AdminLayout({
     title: string;
     description?: string;
     children: ReactNode;
-    section?: "catalog" | "catering" | "services";
+    section?:
+        | "catalog"
+        | "catering"
+        | "services"
+        | "requests"
+        | "quotations"
+        | "reservations";
 }) {
     const { auth, flash, product } = usePage<
         SharedProps & {
@@ -104,9 +151,15 @@ export default function AdminLayout({
             ? "/admin/food-catalog"
             : activeSection === "services"
               ? "/admin/add-on-services"
-              : activeSection === "catering"
-                ? "/admin/catering-packages"
-                : path;
+              : activeSection === "requests"
+                ? "/admin/reservation-requests"
+                : activeSection === "quotations"
+                  ? "/admin/quotations"
+                  : activeSection === "reservations"
+                    ? "/admin/reservations"
+                    : activeSection === "catering"
+                      ? "/admin/catering-packages"
+                      : path;
     const parent = navigation.find(
         (item) => item.href !== "/admin" && sectionPath.startsWith(item.href),
     );

@@ -66,9 +66,7 @@ test("owner creates exact main menu, publishes immutable history, revises and ar
         name: "Selected foods",
         exact: true,
     });
-    await selectedFoods
-        .getByRole("button", { name: /^Beef \(2\)$/ })
-        .click();
+    await selectedFoods.getByRole("button", { name: /^Beef \(2\)$/ }).click();
     const beefConfiguration = page.getByRole("dialog", {
         name: "Configure Beef Foods",
     });
@@ -94,9 +92,7 @@ test("owner creates exact main menu, publishes immutable history, revises and ar
     ).toContainText("Rice: exactly 1");
     // Inline catalog creation must keep unsaved menu selections.
     await inlineFood(page, "Fruit Salad", "Desserts");
-    await selectedFoods
-        .getByRole("button", { name: /^Rice \(1\)$/ })
-        .click();
+    await selectedFoods.getByRole("button", { name: /^Rice \(1\)$/ }).click();
     await expect(
         page
             .getByRole("dialog", { name: "Configure Rice Foods" })

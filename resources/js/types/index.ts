@@ -9,7 +9,12 @@ export type SharedProps = {
         isAdmin: boolean;
         permissions: string[];
     } | null;
-    flash: { status?: string; id?: string };
+    flash: {
+        status?: string;
+        id?: string;
+        customer_access_code?: string;
+        quotation_test_otp?: string;
+    };
     [key: string]: unknown;
 };
 export type Pagination<T> = {

@@ -5,6 +5,7 @@ import { execFileSync } from "node:child_process";
 import {
     login,
     createPackage,
+    filterPackageFoodsByCategory,
     inlineFood,
     step,
     savePackage,
@@ -182,6 +183,7 @@ test("service-owned combined packs preserve defaults, publish revisions and clon
     await expect(page).toHaveURL(serviceWorkspace);
     await createPackage(page, "Two Food Box");
     await page.getByLabel("Total included food selections").fill("2");
+    await filterPackageFoodsByCategory(page, "Format Foods");
     for (const food of ["Format Rice", "Format Drink"]) {
         await page.getByLabel(food, { exact: true }).check();
         await page

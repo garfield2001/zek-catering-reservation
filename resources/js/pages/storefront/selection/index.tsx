@@ -1,5 +1,7 @@
 import { Link, router } from "@inertiajs/react";
-import { ArrowRight, Trash2 } from "lucide-react";
+import { ArrowRight, RotateCcw, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { ConfirmDialog } from "../../../components/ui/confirm-dialog";
 import { formatPesos } from "../../../features/packages/money";
 import type {
     PublicListing,
@@ -10,6 +12,7 @@ import StorefrontLayout from "../../../layouts/storefront-layout";
 type Item = {
     key: string;
     type?: "package" | "listing";
+    inquiry_role?: "main" | "addon";
     offering?: PublicPackage | PublicListing;
     preview?: { quantity: number; total_minor: string };
     invalid?: boolean;
@@ -25,42 +28,41 @@ export default function SelectionIndex({
     totalMinor: string;
     selectionCount: number;
 }) {
+    const [confirmStartNew, setConfirmStartNew] = useState(false);
+
     return (
-        <StorefrontLayout title="My Selection" selectionCount={selectionCount}>
+        <StorefrontLayout
+            title="Review your inquiry"
+            selectionCount={selectionCount}
+        >
             <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">
-                    Planning selection
+                    Event inquiry
                 </p>
                 <h1 className="mt-2 font-serif text-4xl font-bold text-emerald-950">
-                    My Selection
+                    Review your inquiry
                 </h1>
                 <p className="mt-4 max-w-2xl leading-7 text-stone-600">
-                    Review the packages and items you have selected in this
-                    browser. This is not a reservation, quote, or order.
+                    Step 4 of 6: review your Main Catering package, optional
+                    services, and Laravel-calculated planning estimate before
+                    entering event details.
                 </p>
                 {items.length === 0 ? (
                     <div className="mt-8 rounded-2xl border border-dashed border-stone-300 bg-white p-8">
                         <h2 className="text-xl font-bold text-emerald-950">
-                            Your selection is empty
+                            Start with a Main Catering package
                         </h2>
                         <p className="mt-2 text-stone-600">
-                            Start by exploring our currently available catering
-                            packages or add-on services.
+                            A public inquiry needs one Main Catering package.
+                            Optional add-ons can be added after your main
+                            package is configured.
                         </p>
-                        <div className="mt-5 flex flex-wrap gap-3">
-                            <Link
-                                href="/catering-packages"
-                                className="rounded-xl bg-emerald-800 px-4 py-3 text-sm font-semibold text-white"
-                            >
-                                Catering Packages
-                            </Link>
-                            <Link
-                                href="/add-on-services"
-                                className="rounded-xl border border-emerald-800 px-4 py-3 text-sm font-semibold text-emerald-900"
-                            >
-                                Add-on Services
-                            </Link>
-                        </div>
+                        <Link
+                            href="/catering-packages"
+                            className="mt-5 inline-flex rounded-xl bg-emerald-800 px-4 py-3 text-sm font-semibold text-white"
+                        >
+                            Choose Main Catering
+                        </Link>
                     </div>
                 ) : (
                     <>
@@ -72,7 +74,7 @@ export default function SelectionIndex({
                                         className="rounded-2xl border border-amber-300 bg-amber-50 p-5"
                                     >
                                         <h2 className="font-bold text-amber-950">
-                                            An item needs review
+                                            An inquiry item needs review
                                         </h2>
                                         <p className="mt-1 text-sm text-amber-900">
                                             {item.message}
@@ -96,9 +98,11 @@ export default function SelectionIndex({
                                     >
                                         <div>
                                             <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-700">
-                                                {item.type === "package"
-                                                    ? "Package"
-                                                    : "Individual item"}
+                                                {item.inquiry_role === "main"
+                                                    ? "Main Catering package"
+                                                    : item.type === "package"
+                                                      ? "Optional service package"
+                                                      : "Optional individual item"}
                                             </p>
                                             <h2 className="mt-1 text-lg font-bold text-emerald-950">
                                                 {item.offering?.name}
@@ -119,7 +123,8 @@ export default function SelectionIndex({
                                         <div className="flex gap-3">
                                             <Link
                                                 href={
-                                                    item.type === "package"
+                                                    item.type === "package" &&
+                                                    item.inquiry_role === "main"
                                                         ? `/catering-packages/${item.offering?.id}`
                                                         : "/add-on-services"
                                                 }
@@ -146,27 +151,51 @@ export default function SelectionIndex({
                         </div>
                         <div className="mt-6 rounded-2xl bg-emerald-950 p-6 text-white">
                             <p className="text-sm text-emerald-100">
-                                Current planning total
+                                Laravel-calculated planning estimate
                             </p>
                             <strong className="mt-1 block text-3xl">
                                 {formatPesos(totalMinor)}
                             </strong>
                             <p className="mt-2 text-sm leading-6 text-emerald-100">
-                                This estimate uses currently published pricing
-                                and may change if an offering becomes
-                                unavailable. Final event details are confirmed
-                                with our team.
+                                The estimate is revalidated from current
+                                published terms when you submit. It is not a
+                                quotation, availability guarantee, or date hold.
                             </p>
                         </div>
-                        <Link
-                            href="/catering-packages"
-                            className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-emerald-800 hover:underline"
-                        >
-                            Continue browsing <ArrowRight size={16} />
-                        </Link>
+                        <div className="mt-6 flex flex-wrap items-center gap-4">
+                            <Link
+                                href="/reservation-request"
+                                className="inline-flex items-center gap-2 rounded-xl bg-emerald-800 px-4 py-3 text-sm font-semibold text-white"
+                            >
+                                Continue to event details{" "}
+                                <ArrowRight size={16} />
+                            </Link>
+                            <Link
+                                href="/add-on-services"
+                                className="text-sm font-semibold text-emerald-800 underline"
+                            >
+                                Choose optional add-ons
+                            </Link>
+                            <button
+                                type="button"
+                                onClick={() => setConfirmStartNew(true)}
+                                className="inline-flex items-center gap-2 text-sm font-semibold text-stone-700 underline"
+                            >
+                                <RotateCcw size={16} /> Start new inquiry
+                            </button>
+                        </div>
                     </>
                 )}
             </div>
+            <ConfirmDialog
+                open={confirmStartNew}
+                onClose={() => setConfirmStartNew(false)}
+                title="Start a new inquiry?"
+                description="Your unfinished package and add-on choices in this browser will be cleared. Submitted inquiries are not changed."
+                confirmLabel="Start new inquiry"
+                destructive
+                onConfirm={() => router.delete("/inquiry")}
+            />
         </StorefrontLayout>
     );
 }

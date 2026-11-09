@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Package;
 
 use App\Actions\Catalog\EnsurePrimaryService;
+use App\Actions\Package\ClonePackageDraft;
 use App\Actions\Package\SavePackageMenuConfiguration;
 use App\Actions\Package\SavePackageVersion;
 use App\Actions\Package\SaveProduct;
@@ -58,6 +59,23 @@ class MainCateringWorkflowController extends Controller
             'family' => $product->family,
             'product' => $product,
         ]);
+    }
+
+    /** Start an explicit, editable revision without ever mutating a Published Version. */
+    public function startDraft(Product $product, ClonePackageDraft $clone): RedirectResponse
+    {
+        $this->guard($product);
+        $source = $product->currentVersion;
+        if ($source === null) {
+            throw ValidationException::withMessages([
+                'package' => 'This package does not yet have a published version to revise.',
+            ]);
+        }
+
+        $clone->handle(request()->user(), $product, $source);
+
+        return redirect()->route('catering.details', $product)
+            ->with('status', 'An editable Draft was created from the published version. The published version remains unchanged.');
     }
 
     public function updateDetails(SaveProductRequest $request, Product $product, SaveProduct $save): RedirectResponse

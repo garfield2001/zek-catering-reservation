@@ -1,4 +1,4 @@
-import { Head, usePage } from "@inertiajs/react";
+import { Head, Link, usePage } from "@inertiajs/react";
 import { LoginForm } from "../../features/auth/components/login-form";
 import type { SharedProps } from "../../types";
 export default function Login() {
@@ -23,6 +23,12 @@ export default function Login() {
                 <p className="mt-6 text-sm text-stone-500">
                     Access is provided by your administrator.
                 </p>
+                <Link
+                    href="/"
+                    className="mt-5 inline-block text-sm font-semibold text-emerald-800 underline"
+                >
+                    Back to ZEK Catering Website
+                </Link>
             </div>
         </main>
     );

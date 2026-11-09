@@ -5,6 +5,7 @@ export type PublicFood = {
     description?: string | null;
     category_name?: string | null;
     thumbnail_url?: string | null;
+    image_url?: string | null;
     is_fixed?: boolean;
     always_include?: boolean;
     price_adjustment_minor?: string;

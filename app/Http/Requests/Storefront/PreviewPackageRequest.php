@@ -19,6 +19,7 @@ class PreviewPackageRequest extends FormRequest
             'groups' => ['required', 'array', 'min:1'],
             'groups.*.quantity' => ['required', new StrictInteger, 'integer', 'between:1,2147483647'],
             'groups.*.selections' => ['required', 'array'],
+            'replace_main' => ['sometimes', 'boolean'],
         ];
     }
 }

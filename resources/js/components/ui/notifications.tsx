@@ -22,12 +22,36 @@ export function Notifications() {
                     );
             }),
             router.on("finish", clear),
-            router.on("error", () => {
+            router.on("error", (event) => {
                 clear();
-                toast.warning("Please check the highlighted fields.", {
-                    id: "validation",
-                    duration: 5500,
-                });
+                const errors = event.detail.errors;
+                const entries =
+                    errors && typeof errors === "object"
+                        ? Object.entries(errors).filter(
+                              (entry): entry is [string, string] =>
+                                  typeof entry[1] === "string",
+                          )
+                        : [];
+                const firstField = entries[0]?.[0];
+                if (firstField) {
+                    const input = document.querySelector<HTMLElement>(
+                        `[name="${CSS.escape(firstField)}"]`,
+                    );
+                    if (input) {
+                        input.setAttribute("aria-invalid", "true");
+                        input.focus();
+                    }
+                }
+                const first = entries[0]?.[1];
+                toast.warning(
+                    typeof first === "string"
+                        ? first
+                        : "The form could not be saved. Review the message in the section you submitted.",
+                    {
+                        id: "validation",
+                        duration: 5500,
+                    },
+                );
             }),
             router.on("exception", (event) => {
                 event.preventDefault();

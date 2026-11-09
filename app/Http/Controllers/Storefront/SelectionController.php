@@ -30,7 +30,7 @@ class SelectionController extends Controller
                         throw ValidationException::withMessages(['selection' => 'This package is no longer available.']);
                     }
                     $preview = $packages->calculatePublished($product->currentVersion, $stored['quantity'], $stored['groups']);
-                    $entry = ['key' => $key, 'type' => 'package', 'offering' => $offering, 'preview' => $preview];
+                    $entry = ['key' => $key, 'type' => 'package', 'inquiry_role' => $product->family()->value('behavior_type') === 'main_package' ? 'main' : 'addon', 'offering' => $offering, 'preview' => $preview];
                     $items[] = $entry;
                     $total += (int) $entry['preview']['total_minor'];
                 }
@@ -41,7 +41,7 @@ class SelectionController extends Controller
                         throw ValidationException::withMessages(['selection' => 'This food item is no longer available.']);
                     }
                     $preview = $listings->preview($listing, $listing->currentVersion, $stored['quantity'], $stored['selling_option_id'] ?? null);
-                    $entry = ['key' => $key, 'type' => 'listing', 'offering' => $offering, 'preview' => $preview];
+                    $entry = ['key' => $key, 'type' => 'listing', 'inquiry_role' => $stored['inquiry_role'] ?? 'addon', 'offering' => $offering, 'preview' => $preview];
                     $items[] = $entry;
                     $total += (int) $entry['preview']['total_minor'];
                 }
@@ -58,5 +58,12 @@ class SelectionController extends Controller
         $selection->forget($request, $key);
 
         return back();
+    }
+
+    public function startNew(Request $request, Selection $selection): RedirectResponse
+    {
+        $selection->clear($request);
+
+        return redirect()->route('storefront.catering.index')->with('status', 'You can start a new catering inquiry.');
     }
 }

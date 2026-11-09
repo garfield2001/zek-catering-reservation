@@ -1,16 +1,45 @@
+import { Link } from "@inertiajs/react";
 import { useMemo, useState } from "react";
 import { Check, LoaderCircle, Plus } from "lucide-react";
+import { ConfirmDialog } from "../../../components/ui/confirm-dialog";
 import { FoodImage } from "../../../components/ui/food-image";
 import { csrfFetch } from "../../../lib/http";
 import { validationErrors } from "../../../lib/validation-errors";
 import { formatPesos } from "../../packages/money";
-import type { PricePreview, PublicGroup, PublicPackage } from "../types";
+import type {
+    PricePreview,
+    PublicFood,
+    PublicGroup,
+    PublicPackage,
+} from "../types";
+import { FoodImagePreview } from "./food-image-preview";
 
 type Props = {
     offering: PublicPackage;
     previewUrl: string;
-    selectionUrl: string;
+    selectionUrl?: string;
+    activeMainProductId?: number | null;
     onSelected?: (count: number) => void;
+    onConfigurationSaved?: (configuration: {
+        quantity: number;
+        groups: Array<{
+            quantity: number;
+            selections: Record<string, number[] | Record<string, number>>;
+        }>;
+    }) => void;
+    selectionLabel?: string;
+    initialQuantity?: number;
+    initialGroups?: Array<{
+        quantity: number;
+        selections: Record<string, unknown>;
+    }>;
+};
+
+type CategoryRule = {
+    id: number;
+    name: string;
+    minimum_count: number;
+    maximum_count: number;
 };
 
 function defaultChoices(groups: PublicGroup[]): Record<string, number[]> {
@@ -30,24 +59,92 @@ export function PackageConfigurator({
     offering,
     previewUrl,
     selectionUrl,
+    activeMainProductId = null,
     onSelected,
+    onConfigurationSaved,
+    selectionLabel,
+    initialQuantity,
+    initialGroups,
 }: Props) {
-    const [quantity, setQuantity] = useState(offering.terms.minimum_quantity);
-    const [foodIds, setFoodIds] = useState<number[]>(
-        () =>
+    const [quantity, setQuantity] = useState(
+        initialQuantity ?? offering.terms.minimum_quantity,
+    );
+    const [foodIds, setFoodIds] = useState<number[]>(() => {
+        const selected = initialGroups?.[0]?.selections.food_items;
+        if (Array.isArray(selected) && selected.every(Number.isInteger)) {
+            return selected as number[];
+        }
+
+        return (
             offering.menu?.food_items
                 .filter((item) => item.is_fixed)
-                .map((item) => item.id) ?? [],
-    );
+                .map((item) => item.id) ?? []
+        );
+    });
     const [choices, setChoices] = useState(() =>
-        defaultChoices(offering.groups),
+        Object.fromEntries(
+            offering.groups.map((group) => {
+                const selected =
+                    initialGroups?.[0]?.selections[group.group_code];
+                return [
+                    group.group_code,
+                    Array.isArray(selected) && selected.every(Number.isInteger)
+                        ? (selected as number[])
+                        : defaultChoices([group])[group.group_code],
+                ];
+            }),
+        ),
     );
     const [preview, setPreview] = useState<PricePreview | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState<
         "preview" | "selection" | null
     >(null);
-    const payload = useMemo(
+    const [confirmReplacement, setConfirmReplacement] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const [previewFood, setPreviewFood] = useState<PublicFood | null>(null);
+
+    const foodLimit = offering.menu?.total_selection_count ?? 0;
+    const categoryRules: CategoryRule[] =
+        offering.menu?.category_choice_rules ??
+        offering.menu?.required_categories.map((category) => ({
+            ...category,
+            minimum_count: 1,
+            maximum_count: 1,
+        })) ??
+        [];
+    const foodItems = offering.menu?.food_items ?? [];
+    const fixedFoods = foodItems.filter((food) => food.is_fixed);
+    const selectableFoods = foodItems.filter((food) => !food.is_fixed);
+    const categories = Array.from(
+        new Map(
+            selectableFoods.map((food) => [
+                food.category_id ?? -1,
+                {
+                    id: food.category_id ?? -1,
+                    name: food.category_name ?? "Other Foods",
+                },
+            ]),
+        ).values(),
+    );
+    const [activeCategoryId, setActiveCategoryId] = useState<number | null>(
+        () => categories[0]?.id ?? null,
+    );
+    const activeFoods = selectableFoods.filter(
+        (food) => (food.category_id ?? -1) === activeCategoryId,
+    );
+    const isMain = offering.family.behavior_type === "main_package";
+    const hasOtherMain =
+        isMain &&
+        activeMainProductId !== null &&
+        activeMainProductId !== offering.id;
+    const payload = useMemo<{
+        quantity: number;
+        groups: Array<{
+            quantity: number;
+            selections: Record<string, number[] | Record<string, number>>;
+        }>;
+    }>(
         () => ({
             quantity,
             groups: [
@@ -61,24 +158,63 @@ export function PackageConfigurator({
         }),
         [choices, foodIds, offering.menu, quantity],
     );
-    const foodLimit = offering.menu?.total_selection_count ?? 0;
-    const categoryRules =
-        offering.menu?.category_choice_rules ??
-        offering.menu?.required_categories.map((category) => ({
-            ...category,
-            minimum_count: 1,
-            maximum_count: 1,
-        })) ??
-        [];
 
-    async function send(url: string, mode: "preview" | "selection") {
+    function ruleFor(food: PublicFood) {
+        return categoryRules.find((rule) => rule.id === food.category_id);
+    }
+
+    function selectedInCategory(categoryId: number) {
+        return foodIds.filter((id) => {
+            const food = offering.menu?.food_items.find(
+                (item) => item.id === id,
+            );
+            return food?.category_id === categoryId && !food.is_fixed;
+        });
+    }
+
+    async function send(
+        url: string,
+        mode: "preview" | "selection",
+        replaceMain = false,
+    ) {
+        if (mode === "selection" && onConfigurationSaved) {
+            setSubmitting(mode);
+            setErrors({});
+            try {
+                const response = await csrfFetch(previewUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                const data: unknown = await response.json();
+                if (!response.ok) {
+                    setErrors(validationErrors(data));
+                    return;
+                }
+                setPreview(data as PricePreview);
+                onConfigurationSaved(payload);
+                setSaved(true);
+            } catch {
+                setErrors({
+                    package:
+                        "We could not validate this menu. Please try again.",
+                });
+            } finally {
+                setSubmitting(null);
+            }
+            return;
+        }
+        if (!selectionUrl && mode === "selection") return;
         setSubmitting(mode);
         setErrors({});
         try {
             const response = await csrfFetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
+                body: JSON.stringify({
+                    ...payload,
+                    ...(replaceMain ? { replace_main: true } : {}),
+                }),
             });
             const data: unknown = await response.json();
             if (!response.ok) {
@@ -90,41 +226,45 @@ export function PackageConfigurator({
                 selection_count?: number;
             };
             setPreview(result.preview ?? result);
-            if (mode === "selection" && result.selection_count !== undefined)
+            if (mode === "selection" && result.selection_count !== undefined) {
+                setSaved(true);
                 onSelected?.(result.selection_count);
+            }
         } catch {
             setErrors({
-                package:
-                    "We could not update this selection. Please try again.",
+                package: "We could not update this inquiry. Please try again.",
             });
         } finally {
             setSubmitting(null);
         }
     }
 
-    function toggleFood(id: number, fixed?: boolean) {
-        if (fixed) return;
+    function toggleFood(id: number) {
         const food = offering.menu?.food_items.find((item) => item.id === id);
-        const rule = categoryRules.find(
-            (item) => item.id === food?.category_id,
-        );
-        setFoodIds((current) =>
-            current.includes(id)
-                ? current.filter((value) => value !== id)
-                : current.length >= foodLimit ||
-                    (rule &&
-                        current.filter((value) =>
-                            offering.menu?.food_items.some(
-                                (item) =>
-                                    item.id === value &&
-                                    item.category_id === rule.id &&
-                                    !item.is_fixed,
-                            ),
-                        ).length >= rule.maximum_count)
-                  ? current
-                  : [...current, id],
-        );
+        if (!food || food.is_fixed) return;
+        const rule = ruleFor(food);
+        const inCategory = selectedInCategory(food.category_id ?? -1);
+
+        setFoodIds((current) => {
+            if (current.includes(id))
+                return current.filter((value) => value !== id);
+            if (rule?.maximum_count === 1 && inCategory.length > 0) {
+                return [
+                    ...current.filter((value) => !inCategory.includes(value)),
+                    id,
+                ];
+            }
+            if (
+                current.length >= foodLimit ||
+                (rule && inCategory.length >= rule.maximum_count)
+            ) {
+                return current;
+            }
+
+            return [...current, id];
+        });
     }
+
     function toggleOption(group: PublicGroup, id: number) {
         if (group.mode === "fixed") return;
         setChoices((current) => {
@@ -168,8 +308,8 @@ export function PackageConfigurator({
                 </p>
             </div>
             <p className="mt-3 text-sm leading-6 text-stone-600">
-                Choose from the currently available options. This is a planning
-                selection, not a reservation or confirmed booking.
+                Choose from currently available options. This is a planning
+                inquiry, not a reservation or confirmed booking.
             </p>
             <label className="mt-6 block text-sm font-semibold text-stone-800">
                 {offering.terms.price_basis === "per_pax"
@@ -203,59 +343,173 @@ export function PackageConfigurator({
                     </legend>
                     <p className="mt-1 text-sm text-stone-600">
                         Included Items are already part of your menu. Choose the
-                        remaining Customer Choices.
+                        remaining Customer Choices by Food Category.
                     </p>
-                    {categoryRules.length > 0 && (
-                        <ul className="mt-3 space-y-1 text-sm text-stone-600">
-                            {categoryRules.map((rule) => (
-                                <li key={rule.id}>
-                                    {rule.name}: choose{" "}
-                                    {rule.minimum_count === rule.maximum_count
-                                        ? `exactly ${rule.minimum_count}`
-                                        : `${rule.minimum_count} to ${rule.maximum_count}`}
-                                    .
-                                </li>
-                            ))}
-                        </ul>
+                    {fixedFoods.length > 0 && (
+                        <section
+                            className="mt-4 rounded-xl bg-emerald-50 p-4"
+                            aria-label="Included Food Items"
+                        >
+                            <h3 className="font-semibold text-emerald-950">
+                                Included Food Items
+                            </h3>
+                            <p className="mt-1 text-sm text-emerald-900">
+                                These are fixed in every menu and do not use a
+                                customer choice.
+                            </p>
+                            <ul className="mt-3 flex flex-wrap gap-2">
+                                {fixedFoods.map((food) => (
+                                    <li
+                                        key={food.id}
+                                        className="rounded-full bg-white px-3 py-1 text-sm text-emerald-950"
+                                    >
+                                        {food.name}
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
                     )}
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        {offering.menu.food_items.map((food) => {
-                            const selected = foodIds.includes(food.id);
-                            return (
-                                <button
-                                    key={food.id}
-                                    type="button"
-                                    disabled={food.is_fixed}
-                                    onClick={() =>
-                                        toggleFood(food.id, food.is_fixed)
-                                    }
-                                    className={`flex items-center gap-3 rounded-xl border p-3 text-left ${selected ? "border-emerald-700 bg-emerald-50" : "border-stone-200 hover:border-emerald-300"} ${food.is_fixed ? "cursor-default" : ""}`}
-                                >
-                                    <FoodImage
-                                        compact
-                                        name={food.name}
-                                        src={food.thumbnail_url}
-                                    />
-                                    <span className="min-w-0 flex-1">
-                                        <span className="block font-semibold text-stone-900">
-                                            {food.name}
-                                        </span>
-                                        <span className="text-xs text-stone-500">
-                                            {food.is_fixed
-                                                ? "Included Item"
-                                                : food.category_name}
-                                        </span>
-                                    </span>
-                                    {selected && (
-                                        <Check
-                                            className="text-emerald-700"
-                                            aria-label="Selected"
-                                        />
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
+                    {categories.length > 0 && (
+                        <>
+                            <div
+                                role="tablist"
+                                aria-label="Food Categories"
+                                className="mt-5 flex gap-2 overflow-x-auto pb-2"
+                            >
+                                {categories.map((category) => {
+                                    const rule = categoryRules.find(
+                                        (item) => item.id === category.id,
+                                    );
+                                    const selected = selectedInCategory(
+                                        category.id,
+                                    ).length;
+                                    const exact =
+                                        rule &&
+                                        rule.minimum_count ===
+                                            rule.maximum_count;
+                                    const complete =
+                                        rule &&
+                                        selected >= rule.minimum_count &&
+                                        selected <= rule.maximum_count;
+                                    const progress = rule
+                                        ? `${category.name}: ${selected}/${rule.maximum_count}${complete ? " ✓" : ""}`
+                                        : `${category.name}: ${selected} selected`;
+                                    return (
+                                        <button
+                                            key={category.id}
+                                            type="button"
+                                            role="tab"
+                                            aria-selected={
+                                                activeCategoryId === category.id
+                                            }
+                                            aria-controls={`food-category-${category.id}`}
+                                            onClick={() =>
+                                                setActiveCategoryId(category.id)
+                                            }
+                                            className={`shrink-0 rounded-xl border px-3 py-2 text-left text-sm ${activeCategoryId === category.id ? "border-emerald-800 bg-emerald-800 text-white" : "border-stone-300 bg-white text-stone-800"}`}
+                                        >
+                                            <span className="block font-semibold">
+                                                {progress}
+                                            </span>
+                                            <span
+                                                className={`block text-xs ${activeCategoryId === category.id ? "text-emerald-100" : "text-stone-500"}`}
+                                            >
+                                                {rule?.minimum_count
+                                                    ? exact
+                                                        ? "Required: choose exactly"
+                                                        : "Required category"
+                                                    : "Optional category"}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <div
+                                id={`food-category-${activeCategoryId}`}
+                                role="tabpanel"
+                                className="mt-3 grid gap-3 sm:grid-cols-2"
+                            >
+                                {activeFoods.map((food) => {
+                                    const selected = foodIds.includes(food.id);
+                                    const rule = ruleFor(food);
+                                    const categorySelected = selectedInCategory(
+                                        food.category_id ?? -1,
+                                    ).length;
+                                    const unavailableByLimit =
+                                        !selected &&
+                                        foodIds.length >= foodLimit &&
+                                        !(
+                                            rule?.maximum_count === 1 &&
+                                            categorySelected > 0
+                                        );
+                                    return (
+                                        <article
+                                            key={food.id}
+                                            className={`rounded-xl border p-3 ${selected ? "border-emerald-700 bg-emerald-50" : "border-stone-200 bg-white"}`}
+                                        >
+                                            <div className="flex gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setPreviewFood(food)
+                                                    }
+                                                    className="shrink-0 rounded-xl outline-offset-2 focus:outline focus:outline-2 focus:outline-emerald-800"
+                                                    aria-label={`View ${food.name} image`}
+                                                >
+                                                    <FoodImage
+                                                        compact
+                                                        name={food.name}
+                                                        src={food.thumbnail_url}
+                                                    />
+                                                    <span className="sr-only">
+                                                        View image
+                                                    </span>
+                                                </button>
+                                                <div className="min-w-0 flex-1">
+                                                    <h3 className="font-semibold text-stone-900">
+                                                        {food.name}
+                                                    </h3>
+                                                    <p className="text-xs text-stone-500">
+                                                        {food.category_name}
+                                                    </p>
+                                                    {food.description && (
+                                                        <p className="mt-1 text-sm text-stone-600">
+                                                            {food.description}
+                                                        </p>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        disabled={
+                                                            unavailableByLimit
+                                                        }
+                                                        onClick={() =>
+                                                            toggleFood(food.id)
+                                                        }
+                                                        className={`mt-3 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${selected ? "bg-emerald-800 text-white" : "border border-emerald-800 text-emerald-900"} disabled:cursor-not-allowed disabled:opacity-50`}
+                                                    >
+                                                        {selected && (
+                                                            <Check
+                                                                size={16}
+                                                                aria-hidden="true"
+                                                            />
+                                                        )}
+                                                        {selected
+                                                            ? "Selected"
+                                                            : rule?.maximum_count ===
+                                                                    1 &&
+                                                                categorySelected >
+                                                                    0
+                                                              ? "Replace selection"
+                                                              : "Select food"}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
                 </fieldset>
             )}
             {!offering.menu &&
@@ -338,6 +592,16 @@ export function PackageConfigurator({
                     </p>
                 </div>
             )}
+            {saved && (
+                <div
+                    role="status"
+                    className="mt-5 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-950"
+                >
+                    {isMain
+                        ? "Your Main Catering package is saved. You may now add optional services or continue to event details."
+                        : "This optional service is saved to your inquiry."}
+                </div>
+            )}
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <button
                     type="button"
@@ -352,7 +616,11 @@ export function PackageConfigurator({
                 </button>
                 <button
                     type="button"
-                    onClick={() => send(selectionUrl, "selection")}
+                    onClick={() =>
+                        hasOtherMain
+                            ? setConfirmReplacement(true)
+                            : send(selectionUrl ?? previewUrl, "selection")
+                    }
                     disabled={submitting !== null}
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-5 py-3 font-semibold text-white hover:bg-amber-700"
                 >
@@ -361,9 +629,60 @@ export function PackageConfigurator({
                     ) : (
                         <Plus size={17} />
                     )}{" "}
-                    Add to My Selection
+                    {selectionLabel ??
+                        (isMain
+                            ? "Save Main Catering choice"
+                            : "Add to inquiry")}
                 </button>
             </div>
+            {saved &&
+                (onConfigurationSaved ? (
+                    <p className="mt-4 text-sm font-semibold text-emerald-800">
+                        Proposed configuration validated. Submit the change
+                        request when you are ready.
+                    </p>
+                ) : (
+                    <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold">
+                        <Link
+                            href={isMain ? "/add-on-services" : "/my-selection"}
+                            className="text-emerald-800 underline"
+                        >
+                            {isMain
+                                ? "Choose optional add-ons"
+                                : "Review your inquiry"}
+                        </Link>
+                        {isMain && (
+                            <Link
+                                href="/my-selection"
+                                className="text-emerald-800 underline"
+                            >
+                                Continue to event details
+                            </Link>
+                        )}
+                    </div>
+                ))}
+            <ConfirmDialog
+                open={confirmReplacement}
+                onClose={() => setConfirmReplacement(false)}
+                title="Replace your Main Catering package?"
+                description="Your previous Main Catering food choices and guest quantity will be replaced. Optional add-ons remain in this inquiry and will be rechecked before submission."
+                confirmLabel="Replace package"
+                destructive
+                onConfirm={() => {
+                    setConfirmReplacement(false);
+                    void send(selectionUrl ?? previewUrl, "selection", true);
+                }}
+            />
+            {previewFood && (
+                <FoodImagePreview
+                    open
+                    onClose={() => setPreviewFood(null)}
+                    name={previewFood.name}
+                    category={previewFood.category_name}
+                    imageUrl={previewFood.image_url}
+                    thumbnailUrl={previewFood.thumbnail_url}
+                />
+            )}
         </section>
     );
 }

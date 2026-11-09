@@ -32,6 +32,21 @@ class DatabaseSeeder extends Seeder
                     'package.publish' => 'Publish package versions',
                     'package.history.view' => 'View published and abandoned package history',
                     'package.lifecycle.manage' => 'Disable and archive package offerings',
+                    'reservation_request.view' => 'View reservation requests',
+                    'reservation_request.manage' => 'Review and update reservation request statuses',
+                    'reservation.view' => 'View reservation confirmation and availability information',
+                    'reservation.change.manage' => 'Prepare and submit reservation change requests for review',
+                    'cancellation.manage' => 'Prepare and view cancellation and refund requests',
+                    'quotation.view' => 'View quotations',
+                    'quotation.manage' => 'Create and manage quotation drafts',
+                    'quotation.issue' => 'Issue standard quotations',
+                    'quotation.adjustment.request' => 'Request exceptional quotation pricing',
+                    'quotation.adjustment.approve' => 'Approve exceptional quotation pricing',
+                    'quotation.acceptance.record' => 'Record offline quotation acceptance',
+                    'quotation.delivery.record' => 'Record quotation delivery',
+                    'payment.view' => 'View payment records and balances',
+                    'payment.record' => 'Record received payments for Administrator verification',
+                    'payment.verify' => 'Verify, reject and reverse payments',
                 ] as $code => $description
             ) {
                 Permission::firstOrCreate(['code' => $code], ['description' => $description]);
@@ -41,10 +56,12 @@ class DatabaseSeeder extends Seeder
             app(EnsurePrimaryService::class)->handle();
         });
 
+        $this->call(BusinessPolicyDefaultsSeeder::class);
+
         if ($this->shouldSeedLocalDevelopmentData()) {
             $this->call([
                 LocalDevelopmentAdministratorSeeder::class,
-                //DevelopmentDemoSeeder::class,
+                DevelopmentDemoSeeder::class,
             ]);
         }
     }

@@ -1,24 +1,27 @@
 import { Head, Link, usePage } from "@inertiajs/react";
-import { Menu, ShoppingBag, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { useFlashToast } from "../components/ui/notifications";
+import type { SharedProps } from "../types";
 
 const links = [
     { href: "/", label: "Home" },
     { href: "/catering-packages", label: "Catering Packages" },
     { href: "/add-on-services", label: "Add-on Services" },
+    { href: "/track-request", label: "Track Your Request" },
 ];
 
 export default function StorefrontLayout({
     title,
     children,
-    selectionCount = 0,
 }: {
     title: string;
     children: ReactNode;
     selectionCount?: number;
 }) {
-    const { url } = usePage();
+    const { url, props } = usePage<SharedProps>();
     const [open, setOpen] = useState(false);
+    useFlashToast(props.flash);
 
     return (
         <div className="min-h-screen bg-stone-50 text-stone-900">
@@ -59,19 +62,6 @@ export default function StorefrontLayout({
                         ))}
                     </nav>
                     <div className="flex items-center gap-2">
-                        <Link
-                            href="/my-selection"
-                            className="inline-flex items-center gap-2 rounded-full border border-emerald-800 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50"
-                            aria-label={`My selection, ${selectionCount} items`}
-                        >
-                            <ShoppingBag size={17} aria-hidden="true" />
-                            <span className="hidden sm:inline">
-                                My Selection
-                            </span>
-                            <span className="rounded-full bg-emerald-800 px-1.5 text-xs text-white">
-                                {selectionCount}
-                            </span>
-                        </Link>
                         <button
                             className="rounded-lg p-2 md:hidden"
                             type="button"

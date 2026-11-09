@@ -51,7 +51,7 @@ class ServiceController extends Controller
         abort_unless($directory->packagesFor($family)->contains('id', $product->id), 404);
         $data = $request->validated();
         $result = $preview->calculatePublished($product->currentVersion, $data['quantity'], $data['groups']);
-        $selection->put($request, 'package:'.$product->id, ['type' => 'package', 'product_id' => $product->id, 'version_id' => $product->currentVersion->id, ...$data]);
+        $selection->put($request, 'package:'.$product->id, ['type' => 'package', 'inquiry_role' => 'addon', 'product_id' => $product->id, 'version_id' => $product->currentVersion->id, ...$data]);
 
         return response()->json(['preview' => $result, 'selection_count' => count($selection->all($request))]);
     }
@@ -70,7 +70,7 @@ class ServiceController extends Controller
         $data = $request->validated();
         $result = $configuration->preview($listing, $listing->currentVersion, $data['quantity'], $data['selling_option_id'] ?? null);
         $key = 'listing:'.$listing->id.':'.($data['selling_option_id'] ?? 'base');
-        $selection->put($request, $key, ['type' => 'listing', 'listing_id' => $listing->id, 'version_id' => $listing->currentVersion->id, ...$data]);
+        $selection->put($request, $key, ['type' => 'listing', 'inquiry_role' => 'addon', 'listing_id' => $listing->id, 'version_id' => $listing->currentVersion->id, ...$data]);
 
         return response()->json(['preview' => $result, 'selection_count' => count($selection->all($request))]);
     }

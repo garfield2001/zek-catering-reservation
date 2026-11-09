@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\BusinessPolicy;
 use App\Models\Dish;
 use App\Models\DishCategory;
 use App\Models\Product;
@@ -46,7 +47,8 @@ class LocalDevelopmentSeederTest extends TestCase
         $this->assertSame(11, DishCategory::where('code', 'like', 'category_demo_%')->count());
         $this->assertSame(42, Dish::where('code', 'like', 'food_demo_%')->count());
         $this->assertSame(4, Product::whereNotNull('creation_token')->count());
-        $this->assertSame(4, Product::whereNotNull('creation_token')->whereNull('current_version_id')->count());
+        $this->assertSame(4, Product::whereNotNull('creation_token')->whereNotNull('current_version_id')->count());
+        $this->assertSame(2000, BusinessPolicy::where('key', 'current')->sole()->reservation_payment_basis_points);
 
         $admin->update(['password' => Hash::make('changed-local-password')]);
         $package = Product::where('name', 'Package A')->sole();
@@ -69,5 +71,24 @@ class LocalDevelopmentSeederTest extends TestCase
         $this->assertSame(0, DishCategory::where('code', 'like', 'category_demo_%')->count());
         $this->assertSame(0, Dish::where('code', 'like', 'food_demo_%')->count());
         $this->assertSame(0, Product::whereNotNull('creation_token')->count());
+    }
+
+    public function test_business_policy_seed_keeps_an_existing_administrator_configuration(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $administrator = User::factory()->create();
+        BusinessPolicy::where('key', 'current')->sole()->forceFill([
+            'reservation_payment_type' => 'fixed_amount',
+            'reservation_payment_amount' => 150000,
+            'reservation_payment_basis_points' => null,
+            'updated_by' => $administrator->id,
+        ])->save();
+
+        $this->seed(DatabaseSeeder::class);
+
+        $policy = BusinessPolicy::where('key', 'current')->sole();
+        $this->assertSame('fixed_amount', $policy->reservation_payment_type);
+        $this->assertSame('150000', (string) $policy->reservation_payment_amount);
+        $this->assertNull($policy->reservation_payment_basis_points);
     }
 }

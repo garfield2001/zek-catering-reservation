@@ -3,6 +3,7 @@
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Vite;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 define('LARAVEL_START', microtime(true));
 $assetPath = realpath(__DIR__.'/../../public'.(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/'));
@@ -33,6 +34,20 @@ if ($identity->name !== 'zek_catering_test' || (int) $identity->port !== 5432) {
 // isolated schema; a fixture reset takes the matching exclusive lock.
 const BROWSER_SCHEMA_LOCK = 71005421;
 $app['db']->selectOne('select pg_advisory_lock_shared(?)', [BROWSER_SCHEMA_LOCK]);
+// `migrate:fresh` runs in a separate fixture process. Keep an HTTP request
+// outside Laravel's session middleware until the fresh schema is complete,
+// then retain this shared lock for the full request. This prevents a request
+// from observing the brief no-`sessions` interval on Windows' long-lived PHP
+// built-in server.
+$schemaDeadline = microtime(true) + 60;
+while (! Schema::hasTable('sessions')) {
+    if (microtime(true) >= $schemaDeadline) {
+        http_response_code(503);
+        exit('Browser test schema did not become ready.');
+    }
+
+    usleep(100_000);
+}
 // Never attach browser regression tests to an unrelated running Vite dev server.
 $testHotFile = storage_path('framework/browser-tests-disabled.hot');
 if (is_file($testHotFile)) {

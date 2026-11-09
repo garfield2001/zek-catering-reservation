@@ -8,9 +8,11 @@ import StorefrontLayout from "../../../layouts/storefront-layout";
 export default function StorefrontPackageShow({
     offering,
     selectionCount,
+    activeMainProductId,
 }: {
     offering: PublicPackage;
     selectionCount: number;
+    activeMainProductId: number | null;
 }) {
     const fixed =
         offering.menu?.food_items.filter((food) => food.is_fixed) ?? [];
@@ -86,6 +88,7 @@ export default function StorefrontPackageShow({
                         offering={offering}
                         previewUrl={`/catering-packages/${offering.id}/preview`}
                         selectionUrl={`/catering-packages/${offering.id}/selection`}
+                        activeMainProductId={activeMainProductId}
                         onSelected={() =>
                             router.reload({ only: ["selectionCount"] })
                         }

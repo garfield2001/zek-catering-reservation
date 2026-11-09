@@ -184,7 +184,7 @@ test("consecutive multipart saves retain category and survive logout login and r
     await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Account menu" }).click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
-    await expect(page).toHaveURL("/");
+    await expect(page).toHaveURL("/login");
     // Internal personnel deliberately navigate to the unadvertised login entry point.
     await page.goto("/login");
     await page.getByLabel("Email address").fill(`admin-${run}@example.test`);

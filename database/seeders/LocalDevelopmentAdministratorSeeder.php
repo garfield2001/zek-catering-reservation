@@ -14,9 +14,9 @@ use Illuminate\Support\Facades\Hash;
  */
 class LocalDevelopmentAdministratorSeeder extends Seeder
 {
-    public const EMAIL = 'admin@gmail.com';
+    public const EMAIL = 'admin@g.c';
 
-    public const PASSWORD = 'adminpass123';
+    public const PASSWORD = 'admin123';
 
     public function run(): void
     {

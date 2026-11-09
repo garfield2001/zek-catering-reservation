@@ -12,17 +12,17 @@ Current status: access, catalog, package lifecycle and Milestone B catalog exten
 
 Laravel, Inertia.js, React/TypeScript, PostgreSQL and Tailwind; modular monolith and feature-organized frontend. Thin controllers, Form Requests for transport, Actions for workflows/transactions, dedicated domain validators/services for business rules, Policies, Eloquent persistence, and query classes for complex reads. No generic repositories, generic JSON rules engine or excessive abstraction.
 
-Scope: canonical dishes, eligibility, offerings, five families, package configuration, direct listings, transient server price previews, navigation, media, administration and audit. Customer accounts, reservations, quotations, payments, notifications, scheduling and inventory remain excluded. Future order lines are explanatory only; no order/reservation relationships are created now.
+Scope: canonical dishes, eligibility, offerings, five families, package configuration, direct listings, transient server price previews, navigation, media, administration and audit. Reservation Requests record inquiry-only planning requests, frozen commercial snapshots and protected customer progress. Quotations and Acceptance records versioned commercial drafts, structured Business Policy snapshots, receipt-driven customer acceptance and Administrator payment verification. Reservation Confirmation records an Administrator-authorized confirmed/completed operational reservation only after the verified reservation-payment threshold and date capacity are checked transactionally. Customer accounts, payment gateways, notifications, scheduling, inventory, cancellation and rescheduling execution remain excluded.
 
 ## Five families and four add-on families
 
-| Family code | Catalog behavior | Price basis |
-|---|---|---|
-| main_catering | Configurable Package Versions; fixed/selectable inclusions; initial minimum 150 | per_pax |
-| belly_lechon | Add-on Package Versions with required lechon sizes and selectable tray dishes | per_set |
-| food_pack | Add-on packed meals with minimum quantities, drink premiums and uniform/split modes | per_pack |
-| food_tray | Add-on individual tray dishes through direct listings; no Package Version needed | per_tray |
-| pica_pica | Add-on fixed bundles with administrator-defined inclusions | per_set |
+| Family code   | Catalog behavior                                                                    | Price basis |
+| ------------- | ----------------------------------------------------------------------------------- | ----------- |
+| main_catering | Configurable Package Versions; fixed/selectable inclusions; initial minimum 150     | per_pax     |
+| belly_lechon  | Add-on Package Versions with required lechon sizes and selectable tray dishes       | per_set     |
+| food_pack     | Add-on packed meals with minimum quantities, drink premiums and uniform/split modes | per_pack    |
+| food_tray     | Add-on individual tray dishes through direct listings; no Package Version needed    | per_tray    |
+| pica_pica     | Add-on fixed bundles with administrator-defined inclusions                          | per_set     |
 
 All four add-on families are independent catalog offerings, eventually selectable alongside main catering. Add-ons do NOT mean Food Tray listings alone. Package Products are catalog offerings; Package Versions hold draft and published commercial facts.
 
@@ -63,14 +63,14 @@ All money is nonnegative integer centavos in BIGINT columns, PHP only; 100 centa
 
 Food Tray's current published listing revision is its sole price authority. Offering options have NO standalone price. Draft prices never leak into public calculations. Check arithmetic overflow and reject values/totals outside signed 64-bit range. Serialize monetary values as decimal strings to avoid JavaScript integer precision loss. Laravel calculates authoritative totals; the frontend formats and displays them.
 
-| Family/mode | Formula |
-|---|---|
-| Main Catering | guests × (base per pax + selected per-pax premiums) |
-| Belly Lechon | sets × (base per set + selected per-set premiums) |
-| Food Pack uniform | packs × (base per pack + selected per-pack premiums) |
-| Food Pack split | sum(allocation packs × allocation effective per-pack price) |
-| Food Tray | sum(listing quantity × published revision price) |
-| Pica-Pica | sets × fixed base set price |
+| Family/mode       | Formula                                                     |
+| ----------------- | ----------------------------------------------------------- |
+| Main Catering     | guests × (base per pax + selected per-pax premiums)         |
+| Belly Lechon      | sets × (base per set + selected per-set premiums)           |
+| Food Pack uniform | packs × (base per pack + selected per-pack premiums)        |
+| Food Pack split   | sum(allocation packs × allocation effective per-pack price) |
+| Food Tray         | sum(listing quantity × published revision price)            |
+| Pica-Pica         | sets × fixed base set price                                 |
 
 Order counts are positive integers. Serving sizes use exact NUMERIC quantities. Each group defines an inclusion count of its selected option per purchased price-basis unit: one 3kg option per set, one tray per selected dish per set, or one rice portion per pack. Fulfillment amount = purchased units × selected occurrences × inclusion count × option size. Approximate capacities never replace quantity rules or add across different meal components. Lechon kg implies no pax capacity.
 
@@ -86,11 +86,31 @@ Audit successful commercial edits, publication, availability, media and access c
 
 Media validates magic bytes/MIME, dimensions and limits; generates safe names; re-encodes approved raster formats; rejects SVG/executable uploads; tracks processing and derivatives. Only ready media is public. Offering image falls back to dish then placeholder; variant to product then placeholder; category to placeholder. Images are optional for publication. Typed attachments, one primary per owner and ordering avoid ambiguity. Reference checks and a deletion state prevent attaching assets during after-commit deletion. Back up database and originals and verify restoration/job retries.
 
+## Reservation and quotation workflow amendment (2026-11-04)
+
+The implemented commercial workflow is `Customer Inquiry → Staff Review → Prepare Quotation → explicit Save Draft → Issue → Customer Review → Customer Acceptance`. Opening preparation does not create a quotation case. One request has zero or one quotation case; numbered versions stay within that case.
+
+The typed singleton `business_policies` replaces the Quotation Terms approval gate for new issuance. It defines booking notice, the fixed event duration, quotation validity/override permission and structured payment/menu deadlines. Administrators edit it; authorized Staff can view it; issued and accepted records carry immutable snapshots. Tax, cancellation/refund and rescheduling policy text remains deferred rather than invented.
+
+Public progress access requires a request reference, registered mobile number and per-request Customer Access Code. The code is generated securely, shown once, stored only as a hash, rate-limited on lookup and may be reset by an authorized internal user with an audit event. This portal is the ordinary customer path; retained quote token/OTP records are legacy compatibility only.
+
 ## Remaining business decisions
 
 Before production publication, approve the complete configuration matrix: actual prices/premiums, named Package Products and Versions, inclusions/counts, allowed upgrades, dish pools and minimum/step/maximum values beyond the approved Main Catering floor. Confirm serving claims and final imagery. Examples are not commercial approval. The four add-on families, split defaults, money representation, frozen publications and default Staff restrictions are settled.
 
 Implementation after Phase 3 remains separately gated. Phase 3 adds administrator-only package drafts and price previews; publication remains Phase 4. Food Pack now defaults to a 10-pack minimum per the explicit Phase 3 instruction. See 05-database-entities.md, 06-implementation-plan.md and the 07–09 implementation notes.
+
+## Cancellation and refund management amendment (2026-11-09)
+
+The implemented post-payment workflow is `Customer Request -> Administrator
+Review -> finalized Withdrawal or Cancellation -> optional manual Refund Review
+-> Refund Completion`. It does not automate a payment transfer, financial
+penalty, forfeiture, capacity hold, or customer account. The typed Business
+Policy holds a configurable notice guideline and customer guidance; each case
+freezes the relevant policy and financial facts. A finalized cancellation, not
+the request, releases confirmed-event capacity. See
+`38-cancellation-and-refund-management.md` for the authoritative lifecycle.
+
 # Phase 3.5 dynamic-collection amendment (2026-10-10)
 
 The five named V3 families below describe configurations and historical upgrade identities, not required seeded business records. A fresh installation has zero commercial collections. `product_families` is retained as the durable collection identity so existing catalog/package foreign keys stay valid. Each current collection has an immutable role and one controlled `behavior_type`: `main_package`, `package`, `packed_meal`, `direct_sale`, or `fixed_bundle`. At most one non-archived primary exists; any number of add-ons may share a behavior. Names and descriptions are presentation data. Collection-specific food eligibility and offerings continue to use the family ID, not name or behavior code. See [Phase 3.5 design](10-phase-3-5-dynamic-collections.md) for migration and availability details. Publication, direct-sale listing management and booking remain outside Phase 3.5.

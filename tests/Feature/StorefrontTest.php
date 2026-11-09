@@ -46,7 +46,8 @@ class StorefrontTest extends TestCase
             ->assertInertia(fn ($page) => $page->component('storefront/home'))
             ->assertDontSee('Admin Login')
             ->assertDontSee('Staff Login')
-            ->assertDontSee('Sign In');
+            ->assertDontSee('Sign In')
+            ->assertDontSee('My Selection');
         $this->get('/login')->assertOk()->assertInertia(fn ($page) => $page->component('auth/login'));
         $this->get('/admin')->assertRedirect('/login');
     }
@@ -75,6 +76,7 @@ class StorefrontTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('quantity');
         $this->postJson("/add-on-services/{$family->id}/packages/{$product->id}/selection", $payload)
             ->assertOk()->assertJsonPath('selection_count', 1);
+        $this->get('/reservation-request')->assertRedirect('/catering-packages');
         $this->get('/my-selection')->assertOk()->assertInertia(fn ($page) => $page
             ->component('storefront/selection/index')
             ->where('items.0.offering.name', $product->name)

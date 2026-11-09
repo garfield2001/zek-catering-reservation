@@ -1,6 +1,6 @@
 # Zek Catering — Catalog and Package Administration
 
-Laravel 12 + Inertia 2 + React 19/TypeScript + PostgreSQL + Tailwind 4. The application provides internal access control, append-only audit history, catalog/package/listing publication with immutable snapshots, and a public published-offering storefront with server-authoritative planning estimates. Customer accounts, inquiries, reservations, quotations, payments and notifications remain deferred.
+Laravel 12 + Inertia 2 + React 19/TypeScript + PostgreSQL + Tailwind 4. The application provides internal access control, append-only audit history, catalog/package/listing publication with immutable snapshots, a public published-offering storefront, inquiry intake, quotations, payment verification, and Administrator-controlled reservation confirmation. Customer accounts, payment gateways, notifications, scheduling, inventory, cancellation and rescheduling execution remain deferred.
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ The owner's development database is `zek_reservation`; never refresh or migrate 
 1. Run `composer install` and `npm ci`.
 2. Copy `.env.example` to `.env`. Set DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME and DB_PASSWORD for your own PostgreSQL database. No credentials are committed.
 3. Run `php artisan key:generate`.
-4. For a fresh **local** database, run `php artisan migrate:fresh` and then `php artisan db:seed`. The local-only bootstrap creates roles, permissions, the primary Catering service, the `Admin Tester` development Administrator, 11 demo Food Categories, 42 demo Food Items, and four incomplete Main Catering Draft packages. Do not run either command against the owner's existing development database without separate authorization; see the transition decision below.
+4. For a fresh **local** database, run `php artisan migrate:fresh` and then `php artisan db:seed`. The local-only bootstrap creates roles, permissions, the primary Catering service, the `Admin Tester` development Administrator, 11 demo Food Categories, 42 demo Food Items, and four published, usable Main Catering packages. Package A–D have 4/5/6/7 food choices respectively, require exactly one Rice and one Drink, and offer all active demo Beef, Chicken, Pork, Dessert, Rice and Drink items. The untouched initial reservation-payment policy is 20%; Administrator-managed policy changes are never overwritten. Do not run either command against the owner's existing development database without separate authorization; see the transition decision below.
 5. Sign in locally with `admin@gmail.com` / `adminpass123`, then change or deactivate this development account if it will remain in use. Outside the local environment, use `php artisan app:create-admin` to create the first Administrator interactively.
 6. Start two terminals:
 

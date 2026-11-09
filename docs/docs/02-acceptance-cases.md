@@ -176,3 +176,77 @@ Phase 3 implements **draft-only administrator configuration and price previews**
   category-choice editor; the owner applies that existing forward migration
   only after backup/review. Browser and PostgreSQL verification use only
   `zek_catering_test` on port `5432`.
+
+### Reservation Request Intake acceptance (2026-11-02)
+
+- An anonymous visitor with one current published Main Catering selection and optional currently available add-ons can submit required contact and tentative-event information. Laravel, not the browser, recalculates selection validity and the PHP planning estimate before persistence.
+- A request has exactly one Main Catering line. Stale publications, unavailable offerings, malformed selections, missing Main Catering and duplicate Main selections are rejected without creating a request.
+- The request stores a unique non-guessable reference, an idempotency UUID, Asia/Manila event timing with a fixed four-hour duration, main-package guest quantity, and frozen published/configuration/price facts in integer centavos. Retrying the same idempotency key creates no duplicate.
+- Online requests inside the configured advance-booking period are rejected and directed to contact ZEK Catering for Administrator-reviewed emergency handling; they do not gain a surcharge, availability promise, date hold, quotation, payment, confirmed-reservation, scheduling, inventory or notification side effect.
+- Acknowledgment requires the submitting browser session and exposes the request reference plus one-time Customer Access Code, never contact details. Public progress lookup later requires reference, matching mobile number and that private code.
+- Administrators can view and transition requests. Staff must have the explicit request view/manage capabilities; manage is required for status changes. The only allowed lifecycle is Submitted → Under Review/Needs Information/Closed; Under Review → Needs Information/Closed; Needs Information → Under Review/Closed; Closed is terminal.
+- Commercial request lines and status events are immutable/append-only at the PostgreSQL layer. Audit History records submission and Staff status changes without copying customer contact data.
+- Public Food Item choices are preserved when a visitor changes Food Category tabs. Tab labels display the actual published category minimum/maximum and distinguish required from optional categories; fixed Food Items remain separate. Laravel remains authoritative when previewing, saving, and submitting a selection.
+- A Food Item thumbnail opens an accessible preview without selecting the item. The preview supports a full controlled image when available, zoom controls, Escape, and an explicit close control.
+- A public inquiry can contain one Main Catering package and optional add-ons. Replacing the Main Catering package requires explicit confirmation; add-on-only event/contact submission is rejected server-side. Existing session selections are revalidated against current published availability and package rules.
+- The review step and acknowledgment use guided inquiry wording rather than a prominent cart navigation. The acknowledgment copies only the raw reference code with accessible success/fallback feedback. Logout returns internal users to `/login`, while public pages still do not advertise internal authentication.
+- Pencil Booking, confirmed reservations, capacity holds, scheduling, notifications, and inventory remain future policies. Manual and request-sourced quotations and manual payment verification are implemented under the controlled quotation scope below.
+
+### Reservation, quotation and customer-progress correction (2026-11-04)
+
+- A public inquiry requires one Main Catering package and stores immutable commercial snapshots. Its email is optional; its mobile number is required.
+- A fresh inquiry receives a private Customer Access Code only on the acknowledgement page. PostgreSQL stores a hash, lookup requires reference + matching mobile + code, failures are generic/rate-limited, and an authorized reset invalidates the old code and is audited.
+- **Prepare Quotation** never creates a case. **Save quotation draft** creates the one logical request-linked case; retrying opens that case. Manual quotations remain supported.
+- Business Policies are structured Administrator-managed settings. Authorized Staff may view them. Issuance needs no terms approval, test configuration or owner-evidence record, but it always freezes the current policy snapshot.
+- Administrators directly apply reasoned exceptional Draft adjustments; Staff uses the existing request-and-review flow. Server policies reject a forged Staff direct-adjustment request.
+- The Track Your Request portal shows only supported request/quotation stages, issued details and deadlines. Its first valid receipt upload accepts a valid issued quotation without SMS/OTP delivery and never represents acceptance as payment verification or reservation confirmation.
+- A fully published Main Catering package offers an explicit **Create editable draft** action. It clones the published Version and preserves immutable publication history; it never attempts to open a missing Draft.
+
+### Receipt-driven acceptance and payment verification (2026-11-07)
+
+- A customer’s first valid JPEG, PNG or WebP receipt upload accepts exactly the current displayed, unexpired issued quotation Version and creates one Pending Verification payment record in the same transaction. There is no separate public acceptance action, provider selection, claimed amount, or customer-entered reference.
+- Customer receipt uploads are permitted after the payment due time but before the Asia/Manila hard upload cutoff frozen at issuance. The default cutoff is seven days before the event. After it, ordinary new and replacement uploads fail through both HTTP and UI; already submitted evidence remains reviewable.
+- Customer evidence is hash-protected, private and append-only. A Pending or Rejected receipt may be replaced with a new evidence Version while preserving the original. PostgreSQL rejects evidence rewrite/deletion and a submitted Version that belongs to another quotation case.
+- Only an Administrator verifies, rejects, reverses or assigns the PHP amount actually received. Only Verified allocated payments affect balances. Partial payments remain valid and show the remaining reservation-payment shortfall; verified evidence remains immutable.
+- Customer payment instructions are configured in Business Policies, ship only with visibly marked sample placeholders, and are not a public payment-provider-management interface. Historic receipt versions are available only through authorized internal previews/downloads.
+
+### Reservation Changes and Rescheduling (2026-11-08)
+
+- A customer with verified Track Your Request access, or a Staff member with `reservation.change.manage`, can submit a request against a confirmed reservation without changing its current event, quotation, payment allocation or capacity record. Both use guided, current-availability-checked Main Catering and add-on proposal controls when changing commercial selections.
+- The system accepts one active request per reservation and an idempotency retry returns that request. PostgreSQL keeps the request/event history append-only and records requester/reviewer/applier facts.
+- An Administrator may decline with a reason, or approve. Short-notice reschedules and late menu/add-on changes require an exception reason; neither exception bypasses live payment and capacity checks.
+- Guest count respects a package-backed quotation's frozen quantity rules. Menu/add-on payloads are recalculated through current published package/listing validators before they can create commercial proposal facts.
+- Commercial changes create a Draft revision in the existing quotation case. Issuing it preserves historical Versions; the customer must explicitly agree before it is a candidate for re-confirmation.
+- Payments are not moved automatically. Re-confirmation fails until the new accepted Version has the required verified reservation-payment allocation. Explicit reallocation preserves append-only allocation history.
+- Applying a change locks the reservation and both affected Manila date-capacity keys, excludes the existing reservation only during the target calculation, and either records a new confirmation snapshot or leaves the original reservation unchanged.
+
+### Cancellation and Refund Management (2026-11-09)
+
+- Track Your Request accepts a reasoned, idempotent cancellation request only
+  after existing reference/mobile/access-code verification. It does not expose
+  private notes or evidence and does not change a confirmed reservation before
+  Administrator finalization.
+- An unconfirmed quotation is recorded as a withdrawal; a confirmed event is
+  recorded as a cancellation. Completed reservations and cases with a pending
+  rescheduling request are rejected without losing history.
+- An Administrator records a reviewed decision and capacity is released only
+  when a confirmed reservation becomes `cancelled`. Late requests are retained
+  for review under the snapshot notice policy and never create automatic
+  penalties, forfeitures, or refund promises.
+- Refunds use verified payments belonging to the same quotation case. Pending
+  and approved amounts reserve their share of the payment, completion is an
+  explicit manual action, and original payments/allocation history remain
+  untouched. Multiple partial refunds, rejection, private evidence, and
+  append-only corrections are supported.
+- Staff with `cancellation.manage` can view or prepare requests but cannot
+  finalize cancellation, approve/refuse a refund, record completion, inspect
+  private refund evidence, or forge an Administrator-only route.
+
+### Historical Quotations and Acceptance acceptance (2026-11-03, superseded by the 2026-11-04 correction)
+
+- Issuance fails closed until an Administrator records an explicitly approved active terms version with every required commercial statement.
+- Approved terms cannot be edited or deleted. A new approval supersedes the prior one and cannot alter an issued quotation’s frozen terms snapshot.
+- Laravel copies request snapshots or calculates manual line totals in integer centavos; it never trusts a browser total or invents tax, cancellation, refund or payment policy.
+- Issuance freezes lines, commercial price, validity, link-token hash and terms snapshot. A Version can be accepted, withdrawn, expire or be superseded without history mutation.
+- A secure URL alone reveals no sensitive quote detail. OTP is hash-only, single-use, five minutes long and opens a 30-minute Version-scoped browser session. Production delivery fails closed without a provider; only local/testing has a labeled test driver.
+- Online/offline acceptance derives payment/menu due facts from issued terms only. It does not verify payment, hold availability, confirm a reservation, send a notification, or execute cancellation/refund/rescheduling.

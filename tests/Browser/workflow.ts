@@ -331,24 +331,10 @@ export async function inlineFood(page: Page, name: string, category: string) {
     }
     await dialog.getByRole("button", { name: "Create food item" }).click();
     await expect(dialog).not.toBeVisible();
-    const categoryPicker = page.getByRole("combobox", {
-        name: /^Category/,
-    });
-    await categoryPicker.click();
-    await categoryPicker.fill(category);
-    await expect(
-        page.getByRole("option", {
-            name: new RegExp(
-                `^${category.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\(`,
-            ),
-        }),
-    ).toBeVisible();
-    await categoryPicker.press("Enter");
-    if (/\/admin\/catering-packages\/\d+\/menu$/.test(page.url())) {
-        await page.getByLabel(name, { exact: true }).check();
-        return;
-    }
-    await page.getByLabel(name, { exact: true }).check();
+    await filterPackageFoodsByCategory(page, category);
+    const food = page.getByLabel(name, { exact: true });
+    await expect(food).toBeVisible();
+    await food.check();
 }
 
 /** Uses the Phase 5.1 guided picker instead of the retired category panels. */
@@ -366,7 +352,7 @@ export async function filterPackageFoodsByCategory(page: Page, name: string) {
     await expect(category).toHaveAttribute("aria-expanded", "true");
     await expect(category).toHaveValue("");
     await category.fill(name);
-    const option = page.getByRole("option", {
+    const option = page.getByRole("listbox").getByRole("option", {
         name:
             name === "All eligible foods"
                 ? name
@@ -375,10 +361,10 @@ export async function filterPackageFoodsByCategory(page: Page, name: string) {
                   ),
     });
     await expect(option).toBeVisible();
-    // SearchableSelect keeps focus on its combobox. Choosing the highlighted
-    // filtered option with Enter exercises its documented keyboard path and
-    // avoids a pointer race while the menu is repositioning.
-    await category.press("Enter");
+    // Scope to the open SearchableSelect listbox. An Add Food dialog also has
+    // native category options, which must not satisfy this assertion or select
+    // a partial category-name match.
+    await option.click();
     await expect(category).toHaveAttribute("aria-expanded", "false");
 }
 
