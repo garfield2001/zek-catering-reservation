@@ -255,3 +255,17 @@ published-catalog selection, pricing, snapshot, and request persistence path as
 public intake. It writes the Request, provenance link, converted state,
 lifecycle event, and audit record atomically. The source tables never claim or
 consume operational capacity.
+
+## Emergency booking and payment-instruction history (2026-11-11)
+
+| Entity | Fields | Keys and integrity |
+| --- | --- | --- |
+| `reservation_requests` emergency facts | exception flag, reason, authorizing Administrator, policy JSON snapshot | A row CHECK requires all four facts together; a PostgreSQL trigger makes them immutable after insert. |
+| `payment_instruction_versions` | policy FK, monotonic version number, customer instruction fields, effective timestamp, responsible Administrator | Unique policy/version pair, restrictive FKs, chronological index, and append-only trigger preserve prior collection instructions. |
+| `business_policies.current_payment_instruction_version_id` | current instruction pointer | Restrictive non-null FK identifies the details supplied to customers today. |
+
+Issued quotation terms snapshot the then-current payment-instruction version.
+Track Your Request deliberately presents the current approved collection
+instructions and identifies when they have changed since issuance; this avoids
+silently changing the immutable quotation snapshot without directing customers
+to obsolete payment destinations.

@@ -24,7 +24,7 @@ class IssueQuotation
             if ($version->status !== QuotationVersionStatus::Draft) {
                 throw ValidationException::withMessages(['quotation' => 'Only a quotation draft can be issued.']);
             }
-            $policy = $this->policies->current();
+            $policy = $this->policies->current()->loadMissing('currentPaymentInstructionVersion');
             $hasValidityOverride = $validUntil !== null;
             $validUntil ??= CarbonImmutable::now('Asia/Manila')->addDays($policy->quotation_validity_days);
             if ($validUntil->lessThanOrEqualTo(CarbonImmutable::now('Asia/Manila'))) {

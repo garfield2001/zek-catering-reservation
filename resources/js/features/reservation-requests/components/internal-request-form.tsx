@@ -65,6 +65,8 @@ type Props = {
     initial?: InitialDetails;
     title?: string;
     description?: string;
+    minimumAdvanceBookingDays: number;
+    canAuthorizeEmergencyBooking: boolean;
 };
 
 type RequestForm = {
@@ -76,6 +78,8 @@ type RequestForm = {
     event_start_time: string;
     venue_information: string;
     event_notes: string;
+    emergency_booking_exception: boolean;
+    emergency_booking_reason: string;
 };
 
 function FieldError({ error }: { error?: string }) {
@@ -113,6 +117,8 @@ export function InternalRequestForm({
     initial = {},
     title = "Create reservation request",
     description = "Build a request from currently published offerings. Saving it does not reserve an event date or confirm availability.",
+    minimumAdvanceBookingDays,
+    canAuthorizeEmergencyBooking,
 }: Props) {
     const form = useForm<RequestForm>({
         idempotency_key: idempotencyKey,
@@ -123,6 +129,8 @@ export function InternalRequestForm({
         event_start_time: initial.event_start_time?.slice(0, 5) ?? "",
         venue_information: initial.venue_information ?? "",
         event_notes: initial.event_notes ?? "",
+        emergency_booking_exception: false,
+        emergency_booking_reason: "",
     });
     const [selections, setSelections] = useState<Selection[]>([]);
     const [expandedMain, setExpandedMain] = useState<number | null>(
@@ -300,6 +308,65 @@ export function InternalRequestForm({
                         rows={3}
                     />
                 </label>
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                    <p>
+                        Internal requests normally require at least{" "}
+                        {minimumAdvanceBookingDays} days&apos; notice. They do
+                        not hold capacity.
+                    </p>
+                    {canAuthorizeEmergencyBooking ? (
+                        <>
+                            <label className="mt-3 flex items-center gap-2 font-medium">
+                                <input
+                                    type="checkbox"
+                                    checked={
+                                        form.data.emergency_booking_exception
+                                    }
+                                    onChange={(event) =>
+                                        form.setData(
+                                            "emergency_booking_exception",
+                                            event.target.checked,
+                                        )
+                                    }
+                                />
+                                Authorize a short-notice emergency booking
+                                exception
+                            </label>
+                            {form.data.emergency_booking_exception && (
+                                <label className="mt-3 block font-medium">
+                                    Administrator reason
+                                    <textarea
+                                        value={
+                                            form.data.emergency_booking_reason
+                                        }
+                                        onChange={(event) =>
+                                            form.setData(
+                                                "emergency_booking_reason",
+                                                event.target.value,
+                                            )
+                                        }
+                                        className="mt-1 w-full"
+                                        required
+                                    />
+                                    <FieldError
+                                        error={
+                                            form.errors.emergency_booking_reason
+                                        }
+                                    />
+                                </label>
+                            )}
+                        </>
+                    ) : (
+                        <p className="mt-2">
+                            If this event is inside that notice period, ask an
+                            Administrator to create the documented emergency
+                            exception.
+                        </p>
+                    )}
+                    <FieldError
+                        error={form.errors.emergency_booking_exception}
+                    />
+                </div>
                 <div className="mt-2 grid gap-1 md:grid-cols-2">
                     {[
                         "full_name",

@@ -111,8 +111,9 @@ export function TeamMemberForm({ staff }: { staff: UserAccount | null }) {
                     />
                 </Field>
                 <p className="text-sm text-stone-500">
-                    At least 12 characters, including uppercase, lowercase and a
-                    number. Share securely with the account holder.
+                    Use 7–128 characters and include at least one number.
+                    Uppercase and lowercase are optional. Share securely with
+                    the account holder.
                 </p>
                 <Field id="password_confirmation" label="Confirm password">
                     <input

@@ -63,6 +63,18 @@ class QuotationTermsAndAcceptanceTest extends TestCase
         $this->assertDatabaseHas('audit_events', ['action' => 'business_policy.updated', 'actor_id' => $this->admin->id]);
     }
 
+    public function test_payment_instruction_changes_create_immutable_history_and_do_not_rewrite_issued_terms(): void
+    {
+        $first = app(IssueQuotation::class)->handle($this->admin, $this->manualQuote()->currentVersion)['version'];
+        $initialVersion = $first->terms_snapshot['payment_instruction_version']['id'];
+        app(SaveBusinessPolicy::class)->handle($this->admin, $this->policyData(['payment_account_name' => 'ZEK Catering Updated Account']));
+        $policy = BusinessPolicy::where('key', 'current')->sole();
+        $this->assertNotSame($initialVersion, $policy->current_payment_instruction_version_id);
+        $this->assertSame($initialVersion, $first->fresh()->terms_snapshot['payment_instruction_version']['id']);
+        $this->assertDatabaseCount('payment_instruction_versions', 2);
+        $this->assertDatabaseHas('audit_events', ['action' => 'payment_instruction_version.created', 'actor_id' => $this->admin->id]);
+    }
+
     public function test_only_administrators_manage_policies_while_authorized_staff_can_view_them(): void
     {
         $staff = User::factory()->create();

@@ -115,6 +115,54 @@ class PencilBookingReservationRequestIntegrationTest extends TestCase
         $this->assertDatabaseCount('reservation_requests', 0);
     }
 
+    public function test_authorized_staff_can_create_a_normal_notice_request_but_cannot_forge_an_emergency_exception(): void
+    {
+        $product = $this->publishedMain();
+        $staff = User::factory()->create();
+        $staff->roles()->attach(Role::where('code', 'staff')->sole());
+        $staff->permissionOverrides()->attach(Permission::where('code', 'reservation_request.manage')->sole(), ['effect' => 'allow']);
+        $session = ['access_version' => $staff->access_version];
+
+        $this->actingAs($staff)->withSession($session)->post('/admin/reservation-requests', $this->payload($product))->assertRedirect();
+        $this->assertSame('manual', ReservationRequest::sole()->origin);
+
+        $emergency = $this->payload($product, [
+            'idempotency_key' => (string) Str::uuid(),
+            'event_date' => now('Asia/Manila')->addDay()->toDateString(),
+            'emergency_booking_exception' => true,
+            'emergency_booking_reason' => 'Forged bypass.',
+        ]);
+        $this->actingAs($staff)->withSession($session)->post('/admin/reservation-requests', $emergency)
+            ->assertSessionHasErrors('emergency_booking_exception');
+        $this->assertDatabaseCount('reservation_requests', 1);
+    }
+
+    public function test_pencil_booking_conversion_requires_an_administrator_reason_for_short_notice(): void
+    {
+        $product = $this->publishedMain();
+        $booking = $this->booking();
+        $booking->update(['event_date' => now('Asia/Manila')->addDay()->toDateString()]);
+        $booking->refresh();
+        $session = ['access_version' => $this->admin->access_version];
+        $withoutException = $this->payload($product, ['event_date' => $booking->event_date->toDateString()]);
+        $this->actingAs($this->admin)->withSession($session)->post("/admin/pencil-bookings/{$booking->id}/convert", $withoutException)
+            ->assertSessionHasErrors('event_date');
+
+        $withException = $this->payload($product, [
+            'idempotency_key' => (string) Str::uuid(),
+            'event_date' => $booking->event_date->toDateString(),
+            'emergency_booking_exception' => true,
+            'emergency_booking_reason' => 'Approved short-notice conversion.',
+        ]);
+        $this->actingAs($this->admin)->withSession($session)->post("/admin/pencil-bookings/{$booking->id}/convert", $withException)->assertRedirect();
+        $request = ReservationRequest::sole();
+        $this->assertTrue($request->emergency_booking_exception);
+        $this->assertSame($booking->id, $request->pencil_booking_id);
+        $this->assertNull($request->quotation);
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertDatabaseCount('reservations', 0);
+    }
+
     public function test_unauthorized_staff_cannot_create_or_convert_reservation_requests(): void
     {
         $product = $this->publishedMain();

@@ -36,6 +36,12 @@ class BusinessPolicy extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    /** @return BelongsTo<PaymentInstructionVersion, $this> */
+    public function currentPaymentInstructionVersion(): BelongsTo
+    {
+        return $this->belongsTo(PaymentInstructionVersion::class, 'current_payment_instruction_version_id');
+    }
+
     /** @return array<string, mixed> */
     public function quotationSnapshot(): array
     {
@@ -54,6 +60,7 @@ class BusinessPolicy extends Model
             'menu_finalization' => [
                 'days_after_acceptance' => $this->menu_finalization_days_after_acceptance,
             ],
+            'payment_instruction_version' => $this->currentPaymentInstructionVersion?->snapshot(),
         ];
     }
 

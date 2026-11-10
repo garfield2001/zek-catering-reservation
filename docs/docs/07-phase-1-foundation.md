@@ -6,7 +6,7 @@ Authorized by the client after approval of V3. Phase 1 supersedes the older docu
 
 - Laravel 12 is compatible with the available PHP 8.2 runtime. Use a current patched PHP release for commercial deployment; the inspected local PHP 8.2.12 installation is old. Laravel 12 support and upgrade planning must be reviewed before launch.
 - Inertia 2, React 19, strict TypeScript, Tailwind 4, Vite 8 and a feature-first UI. Dependency lockfiles define the reproducible versions. Node 24 is used locally/CI.
-- Native Laravel session authentication with database sessions; no public registration, remember-me UI, password-reset email, or notification flows. Passwords use Laravel's hashed cast; account creation/replacement requires 12 characters, mixed case and a number.
+- Native Laravel session authentication with database sessions; no public registration, remember-me UI, password-reset email, or notification flows. Passwords use Laravel's hashed cast; account creation/replacement requires 7–128 characters, at least one number, and confirmation; mixed case is optional.
 - Login uses generic failure messages, account/IP throttling plus route throttling, session ID rotation and active-account checks. Standard web middleware enforces CSRF. Logout invalidates the session and rotates its token.
 - Database-backed roles/permissions with per-user allow/deny overrides. A request-scoped resolver centralizes precedence. Policies govern target-specific operations. No global Gate Admin shortcut bypasses invariants.
 - Admin has full permission access. Staff starts with its assigned dashboard.view role grant only. Other Phase 1 capabilities are staff.view, staff.manage, access.manage and audit.view. Publishing capabilities are deliberately absent until that feature exists.

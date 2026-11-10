@@ -1,6 +1,6 @@
 # Zek Catering — Catalog and Package Administration
 
-Laravel 12 + Inertia 2 + React 19/TypeScript + PostgreSQL + Tailwind 4. The application provides internal access control, append-only audit history, catalog/package/listing publication with immutable snapshots, a public published-offering storefront, inquiry intake, quotations, payment verification, and Administrator-controlled reservation confirmation. Customer accounts, payment gateways, notifications, scheduling, inventory, cancellation and rescheduling execution remain deferred.
+Laravel 12 + Inertia 2 + React 19/TypeScript + PostgreSQL + Tailwind 4. The application provides internal access control, append-only audit history, catalog/package/listing publication with immutable snapshots, a public published-offering storefront, inquiry intake, quotations, payment verification, Administrator-controlled reservation confirmation, reservation changes, cancellation/refund review, and pencil-booking conversion. Customer accounts, payment gateways, notifications, scheduling, and inventory remain deferred.
 
 ## Prerequisites
 

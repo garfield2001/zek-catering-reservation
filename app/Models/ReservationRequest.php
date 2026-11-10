@@ -23,6 +23,7 @@ class ReservationRequest extends Model
             'event_date' => 'date',
             'event_ends_next_day' => 'boolean', 'guest_count' => 'integer', 'estimated_subtotal_minor' => 'string',
             'commercial_snapshot' => 'array', 'status' => ReservationRequestStatus::class,
+            'emergency_booking_exception' => 'boolean', 'emergency_booking_policy_snapshot' => 'array',
         ];
     }
 
@@ -72,5 +73,11 @@ class ReservationRequest extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function emergencyBookingAuthorizer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'emergency_booking_authorized_by');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\BusinessPolicies\SaveBusinessPolicy;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BusinessPolicies\SaveBusinessPolicyRequest;
+use App\Models\PaymentInstructionVersion;
 use App\Services\BusinessPolicies\CurrentBusinessPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
@@ -15,7 +16,7 @@ class BusinessPolicyController extends Controller
 {
     public function show(CurrentBusinessPolicy $current): Response
     {
-        $policy = $current->current();
+        $policy = $current->current()->load(['currentPaymentInstructionVersion', 'currentPaymentInstructionVersion.creator']);
         Gate::authorize('view', $policy);
 
         return Inertia::render('admin/business-policies/show', [
@@ -34,6 +35,14 @@ class BusinessPolicyController extends Controller
                 'reservation_payment_amount' => $policy->reservationPaymentPesos(),
             ],
             'canManage' => request()->user()->can('update', $policy),
+            'paymentInstructionHistory' => PaymentInstructionVersion::query()
+                ->where('business_policy_id', $policy->id)->with('creator')->latest('version_number')->get()
+                ->map(fn (PaymentInstructionVersion $version) => [
+                    'version_number' => $version->version_number,
+                    'effective_at' => $version->effective_at->toIso8601String(),
+                    'created_by' => $version->creator?->name,
+                    'current' => $version->id === $policy->current_payment_instruction_version_id,
+                ]),
         ]);
     }
 

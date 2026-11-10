@@ -21,9 +21,13 @@ type Catalog = {
 export default function CreateReservationRequest({
     catalog,
     idempotencyKey,
+    minimumAdvanceBookingDays,
+    canAuthorizeEmergencyBooking,
 }: {
     catalog: Catalog;
     idempotencyKey: string;
+    minimumAdvanceBookingDays: number;
+    canAuthorizeEmergencyBooking: boolean;
 }) {
     return (
         <AdminLayout
@@ -42,6 +46,8 @@ export default function CreateReservationRequest({
                     catalog={catalog}
                     endpoint="/admin/reservation-requests"
                     idempotencyKey={idempotencyKey}
+                    minimumAdvanceBookingDays={minimumAdvanceBookingDays}
+                    canAuthorizeEmergencyBooking={canAuthorizeEmergencyBooking}
                 />
             </div>
         </AdminLayout>

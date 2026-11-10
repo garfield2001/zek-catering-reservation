@@ -13,6 +13,7 @@ use App\Http\Requests\ReservationRequest\StoreInternalReservationRequest;
 use App\Models\PencilBooking;
 use App\Models\ReservationRequest;
 use App\Queries\ReservationRequests\InternalRequestCatalog;
+use App\Services\BusinessPolicies\CurrentBusinessPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -38,7 +39,7 @@ class PencilBookingController extends Controller
         return redirect()->route('pencil-bookings.index')->with('status', "Pencil booking #{$booking->id} was saved. It does not hold capacity.");
     }
 
-    public function show(PencilBooking $pencilBooking, InternalRequestCatalog $catalog): Response
+    public function show(PencilBooking $pencilBooking, InternalRequestCatalog $catalog, CurrentBusinessPolicy $policies): Response
     {
         Gate::authorize('view', $pencilBooking);
         $pencilBooking->load(['events.actor', 'convertedReservationRequest.quotation']);
@@ -61,6 +62,8 @@ class PencilBookingController extends Controller
             'canConvert' => $canConvert,
             'catalog' => $canConvert ? $catalog->all() : null,
             'idempotencyKey' => $canConvert ? (string) str()->uuid() : null,
+            'minimumAdvanceBookingDays' => $policies->current()->minimum_advance_booking_days,
+            'canAuthorizeEmergencyBooking' => request()->user()->isAdmin(),
         ]);
     }
 

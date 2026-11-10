@@ -252,7 +252,7 @@ Phase 3 implements **draft-only administrator configuration and price previews**
 
 ### Historical Quotations and Acceptance acceptance (2026-11-03, superseded by the 2026-11-04 correction)
 
-- Issuance fails closed until an Administrator records an explicitly approved active terms version with every required commercial statement.
+- Issuance uses the current Administrator-managed Business Policies without the removed terms-approval or owner-evidence gate. The issued Version freezes its policy and payment-instruction snapshots.
 - Approved terms cannot be edited or deleted. A new approval supersedes the prior one and cannot alter an issued quotation’s frozen terms snapshot.
 - Laravel copies request snapshots or calculates manual line totals in integer centavos; it never trusts a browser total or invents tax, cancellation, refund or payment policy.
 - Issuance freezes lines, commercial price, validity, link-token hash and terms snapshot. A Version can be accepted, withdrawn, expire or be superseded without history mutation.

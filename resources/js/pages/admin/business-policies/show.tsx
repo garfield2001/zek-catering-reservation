@@ -29,9 +29,16 @@ type Policy = {
 export default function BusinessPoliciesShow({
     policy,
     canManage,
+    paymentInstructionHistory,
 }: {
     policy: Policy;
     canManage: boolean;
+    paymentInstructionHistory: Array<{
+        version_number: number;
+        effective_at: string;
+        created_by: string | null;
+        current: boolean;
+    }>;
 }) {
     const form = useForm({
         ...policy,
@@ -296,6 +303,34 @@ export default function BusinessPoliciesShow({
                             />
                             {error("payment_additional_instructions")}
                         </label>
+                    </div>
+                    <div className="mt-5 border-t pt-4">
+                        <h3 className="font-semibold">Instruction history</h3>
+                        <p className="mt-1 text-sm text-slate-600">
+                            Earlier collection details are retained for
+                            issued-quotation history. Customers are always shown
+                            the current approved details.
+                        </p>
+                        <ol className="mt-3 space-y-2 text-sm">
+                            {paymentInstructionHistory.map((version) => (
+                                <li
+                                    key={version.version_number}
+                                    className="rounded-lg bg-slate-50 p-3"
+                                >
+                                    Version {version.version_number}
+                                    {version.current ? " — current" : ""} ·
+                                    effective{" "}
+                                    {new Intl.DateTimeFormat("en-PH", {
+                                        dateStyle: "medium",
+                                        timeStyle: "short",
+                                        timeZone: "Asia/Manila",
+                                    }).format(new Date(version.effective_at))}
+                                    {version.created_by
+                                        ? ` · ${version.created_by}`
+                                        : ""}
+                                </li>
+                            ))}
+                        </ol>
                     </div>
                 </section>
 

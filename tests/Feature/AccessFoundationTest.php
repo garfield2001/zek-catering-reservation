@@ -161,6 +161,20 @@ class AccessFoundationTest extends TestCase
         $this->assertArrayNotHasKey('password', $event->after_data);
     }
 
+    public function test_account_passwords_require_seven_characters_a_number_and_confirmation_without_mixed_case(): void
+    {
+        $admin = $this->user('admin');
+        $session = ['access_version' => $admin->access_version];
+        $this->actingAs($admin)->withSession($session)->post('/admin/staff', [
+            'name' => 'Numeric Password', 'email' => 'numeric-password@example.test', 'role' => 'staff', 'active' => true,
+            'password' => 'abcdef1', 'password_confirmation' => 'abcdef1',
+        ])->assertRedirect();
+        $this->actingAs($admin)->withSession($session)->post('/admin/staff', [
+            'name' => 'No Number', 'email' => 'no-number@example.test', 'role' => 'staff', 'active' => true,
+            'password' => 'abcdefg', 'password_confirmation' => 'abcdefg',
+        ])->assertSessionHasErrors('password');
+    }
+
     public function test_permission_changes_are_audited_and_revoke_existing_sessions(): void
     {
         $admin = $this->user('admin');
@@ -320,7 +334,7 @@ class AccessFoundationTest extends TestCase
         $this->artisan('app:create-admin')
             ->expectsQuestion('Name', 'Initial Admin')
             ->expectsQuestion('Email', 'initial@example.test')
-            ->expectsQuestion('Password (12+ characters, mixed case and numbers)', 'Initial-Secret123')
+            ->expectsQuestion('Password (7+ characters and at least one number)', 'Initial-Secret123')
             ->expectsOutput('Admin created.')
             ->assertSuccessful();
         $user = User::where('email', 'initial@example.test')->sole();
@@ -336,7 +350,7 @@ class AccessFoundationTest extends TestCase
         $this->artisan('app:create-admin')
             ->expectsQuestion('Name', 'Initial Admin')
             ->expectsQuestion('Email', 'missing-role@example.test')
-            ->expectsQuestion('Password (12+ characters, mixed case and numbers)', 'Initial-Secret123')
+            ->expectsQuestion('Password (7+ characters and at least one number)', 'Initial-Secret123')
             ->expectsOutput('The Administrator role is missing. Run php artisan db:seed --class=DatabaseSeeder, then retry.')
             ->assertFailed();
         $this->assertDatabaseMissing('users', ['email' => 'missing-role@example.test']);

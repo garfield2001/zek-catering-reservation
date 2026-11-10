@@ -12,6 +12,7 @@ use App\Http\Requests\ReservationRequest\UpdateReservationRequestStatus as Updat
 use App\Models\Quotation;
 use App\Models\ReservationRequest;
 use App\Queries\ReservationRequests\InternalRequestCatalog;
+use App\Services\BusinessPolicies\CurrentBusinessPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -20,13 +21,15 @@ use Inertia\Response;
 
 class ReservationRequestController extends Controller
 {
-    public function create(Request $request, InternalRequestCatalog $catalog): Response
+    public function create(Request $request, InternalRequestCatalog $catalog, CurrentBusinessPolicy $policies): Response
     {
         Gate::authorize('create', ReservationRequest::class);
 
         return Inertia::render('admin/reservation-requests/create', [
             'catalog' => $catalog->all(),
             'idempotencyKey' => (string) str()->uuid(),
+            'minimumAdvanceBookingDays' => $policies->current()->minimum_advance_booking_days,
+            'canAuthorizeEmergencyBooking' => $request->user()->isAdmin(),
         ]);
     }
 

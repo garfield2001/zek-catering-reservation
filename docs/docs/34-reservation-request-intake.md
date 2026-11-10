@@ -72,6 +72,20 @@ conversion but preserves its history.
   keys. Their lifecycle event table is append-only in PostgreSQL. Those facts
   complement, rather than duplicate, the general audit ledger.
 
+## Emergency internal booking exceptions (2026-11-11)
+
+The public inquiry remains subject to the configured minimum advance-booking
+period. An authorized internal user can create an ordinary request only when it
+also meets that period. For a short-notice event, an Administrator must make an
+explicit emergency exception and record a meaningful reason. Staff cannot
+bypass that rule through the manual form or Pencil Booking conversion.
+
+`reservation_requests` stores the exception flag, reason, authorizing
+Administrator, and a small policy snapshot. These facts are immutable at the
+PostgreSQL boundary and are also recorded in the Audit Event ledger. An
+exception creates neither capacity hold nor financial/acceptance record;
+ordinary quotation, payment, and Administrator confirmation rules still apply.
+
 ## Deferred work
 
 Customer accounts, OTP/SMS/email delivery, scheduling and inventory remain

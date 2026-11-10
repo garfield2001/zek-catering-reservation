@@ -43,6 +43,8 @@ type Quote = {
         bank_account: string;
         additional_instructions: string;
         contains_placeholders: boolean;
+        updated_since_issuance: boolean;
+        effective_at: string | null;
     };
     payment_upload_cutoff_at: string | null;
     payment_upload_open: boolean;
@@ -790,6 +792,13 @@ function PaymentInstructions({
     return (
         <div className="mt-3 rounded-lg bg-stone-100 p-3 text-sm">
             <strong>Payment instructions</strong>
+            {instructions.updated_since_issuance && (
+                <p className="mt-1 font-medium text-emerald-800">
+                    Payment instructions have been updated since this quotation
+                    was issued. Use the current details below when preparing
+                    your payment.
+                </p>
+            )}
             {instructions.contains_placeholders && (
                 <p className="mt-1 font-medium text-amber-800">
                     Sample account information — contact ZEK Catering before

@@ -26,7 +26,7 @@ class SaveUserRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($this->route('user'))],
-            'password' => [$this->route('user') ? 'nullable' : 'required', 'confirmed', Password::min(12)->mixedCase()->numbers(), 'max:128'],
+            'password' => [$this->route('user') ? 'nullable' : 'required', 'confirmed', Password::min(7)->numbers(), 'max:128'],
             'active' => ['required', 'boolean'],
             'role' => ['required', Rule::in($this->user()->isAdmin() ? ['admin', 'staff'] : ['staff'])],
             'access_version' => [$this->route('user') ? 'required' : 'nullable', 'integer', 'min:1'],

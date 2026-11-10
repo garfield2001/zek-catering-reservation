@@ -19,11 +19,11 @@ class CreateAdmin extends Command
 
     public function handle(AccessMutation $access, AuditLogger $audit): int
     {
-        $data = ['name' => $this->ask('Name'), 'email' => strtolower(trim((string) $this->ask('Email'))), 'password' => $this->secret('Password (12+ characters, mixed case and numbers)')];
+        $data = ['name' => $this->ask('Name'), 'email' => strtolower(trim((string) $this->ask('Email'))), 'password' => $this->secret('Password (7+ characters and at least one number)')];
         $validator = Validator::make($data, [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', Password::min(12)->mixedCase()->numbers(), 'max:128'],
+            'password' => ['required', Password::min(7)->numbers(), 'max:128'],
         ]);
         if ($validator->fails()) {
             $this->error($validator->errors()->first());

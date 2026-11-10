@@ -26,6 +26,8 @@ class StoreInternalReservationRequest extends FormRequest
             'event_start_time' => ['required', 'date_format:H:i'],
             'venue_information' => ['required', 'string', 'max:2000'],
             'event_notes' => ['nullable', 'string', 'max:5000'],
+            'emergency_booking_exception' => ['nullable', 'boolean'],
+            'emergency_booking_reason' => ['nullable', 'string', 'max:2000', 'required_if:emergency_booking_exception,true'],
             'selections' => ['required', 'array', 'min:1'],
             'selections.*' => ['required', 'array:type,product_id,listing_id,version_id,quantity,groups,selling_option_id'],
             'selections.*.type' => ['required', Rule::in(['package', 'listing'])],

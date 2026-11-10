@@ -51,6 +51,8 @@ export default function PencilBookingShow({
     canConvert,
     catalog,
     idempotencyKey,
+    minimumAdvanceBookingDays,
+    canAuthorizeEmergencyBooking,
 }: {
     booking: Booking;
     canManage: boolean;
@@ -58,6 +60,8 @@ export default function PencilBookingShow({
     canConvert: boolean;
     catalog: Catalog | null;
     idempotencyKey: string | null;
+    minimumAdvanceBookingDays: number;
+    canAuthorizeEmergencyBooking: boolean;
 }) {
     const form = useForm({
         customer_name: booking.customer_name,
@@ -272,6 +276,10 @@ export default function PencilBookingShow({
                         catalog={catalog}
                         endpoint={`/admin/pencil-bookings/${booking.id}/convert`}
                         idempotencyKey={idempotencyKey}
+                        minimumAdvanceBookingDays={minimumAdvanceBookingDays}
+                        canAuthorizeEmergencyBooking={
+                            canAuthorizeEmergencyBooking
+                        }
                         title="Convert to reservation request"
                         description="Confirm the lead details, then configure one Main Catering package and optional add-ons. This does not reserve capacity or confirm the event."
                         initial={{

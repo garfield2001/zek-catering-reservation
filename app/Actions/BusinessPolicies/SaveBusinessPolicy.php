@@ -3,6 +3,7 @@
 namespace App\Actions\BusinessPolicies;
 
 use App\Models\BusinessPolicy;
+use App\Models\PaymentInstructionVersion;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Catalog\MinorMoney;
@@ -18,6 +19,12 @@ class SaveBusinessPolicy
         return DB::transaction(function () use ($actor, $data): BusinessPolicy {
             $policy = BusinessPolicy::query()->where('key', 'current')->lockForUpdate()->sole();
             $before = $this->auditData($policy);
+            $instructions = [
+                'account_name' => trim($data['payment_account_name'] ?? $policy->payment_account_name),
+                'ewallet_number' => trim($data['payment_ewallet_number'] ?? $policy->payment_ewallet_number),
+                'bank_account' => trim($data['payment_bank_account'] ?? $policy->payment_bank_account),
+                'additional_instructions' => trim($data['payment_additional_instructions'] ?? $policy->payment_additional_instructions),
+            ];
             $type = $data['reservation_payment_type'];
             $policy->forceFill([
                 'minimum_advance_booking_days' => $data['minimum_advance_booking_days'],
@@ -38,18 +45,39 @@ class SaveBusinessPolicy
                 'reservation_payment_deadline_hours' => $data['reservation_payment_deadline_hours'],
                 'final_payment_days_before_event' => $data['final_payment_days_before_event'],
                 'customer_payment_upload_cutoff_days' => $data['customer_payment_upload_cutoff_days'] ?? $policy->customer_payment_upload_cutoff_days,
-                'payment_account_name' => trim($data['payment_account_name'] ?? $policy->payment_account_name),
-                'payment_ewallet_number' => trim($data['payment_ewallet_number'] ?? $policy->payment_ewallet_number),
-                'payment_bank_account' => trim($data['payment_bank_account'] ?? $policy->payment_bank_account),
-                'payment_additional_instructions' => trim($data['payment_additional_instructions'] ?? $policy->payment_additional_instructions),
+                'payment_account_name' => $instructions['account_name'],
+                'payment_ewallet_number' => $instructions['ewallet_number'],
+                'payment_bank_account' => $instructions['bank_account'],
+                'payment_additional_instructions' => $instructions['additional_instructions'],
                 'menu_finalization_days_after_acceptance' => $data['menu_finalization_days_after_acceptance'],
                 'cancellation_refund_guidance' => trim($data['cancellation_refund_guidance'] ?? $policy->cancellation_refund_guidance),
                 'updated_by' => $actor->id,
             ])->save();
+            $current = $policy->currentPaymentInstructionVersion()->lockForUpdate()->first();
+            if ($current === null || $this->instructionsChanged($current, $instructions)) {
+                $version = PaymentInstructionVersion::create([
+                    'business_policy_id' => $policy->id,
+                    'version_number' => ((int) PaymentInstructionVersion::query()->where('business_policy_id', $policy->id)->max('version_number')) + 1,
+                    ...$instructions,
+                    'effective_at' => now(),
+                    'created_by' => $actor->id,
+                ]);
+                $policy->forceFill(['current_payment_instruction_version_id' => $version->id])->save();
+                $this->audit->record('payment_instruction_version.created', $actor, $version, null, $version->snapshot());
+            }
             $this->audit->record('business_policy.updated', $actor, $policy, $before, $this->auditData($policy));
 
             return $policy->refresh();
         });
+    }
+
+    /** @param array<string, string> $instructions */
+    private function instructionsChanged(PaymentInstructionVersion $version, array $instructions): bool
+    {
+        return $version->account_name !== $instructions['account_name']
+            || $version->ewallet_number !== $instructions['ewallet_number']
+            || $version->bank_account !== $instructions['bank_account']
+            || $version->additional_instructions !== $instructions['additional_instructions'];
     }
 
     /** @return array<string, mixed> */

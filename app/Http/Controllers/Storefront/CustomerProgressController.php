@@ -48,7 +48,7 @@ class CustomerProgressController extends Controller
         $request = ReservationRequest::query()->where('reference', $reference)->firstOrFail();
         $access->require($http, $request);
         $request->load(['lines', 'quotation.currentVersion.acceptance', 'quotation.versions.acceptance', 'quotation.payments.method', 'quotation.payments.allocation', 'quotation.reservation.changeRequests.quotationVersion.acceptance', 'quotation.reservation.changeRequests.events', 'quotation.cancellationRequests.refunds']);
-        $policy = $policies->current();
+        $policy = $policies->current()->loadMissing('currentPaymentInstructionVersion');
 
         return Inertia::render('storefront/customer-progress/show', [
             'request' => $this->requestData($request, $balances, $policy, $window),
@@ -137,6 +137,8 @@ class CustomerProgressController extends Controller
                     'contains_placeholders' => str_contains($policy->payment_account_name, 'SAMPLE')
                         || str_contains($policy->payment_ewallet_number, 'REPLACE WITH')
                         || str_contains($policy->payment_bank_account, 'REPLACE WITH'),
+                    'updated_since_issuance' => (int) data_get($version->terms_snapshot, 'payment_instruction_version.id', 0) !== (int) $policy->current_payment_instruction_version_id,
+                    'effective_at' => $policy->currentPaymentInstructionVersion?->effective_at?->toIso8601String(),
                 ],
                 'payment_upload_cutoff_at' => $cutoff?->toIso8601String(),
                 'payment_upload_open' => $uploadOpen,

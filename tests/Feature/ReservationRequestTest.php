@@ -251,6 +251,26 @@ class ReservationRequestTest extends TestCase
             ->assertSessionHasErrors('event_date');
     }
 
+    public function test_administrator_can_record_a_short_notice_internal_emergency_exception(): void
+    {
+        $product = $this->publishedMain();
+        $foods = collect($product->currentVersion->snapshot()['menu']['food_items'])->pluck('id')->all();
+        $payload = [
+            'idempotency_key' => (string) Str::uuid(), 'full_name' => 'Emergency Customer', 'mobile_number' => '09170000000',
+            'event_date' => now('Asia/Manila')->addDay()->toDateString(), 'event_start_time' => '10:00', 'venue_information' => 'Emergency venue',
+            'emergency_booking_exception' => true, 'emergency_booking_reason' => 'Urgent family event.',
+            'selections' => [[
+                'type' => 'package', 'product_id' => $product->id, 'version_id' => $product->currentVersion->id, 'quantity' => 150,
+                'groups' => [['quantity' => 150, 'selections' => ['food_items' => $foods, 'food_sizes' => []]]],
+            ]],
+        ];
+        $this->actingAs($this->admin)->withSession(['access_version' => $this->admin->access_version])->post('/admin/reservation-requests', $payload)->assertRedirect();
+        $request = ReservationRequest::latest('id')->firstOrFail();
+        $this->assertTrue($request->emergency_booking_exception);
+        $this->assertSame($this->admin->id, $request->emergency_booking_authorized_by);
+        $this->assertDatabaseHas('audit_events', ['action' => 'reservation_request.emergency_booking_authorized', 'subject_id' => $request->id]);
+    }
+
     public function test_a_published_main_catering_package_starts_an_explicit_editable_draft_without_opening_a_missing_draft_page(): void
     {
         $product = $this->publishedMain();

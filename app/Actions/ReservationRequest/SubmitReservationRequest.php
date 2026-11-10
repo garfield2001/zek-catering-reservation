@@ -111,13 +111,31 @@ class SubmitReservationRequest
 
                 $policy = $this->policies->current();
                 $start = CarbonImmutable::createFromFormat('Y-m-d H:i', $data['event_date'].' '.$data['event_start_time'], 'Asia/Manila');
-                if ($start->startOfDay()->lt(CarbonImmutable::now('Asia/Manila')->startOfDay()->addDays($policy->minimum_advance_booking_days))) {
+                $shortNotice = $start->startOfDay()->lt(CarbonImmutable::now('Asia/Manila')->startOfDay()->addDays($policy->minimum_advance_booking_days));
+                $emergency = (bool) ($data['emergency_booking_exception'] ?? false);
+                if ($shortNotice && $origin === 'public') {
                     throw ValidationException::withMessages(['event_date' => "Online requests require at least {$policy->minimum_advance_booking_days} days’ notice. Contact ZEK Catering for an Administrator-reviewed emergency booking."]);
+                }
+                if ($shortNotice && $origin !== 'public' && ! $emergency) {
+                    throw ValidationException::withMessages(['event_date' => "This internal request is inside the {$policy->minimum_advance_booking_days}-day minimum notice period. An Administrator must record an emergency booking exception with a reason."]);
+                }
+                if ($emergency && ! $shortNotice) {
+                    throw ValidationException::withMessages(['emergency_booking_exception' => 'An emergency booking exception is only available when the event is inside the minimum notice period.']);
+                }
+                if ($emergency && ($actor === null || ! $actor->isAdmin())) {
+                    throw ValidationException::withMessages(['emergency_booking_exception' => 'Only an Administrator may authorize a short-notice emergency booking exception.']);
+                }
+                if ($emergency && blank($data['emergency_booking_reason'] ?? null)) {
+                    throw ValidationException::withMessages(['emergency_booking_reason' => 'Give a reason for this Administrator-authorized emergency booking exception.']);
                 }
                 $end = $start->addHours($policy->event_duration_hours);
                 $accessCode = $this->accessCodes->generate();
                 $request = ReservationRequest::create(['reference' => 'ZEK-'.Str::upper(Str::random(12)), 'idempotency_key' => $data['idempotency_key'], 'status' => ReservationRequestStatus::Submitted,
                     'origin' => $origin, 'pencil_booking_id' => $pencilBooking?->id, 'created_by' => $actor?->id,
+                    'emergency_booking_exception' => $emergency,
+                    'emergency_booking_reason' => $emergency ? trim($data['emergency_booking_reason']) : null,
+                    'emergency_booking_authorized_by' => $emergency ? $actor->id : null,
+                    'emergency_booking_policy_snapshot' => $emergency ? ['schema' => 1, 'minimum_advance_booking_days' => $policy->minimum_advance_booking_days, 'emergency_booking_requires_administrator' => $policy->emergency_booking_requires_administrator, 'evaluated_at' => now()->toIso8601String()] : null,
                     'customer_access_code_hash' => $this->accessCodes->hash($accessCode),
                     'customer_name' => trim($data['full_name']), 'customer_mobile' => trim($data['mobile_number']), 'customer_email' => filled($data['email'] ?? null) ? strtolower(trim($data['email'])) : null,
                     'event_date' => $start->toDateString(), 'event_start_time' => $start->format('H:i:s'), 'event_end_time' => $end->format('H:i:s'), 'event_ends_next_day' => ! $start->isSameDay($end), 'timezone' => 'Asia/Manila',
@@ -128,7 +146,10 @@ class SubmitReservationRequest
                     ReservationRequestLine::create(['reservation_request_id' => $request->id, 'line_number' => $index + 1, 'line_type' => $line['type'], 'package_version_id' => $line['package_version_id'], 'listing_version_id' => $line['listing_version_id'], 'quantity' => $line['quantity'], 'estimated_total_minor' => $line['total_minor'], 'commercial_snapshot' => $line['snapshot']]);
                 }
                 ReservationRequestStatusEvent::create(['reservation_request_id' => $request->id, 'from_status' => null, 'to_status' => ReservationRequestStatus::Submitted, 'changed_by' => $actor?->id]);
-                $this->audit->record('reservation_request.submitted', $actor, $request, null, array_filter(['reference' => $request->reference, 'origin' => $origin === 'public' ? null : $origin, 'status' => $request->status->value, 'estimated_subtotal_minor' => (string) $total], static fn (mixed $value): bool => $value !== null));
+                $this->audit->record('reservation_request.submitted', $actor, $request, null, array_filter(['reference' => $request->reference, 'origin' => $origin === 'public' ? null : $origin, 'status' => $request->status->value, 'estimated_subtotal_minor' => (string) $total, 'emergency_booking_exception' => $emergency ?: null], static fn (mixed $value): bool => $value !== null));
+                if ($emergency) {
+                    $this->audit->record('reservation_request.emergency_booking_authorized', $actor, $request, null, ['reason' => trim($data['emergency_booking_reason']), 'minimum_advance_booking_days' => $policy->minimum_advance_booking_days]);
+                }
 
                 return ['request' => $request, 'created' => true, 'access_code' => $accessCode];
             }, 3);
