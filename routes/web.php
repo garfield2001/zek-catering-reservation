@@ -88,7 +88,7 @@ Route::get('/track-request/{reference}', [CustomerProgressController::class, 'sh
 Route::post('/track-request/{reference}/changes', [ReservationChangeRequestController::class, 'store'])->middleware('throttle:5,1')->name('storefront.customer-progress.changes.store');
 Route::post('/track-request/{reference}/changes/{reservationChangeRequest}/agree', [ReservationChangeRequestController::class, 'agree'])->middleware('throttle:5,1')->name('storefront.customer-progress.changes.agree');
 Route::post('/track-request/{reference}/cancellations', [CancellationRequestController::class, 'store'])->middleware('throttle:5,1')->name('storefront.customer-progress.cancellations.store');
-Route::post('/track-request/{reference}/payments', [CustomerPaymentController::class, 'store'])->middleware('throttle:5,1')->name('storefront.customer-progress.payments.store');
+Route::post('/track-request/{reference}/payments', [CustomerPaymentController::class, 'store'])->middleware('throttle:customer-payment-upload')->name('storefront.customer-progress.payments.store');
 Route::post('/track-request/{reference}/payments/{payment}/evidence', [CustomerPaymentController::class, 'replace'])->middleware('throttle:5,1')->name('storefront.customer-progress.payments.evidence.replace');
 Route::get('/quotes/{token}', [StorefrontQuotationController::class, 'show'])->name('public-quotations.show');
 Route::post('/quotes/{token}/verification', [StorefrontQuotationController::class, 'send'])->middleware('throttle:10,1')->name('public-quotations.verification.send');

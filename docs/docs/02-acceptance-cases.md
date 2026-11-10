@@ -214,7 +214,9 @@ Phase 3 implements **draft-only administrator configuration and price previews**
 - Customer receipt uploads are permitted after the payment due time but before the Asia/Manila hard upload cutoff frozen at issuance. The default cutoff is seven days before the event. After it, ordinary new and replacement uploads fail through both HTTP and UI; already submitted evidence remains reviewable.
 - Customer evidence is hash-protected, private and append-only. A Pending or Rejected receipt may be replaced with a new evidence Version while preserving the original. PostgreSQL rejects evidence rewrite/deletion and a submitted Version that belongs to another quotation case.
 - Only an Administrator verifies, rejects, reverses or assigns the PHP amount actually received. Only Verified allocated payments affect balances. Partial payments remain valid and show the remaining reservation-payment shortfall; verified evidence remains immutable.
+- A reservation-payment threshold can be satisfied while a quotation still has a positive final balance. Only a zero full-quotation balance is displayed as having no unresolved financial obligation; reversed payments again increase that outstanding balance.
 - Customer payment instructions are configured in Business Policies, ship only with visibly marked sample placeholders, and are not a public payment-provider-management interface. Historic receipt versions are available only through authorized internal previews/downloads.
+- PHP and browser receipt uploads use the dedicated testing-private filesystem root while tests run. They never write to, replace, or clean the development private-receipt directory.
 
 ### Reservation Changes and Rescheduling (2026-11-08)
 

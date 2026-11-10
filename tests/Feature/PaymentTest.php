@@ -22,6 +22,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -50,6 +51,7 @@ class PaymentTest extends TestCase
         $balance = app(PaymentBalance::class)->forQuotation($quote->fresh());
         $this->assertSame(40000, $balance['verified_minor']);
         $this->assertSame(60000, $balance['reservation_remaining_minor']);
+        $this->assertTrue($balance['unresolved_financial_obligations']);
     }
 
     public function test_administrator_can_record_a_cash_payment_and_payment_method_changes_are_audited(): void
@@ -72,6 +74,38 @@ class PaymentTest extends TestCase
         $this->assertDatabaseHas('audit_events', ['action' => 'payment_method.updated', 'actor_id' => $this->admin->id, 'subject_id' => $method->id]);
     }
 
+    public function test_administrator_payment_validation_returns_errors_for_each_editable_field(): void
+    {
+        $quote = $this->acceptedQuote();
+
+        $this->actingAs($this->admin)->withSession(['access_version' => $this->admin->access_version])
+            ->from(route('payments.index'))
+            ->post(route('payments.store'), [
+                'quotation_id' => 'not-a-quotation',
+                'payment_method_id' => 'not-a-method',
+                'amount' => 'not-an-amount',
+                'paid_at' => 'not-a-date',
+                'transaction_reference' => str_repeat('x', 256),
+                'notes' => str_repeat('x', 2001),
+                'proof' => UploadedFile::fake()->create('not-an-image.txt', 1, 'text/plain'),
+                'idempotency_key' => 'not-a-uuid',
+            ])
+            ->assertRedirect(route('payments.index'))
+            ->assertSessionHasErrors([
+                'quotation_id',
+                'payment_method_id',
+                'amount',
+                'paid_at',
+                'transaction_reference',
+                'notes',
+                'proof',
+                'idempotency_key',
+            ]);
+
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertDatabaseHas('quotations', ['id' => $quote->id]);
+    }
+
     public function test_pending_payment_is_verified_once_and_overpayment_is_visible(): void
     {
         $quote = $this->acceptedQuote();
@@ -84,6 +118,7 @@ class PaymentTest extends TestCase
         $this->assertSame(300000, $balance['verified_minor']);
         $this->assertSame(49900, $balance['overpayment_minor']);
         $this->assertSame(0, $balance['remaining_minor']);
+        $this->assertFalse($balance['unresolved_financial_obligations']);
         $this->expectException(ValidationException::class);
         app(ReviewPayment::class)->verify($this->admin, $payment->fresh(), $quote->currentVersion);
     }
@@ -148,6 +183,7 @@ class PaymentTest extends TestCase
         $balance = app(PaymentBalance::class)->forQuotation($quote->fresh());
         $this->assertSame(0, $balance['verified_minor']);
         $this->assertSame(250100, $balance['remaining_minor']);
+        $this->assertTrue($balance['unresolved_financial_obligations']);
         $this->assertSame($issued->id, $balance['quotation_version_id']);
         $this->assertSame(2, $payment->fresh()->allocationHistory()->count());
     }
@@ -304,6 +340,43 @@ class PaymentTest extends TestCase
             $this->assertArrayHasKey('quotation_version_id', $exception->errors());
             $this->assertSame('pending_verification', $payment->fresh()->status->value);
         }
+    }
+
+    public function test_balance_distinguishes_unpaid_downpayment_satisfied_and_fully_paid_cases(): void
+    {
+        $quote = $this->acceptedQuote();
+        $unpaid = app(PaymentBalance::class)->forQuotation($quote);
+        $this->assertTrue($unpaid['unresolved_financial_obligations']);
+        $this->assertFalse($unpaid['reservation_payment_satisfied']);
+
+        $method = PaymentMethod::query()->where('code', 'gcash')->firstOrFail();
+        $method->update(['is_active' => true]);
+        $downpayment = app(RecordPayment::class)->handle(null, $quote, $this->data($method, '1000.00'), 'customer_submission', UploadedFile::fake()->createWithContent('downpayment.pdf', 'downpayment-proof'));
+        app(ReviewPayment::class)->verify($this->admin, $downpayment, $quote->currentVersion);
+        $afterDownpayment = app(PaymentBalance::class)->forQuotation($quote->fresh());
+        $this->assertTrue($afterDownpayment['reservation_payment_satisfied']);
+        $this->assertTrue($afterDownpayment['unresolved_financial_obligations']);
+        $this->assertGreaterThan(0, $afterDownpayment['remaining_minor']);
+
+        $remaining = app(RecordPayment::class)->handle(null, $quote, $this->data($method, '1501.00'), 'customer_submission', UploadedFile::fake()->createWithContent('final.pdf', 'final-payment-proof'));
+        app(ReviewPayment::class)->verify($this->admin, $remaining, $quote->currentVersion);
+        $settled = app(PaymentBalance::class)->forQuotation($quote->fresh());
+        $this->assertSame(0, $settled['remaining_minor']);
+        $this->assertFalse($settled['unresolved_financial_obligations']);
+    }
+
+    public function test_payment_uploads_use_the_testing_private_root_without_touching_development_storage(): void
+    {
+        $quote = $this->acceptedQuote();
+        $method = PaymentMethod::query()->where('code', 'gcash')->firstOrFail();
+        $method->update(['is_active' => true]);
+        $payment = app(RecordPayment::class)->handle(null, $quote, $this->data($method, '100.00'), 'customer_submission', UploadedFile::fake()->createWithContent('isolated.pdf', 'isolated-private-proof'));
+        $path = $payment->fresh()->proof_path;
+
+        $this->assertNotNull($path);
+        $this->assertSame(storage_path('app/testing/private'), config('filesystems.disks.local.root'));
+        $this->assertStringStartsWith(storage_path('app/testing/private'), Storage::disk('local')->path($path));
+        $this->assertTrue(Storage::disk('local')->exists($path));
     }
 
     private function assertVerificationTargetIsRejected($payment, $version): void

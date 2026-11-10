@@ -16,6 +16,7 @@ export default function PaymentsIndex({
     payments: {
         data: Array<{
             id: number;
+            quotation_id: number | null;
             status: string;
             amount_minor: string | null;
             paid_at: string | null;
@@ -40,6 +41,7 @@ export default function PaymentsIndex({
     quotations: Array<{ id: number; reference: string }>;
     acceptedVersions: Array<{
         id: number;
+        quotation_id: number;
         version_number: number;
         quotation: { reference: string };
     }>;
@@ -59,6 +61,16 @@ export default function PaymentsIndex({
         idempotency_key: crypto.randomUUID(),
         proof: null as File | null,
     });
+    const recordFieldNames = [
+        "quotation_id",
+        "payment_method_id",
+        "amount",
+        "paid_at",
+        "transaction_reference",
+        "proof",
+        "notes",
+        "exception_reason",
+    ];
     return (
         <AdminLayout title="Payments" section="quotations">
             <Head title="Payments" />
@@ -97,6 +109,10 @@ export default function PaymentsIndex({
                                     );
                                     if (event.target.checked)
                                         form.setData("quotation_id", "");
+                                    form.clearErrors(
+                                        "quotation_id",
+                                        "exception_reason",
+                                    );
                                 }}
                             />
                             Record an early Administrator exception before a
@@ -109,10 +125,15 @@ export default function PaymentsIndex({
                             required={!recordEarlyException}
                             disabled={recordEarlyException}
                             value={form.data.quotation_id}
-                            onChange={(event) =>
-                                form.setData("quotation_id", event.target.value)
-                            }
-                            className="mt-1 w-full"
+                            onChange={(event) => (
+                                form.setData(
+                                    "quotation_id",
+                                    event.target.value,
+                                ),
+                                form.clearErrors("quotation_id")
+                            )}
+                            aria-invalid={Boolean(form.errors.quotation_id)}
+                            className={`mt-1 w-full ${form.errors.quotation_id ? "border-rose-600" : ""}`}
                         >
                             <option value="">Select quotation</option>
                             {quotations.map((quotation) => (
@@ -121,19 +142,24 @@ export default function PaymentsIndex({
                                 </option>
                             ))}
                         </select>
+                        <FormError error={form.errors.quotation_id} />
                     </label>
                     <label>
                         Payment method
                         <select
                             required
                             value={form.data.payment_method_id}
-                            onChange={(event) =>
+                            onChange={(event) => (
                                 form.setData(
                                     "payment_method_id",
                                     event.target.value,
-                                )
-                            }
-                            className="mt-1 w-full"
+                                ),
+                                form.clearErrors("payment_method_id")
+                            )}
+                            aria-invalid={Boolean(
+                                form.errors.payment_method_id,
+                            )}
+                            className={`mt-1 w-full ${form.errors.payment_method_id ? "border-rose-600" : ""}`}
                         >
                             <option value="">Select method</option>
                             {methods.map((method) => (
@@ -143,6 +169,7 @@ export default function PaymentsIndex({
                                 </option>
                             ))}
                         </select>
+                        <FormError error={form.errors.payment_method_id} />
                     </label>
                     <label>
                         Amount (PHP)
@@ -152,11 +179,14 @@ export default function PaymentsIndex({
                             min="0.01"
                             step="0.01"
                             value={form.data.amount}
-                            onChange={(event) =>
-                                form.setData("amount", event.target.value)
-                            }
-                            className="mt-1 w-full"
+                            onChange={(event) => (
+                                form.setData("amount", event.target.value),
+                                form.clearErrors("amount")
+                            )}
+                            aria-invalid={Boolean(form.errors.amount)}
+                            className={`mt-1 w-full ${form.errors.amount ? "border-rose-600" : ""}`}
                         />
+                        <FormError error={form.errors.amount} />
                     </label>
                     <label>
                         Received at
@@ -164,48 +194,62 @@ export default function PaymentsIndex({
                             required
                             type="datetime-local"
                             value={form.data.paid_at}
-                            onChange={(event) =>
-                                form.setData("paid_at", event.target.value)
-                            }
-                            className="mt-1 w-full"
+                            onChange={(event) => (
+                                form.setData("paid_at", event.target.value),
+                                form.clearErrors("paid_at")
+                            )}
+                            aria-invalid={Boolean(form.errors.paid_at)}
+                            className={`mt-1 w-full ${form.errors.paid_at ? "border-rose-600" : ""}`}
                         />
+                        <FormError error={form.errors.paid_at} />
                     </label>
                     <label>
                         Reference (optional)
                         <input
                             value={form.data.transaction_reference}
-                            onChange={(event) =>
+                            onChange={(event) => (
                                 form.setData(
                                     "transaction_reference",
                                     event.target.value,
-                                )
-                            }
-                            className="mt-1 w-full"
+                                ),
+                                form.clearErrors("transaction_reference")
+                            )}
+                            aria-invalid={Boolean(
+                                form.errors.transaction_reference,
+                            )}
+                            className={`mt-1 w-full ${form.errors.transaction_reference ? "border-rose-600" : ""}`}
                         />
+                        <FormError error={form.errors.transaction_reference} />
                     </label>
                     <label>
                         Evidence (optional)
                         <input
                             type="file"
                             accept="application/pdf,image/jpeg,image/png"
-                            onChange={(event) =>
+                            onChange={(event) => (
                                 form.setData(
                                     "proof",
                                     event.target.files?.[0] ?? null,
-                                )
-                            }
-                            className="mt-1 w-full"
+                                ),
+                                form.clearErrors("proof")
+                            )}
+                            aria-invalid={Boolean(form.errors.proof)}
+                            className={`mt-1 w-full ${form.errors.proof ? "border-rose-600" : ""}`}
                         />
+                        <FormError error={form.errors.proof} />
                     </label>
                     <label className="sm:col-span-2">
                         Notes
                         <textarea
                             value={form.data.notes}
-                            onChange={(event) =>
-                                form.setData("notes", event.target.value)
-                            }
-                            className="mt-1 w-full"
+                            onChange={(event) => (
+                                form.setData("notes", event.target.value),
+                                form.clearErrors("notes")
+                            )}
+                            aria-invalid={Boolean(form.errors.notes)}
+                            className={`mt-1 w-full ${form.errors.notes ? "border-rose-600" : ""}`}
                         />
+                        <FormError error={form.errors.notes} />
                     </label>
                     {recordEarlyException && (
                         <label className="sm:col-span-2">
@@ -213,16 +257,17 @@ export default function PaymentsIndex({
                             <textarea
                                 required
                                 value={form.data.exception_reason}
-                                onChange={(event) =>
+                                onChange={(event) => (
                                     form.setData(
                                         "exception_reason",
                                         event.target.value,
-                                    )
-                                }
+                                    ),
+                                    form.clearErrors("exception_reason")
+                                )}
                                 aria-invalid={Boolean(
                                     form.errors.exception_reason,
                                 )}
-                                className="mt-1 w-full"
+                                className={`mt-1 w-full ${form.errors.exception_reason ? "border-rose-600" : ""}`}
                             />
                             {form.errors.exception_reason && (
                                 <span
@@ -234,11 +279,17 @@ export default function PaymentsIndex({
                             )}
                         </label>
                     )}
-                    {form.errors.quotation_id && (
-                        <p role="alert" className="text-sm text-rose-700">
-                            {form.errors.quotation_id}
-                        </p>
-                    )}
+                    {Object.entries(form.errors)
+                        .filter(([field]) => !recordFieldNames.includes(field))
+                        .map(([field, error]) => (
+                            <p
+                                key={field}
+                                role="alert"
+                                className="sm:col-span-2 text-sm text-rose-700"
+                            >
+                                {error}
+                            </p>
+                        ))}
                     <button className="w-fit rounded bg-emerald-800 px-4 py-2 text-sm font-semibold text-white">
                         Record payment
                     </button>
@@ -361,6 +412,12 @@ export default function PaymentsIndex({
                                             <div className="flex gap-2">
                                                 <VerifyPayment
                                                     paymentId={payment.id}
+                                                    quotationId={
+                                                        payment.quotation_id
+                                                    }
+                                                    acceptedVersions={
+                                                        acceptedVersions
+                                                    }
                                                 />
                                                 <button
                                                     className="rounded border px-2 py-1 text-xs"
@@ -489,4 +546,12 @@ function EarlyPaymentAllocation({
             )}
         </form>
     );
+}
+
+function FormError({ error }: { error?: string }) {
+    return error ? (
+        <span role="alert" className="mt-1 block text-sm text-rose-700">
+            {error}
+        </span>
+    ) : null;
 }

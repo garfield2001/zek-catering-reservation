@@ -39,7 +39,10 @@ return [
 
         'local' => [
             'driver' => 'local',
-            'root' => storage_path('app/private'),
+            // Receipts are private in every environment. Test and browser-test
+            // uploads are rooted separately, so their cleanup cannot touch
+            // operator-owned development evidence.
+            'root' => storage_path('app/'.(env('APP_ENV') === 'testing' ? 'testing/' : '').'private'),
             'serve' => true,
             'throw' => false,
             'report' => false,

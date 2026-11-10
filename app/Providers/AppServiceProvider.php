@@ -40,7 +40,10 @@ use App\Policies\QuotationTermsVersionPolicy;
 use App\Policies\ReservationPolicy;
 use App\Policies\ReservationRequestPolicy;
 use App\Services\Access\PermissionResolver;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -52,6 +55,13 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Keep customer receipt uploads rate-limited without sharing the
+        // bucket with unrelated public selection and request actions. A
+        // customer may legitimately submit more than one receipt for the
+        // same quotation during a single visit.
+        RateLimiter::for('customer-payment-upload', fn (Request $request) => Limit::perMinute(5)
+            ->by($request->ip().'|'.$request->route('reference')));
+
         Gate::define('dashboard.view', fn (User $user) => app(PermissionResolver::class)->allows($user, 'dashboard.view'));
         foreach ([DishCategory::class, Dish::class, DishOffering::class, OfferingOption::class, MeasurementUnit::class] as $model) {
             Gate::policy($model, CatalogPolicy::class);

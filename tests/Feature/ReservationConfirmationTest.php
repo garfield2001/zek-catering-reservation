@@ -10,6 +10,7 @@ use App\Actions\Quotation\IssueQuotation;
 use App\Actions\Quotation\RecordQuotationAcceptance;
 use App\Actions\Reservations\CompleteReservation;
 use App\Actions\Reservations\ConfirmReservation;
+use App\Actions\Reservations\RecordReservationConfirmationOutcome;
 use App\Models\BusinessPolicy;
 use App\Models\PaymentMethod;
 use App\Models\Reservation;
@@ -185,6 +186,32 @@ class ReservationConfirmationTest extends TestCase
         } finally {
             CarbonImmutable::setTestNow();
         }
+    }
+
+    public function test_confirmation_outcome_uses_outstanding_balance_not_the_presence_of_a_verified_payment(): void
+    {
+        $quotation = $this->acceptedQuotation();
+        $method = PaymentMethod::where('code', 'gcash')->firstOrFail();
+        $method->update(['is_active' => true]);
+        $payment = app(RecordPayment::class)->handle(null, $quotation, [
+            'payment_method_id' => $method->id,
+            'amount_minor' => 250100,
+            'paid_at' => now(),
+            'transaction_reference' => null,
+            'notes' => null,
+            'idempotency_key' => (string) str()->uuid(),
+        ], 'customer_submission', UploadedFile::fake()->createWithContent('settled.pdf', 'settled-confirmation-proof'));
+        app(ReviewPayment::class)->verify($this->administrator, $payment, $quotation->currentVersion);
+
+        $event = app(RecordReservationConfirmationOutcome::class)->handle(
+            $this->administrator,
+            $quotation,
+            'deferred',
+            'Operations review is pending.',
+        );
+
+        $this->assertFalse($event->payment_snapshot['unresolved_financial_obligations']);
+        $this->assertSame(0, $event->payment_snapshot['remaining_minor']);
     }
 
     public function test_daily_capacity_allows_the_configured_number_of_events_then_rejects_the_next_one(): void

@@ -136,7 +136,9 @@ class ReservationController extends Controller
             'confirmationEvents' => $quotation->reservationConfirmationEvents->map(fn ($event) => [
                 'id' => $event->id, 'outcome' => $event->outcome, 'reason' => $event->reason,
                 'version_number' => $event->quotationVersion->version_number,
-                'unresolved_financial_obligations' => (bool) ($event->payment_snapshot['unresolved_financial_obligations'] ?? false),
+                // Historic derived flags may have been calculated by an older
+                // rule. Preserve the snapshot but present its immutable amount.
+                'outstanding_balance_at_decision' => (int) ($event->payment_snapshot['remaining_minor'] ?? 0) > 0,
                 'created_at' => $event->created_at->toIso8601String(), 'actor' => $event->recorder->name,
             ])->values(),
             'canConfirm' => request()->user()->can('confirm', Reservation::class),
@@ -284,7 +286,7 @@ class ReservationController extends Controller
         $base = [
             'reservation_payment_satisfied' => $balance['reservation_payment_satisfied'],
             'reservation_payment_overdue' => $balance['reservation_payment_overdue'],
-            'unresolved_financial_obligations' => (int) $balance['remaining_minor'] > 0 || (int) $balance['verified_minor'] > 0,
+            'unresolved_financial_obligations' => $balance['unresolved_financial_obligations'],
         ];
 
         return $includeAmounts ? [...$base, ...$balance] : $base;

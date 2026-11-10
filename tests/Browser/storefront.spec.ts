@@ -219,7 +219,58 @@ test("public storefront keeps internal authentication separate and submits an in
     await page.getByRole("button", { name: "Account menu" }).click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/login$/);
+
+    // A verified initial receipt does not close the customer upload window.
+    // The customer can add a distinct second receipt; both histories and the
+    // aggregate verified balance remain visible through Track Your Request.
+    await page.goto("/track-request");
+    await page.getByLabel("Request reference").fill(reference);
+    await page.getByLabel("Registered mobile number").fill("09171234567");
+    await page.getByLabel("Customer access code").fill(accessCode);
+    await page.getByRole("button", { name: "View my request" }).click();
+    await page.getByLabel("Receipt image (JPEG, PNG, or WebP)").setInputFiles({
+        name: "receipt-two.png",
+        mimeType: "image/png",
+        // A separate valid PNG is required: appending arbitrary bytes to the
+        // first image creates malformed upload data rather than distinct
+        // customer evidence.
+        buffer: Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9J36AAAAAASUVORK5CYII=",
+            "base64",
+        ),
+    });
+    await page
+        .getByRole("button", { name: "Upload additional receipt" })
+        .click();
     await expect(
-        page.getByRole("link", { name: "Back to ZEK Catering Website" }),
+        page.getByText(/Receipt submitted for Administrator verification/i),
+    ).toBeVisible();
+    await expect(page.getByText("pending verification")).toBeVisible();
+
+    await page.goto("/login");
+    await login(page, run, password);
+    await page.goto("/admin/payments");
+    await page.getByLabel("Amount received (PHP)").fill("1000.00");
+    await page.getByRole("button", { name: "Verify" }).click();
+    await expect(page.getByText("verified")).toHaveCount(2);
+    await expect(page.getByRole("link", { name: "Preview v1" })).toHaveCount(2);
+
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await page.getByRole("menuitem", { name: "Sign out" }).click();
+    await page.goto("/track-request");
+    await page.getByLabel("Request reference").fill(reference);
+    await page.getByLabel("Registered mobile number").fill("09171234567");
+    await page.getByLabel("Customer access code").fill(accessCode);
+    await page.getByRole("button", { name: "View my request" }).click();
+    await expect(page.getByText(/Verified:\s*₱2,000\.00/)).toBeVisible();
+    const paymentHistory = page
+        .getByRole("heading", { name: "Payments" })
+        .locator("..")
+        .getByRole("listitem");
+    await expect(paymentHistory).toHaveCount(2);
+    await expect(paymentHistory).toContainText(["verified", "verified"]);
+
+    await expect(
+        page.getByRole("banner").getByRole("link", { name: "ZEK CATERING" }),
     ).toHaveAttribute("href", "/");
 });

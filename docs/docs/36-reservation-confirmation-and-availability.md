@@ -10,7 +10,7 @@ Status: implemented for milestone testing. This workflow is the operational step
 - Only `confirmed` and `completed` reservations consume the capacity record for their date. An inquiry, issued/accepted quotation, verified payment, deferred decision and declined decision never holds capacity.
 - The default daily confirmed-event capacity is configured in Business Policies (initially 3). An optional daily guest limit is unset unless an Administrator configures it. A date override may replace either capacity for future confirmation decisions.
 - Confirmation obtains a transaction-scoped PostgreSQL advisory lock for the Asia/Manila event date, locks the policy and date override, and recalculates capacity before insertion/update. It cannot double-count the same reservation during re-confirmation.
-- Defer and decline require a reason, retain every payment fact and record whether unresolved financial obligations existed. They do not cancel, refund or reallocate anything.
+- Defer and decline require a reason, retain every payment fact and record whether a positive quotation balance existed. They do not cancel, refund or reallocate anything. Older immutable decision snapshots remain unchanged; current screens derive their presentation from the stored balance facts rather than rewriting historical records.
 - A post-confirmation accepted quotation revision does not change the reservation. The queue identifies that re-confirmation is required; only an Administrator can explicitly do so. A completed reservation cannot be re-confirmed.
 
 ## Data and history

@@ -44,6 +44,7 @@ class PaymentBalance
             'reservation_remaining_minor' => $reservationRemaining, 'overpayment_minor' => max(0, $paid - $total),
             'reservation_payment_satisfied' => $reservationRemaining === 0,
             'final_payment_complete' => $remaining === 0,
+            'unresolved_financial_obligations' => $remaining > 0,
             'reservation_payment_due_at' => $acceptance->payment_due_at->toIso8601String(),
             'final_payment_due_at' => $acceptance->final_payment_due_at?->toIso8601String(),
             'reservation_payment_overdue' => $reservationRemaining > 0 && $acceptance->payment_due_at->isPast(),
@@ -54,6 +55,6 @@ class PaymentBalance
     /** @return array<string, int|bool|string|null> */
     private function empty(): array
     {
-        return ['quotation_version_id' => null, 'total_minor' => 0, 'verified_minor' => 0, 'remaining_minor' => 0, 'reservation_required_minor' => 0, 'reservation_remaining_minor' => 0, 'overpayment_minor' => 0, 'reservation_payment_satisfied' => false, 'final_payment_complete' => false, 'reservation_payment_due_at' => null, 'final_payment_due_at' => null, 'reservation_payment_overdue' => false, 'final_payment_overdue' => false];
+        return ['quotation_version_id' => null, 'total_minor' => 0, 'verified_minor' => 0, 'remaining_minor' => 0, 'reservation_required_minor' => 0, 'reservation_remaining_minor' => 0, 'overpayment_minor' => 0, 'reservation_payment_satisfied' => false, 'final_payment_complete' => false, 'unresolved_financial_obligations' => false, 'reservation_payment_due_at' => null, 'final_payment_due_at' => null, 'reservation_payment_overdue' => false, 'final_payment_overdue' => false];
     }
 }

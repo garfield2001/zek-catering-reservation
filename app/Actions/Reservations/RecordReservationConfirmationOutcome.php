@@ -44,7 +44,7 @@ class RecordReservationConfirmationOutcome
                     'reservation_payment_satisfied' => $payment['reservation_payment_satisfied'],
                     'reservation_payment_overdue' => $payment['reservation_payment_overdue'],
                     'remaining_minor' => $payment['remaining_minor'],
-                    'unresolved_financial_obligations' => ((int) $payment['remaining_minor']) > 0 || ((int) $payment['verified_minor']) > 0,
+                    'unresolved_financial_obligations' => $payment['unresolved_financial_obligations'],
                 ],
                 'recorded_by' => $actor->id,
             ]);

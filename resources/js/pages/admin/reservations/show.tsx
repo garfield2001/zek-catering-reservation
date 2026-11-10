@@ -24,7 +24,7 @@ type ConfirmationEvent = {
     outcome: "confirmed" | "deferred" | "declined";
     reason: string | null;
     version_number: number;
-    unresolved_financial_obligations: boolean;
+    outstanding_balance_at_decision: boolean;
     created_at: string;
     actor: string;
 };
@@ -1093,10 +1093,10 @@ function DecisionHistory({
                         {formatManilaTimestamp(event.created_at)} by{" "}
                         {event.actor}
                         {event.reason ? ` — ${event.reason}` : ""}
-                        {event.unresolved_financial_obligations && (
+                        {event.outstanding_balance_at_decision && (
                             <span className="block mt-1 text-amber-800">
-                                Financial obligations remained unresolved when
-                                this decision was recorded.
+                                An outstanding balance existed when this
+                                decision was recorded.
                             </span>
                         )}
                     </li>
