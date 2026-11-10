@@ -15,7 +15,7 @@ Status: implemented for milestone testing. This workflow is the operational step
 
 ## Data and history
 
-`reservations` owns the current operational confirmation and immutable JSON snapshots of its selected accepted quotation facts and capacity assessment. `reservation_confirmation_events` records all confirmed, deferred and declined review decisions; `reservation_status_events` records confirmed/completed status changes. Both histories are PostgreSQL append-only and complement, rather than duplicate, the wider `audit_events` ledger.
+`reservations` owns the current operational confirmation and immutable JSON snapshots of its selected accepted quotation facts and capacity assessment. Both confirmed and completed reservations consume operational capacity for their event date; cancellation follows its finalized release rules. A reservation may be completed only after its scheduled event end in Asia/Manila. `reservation_confirmation_events` records all confirmed, deferred and declined review decisions; `reservation_status_events` records confirmed/completed status changes. Both histories are PostgreSQL append-only and complement, rather than duplicate, the wider `audit_events` ledger.
 
 ## Administration workflow
 

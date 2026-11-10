@@ -823,7 +823,7 @@ function CapacityCard({ capacity }: { capacity: Props["capacity"] }) {
             </p>
             <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
                 <Detail
-                    label="Confirmed events"
+                    label="Capacity-consuming events"
                     value={`${capacity.confirmed_events} of ${capacity.maximum_confirmed_events}`}
                 />
                 <Detail

@@ -1,4 +1,4 @@
-name: Phase 1 checks
+name: Application checks
 on: [push, pull_request]
 permissions:
   contents: read
@@ -41,8 +41,8 @@ jobs:
       - run: composer lint
       - run: composer analyse
       - run: composer test
-      - run: php artisan migrate:rollback --env=testing --force
-      - run: php artisan migrate --env=testing --force
+      - run: php artisan migrate:fresh --env=testing --force
+      - run: php artisan migrate:status --env=testing
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck

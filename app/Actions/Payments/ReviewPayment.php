@@ -3,11 +3,13 @@
 namespace App\Actions\Payments;
 
 use App\Enums\PaymentStatus;
+use App\Enums\QuotationVersionStatus;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
 use App\Models\QuotationVersion;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -17,6 +19,8 @@ class ReviewPayment
 
     public function verify(User $actor, Payment $payment, ?QuotationVersion $version = null, ?int $verifiedAmountMinor = null, ?string $customerMessage = null): Payment
     {
+        $this->assertAdministrator($actor);
+
         return DB::transaction(function () use ($actor, $payment, $version, $verifiedAmountMinor, $customerMessage): Payment {
             $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
             if ($payment->status !== PaymentStatus::PendingVerification) {
@@ -26,7 +30,10 @@ class ReviewPayment
             if ($amount === null || $amount < 1) {
                 throw ValidationException::withMessages(['verified_amount' => 'Enter the amount actually received before verifying this receipt.']);
             }
-            $version ??= $payment->submittedQuotationVersion ?? $payment->quotation?->versions()->whereHas('acceptance')->orderByDesc('version_number')->first();
+            $versionId = $version !== null ? $version->id : $payment->submitted_quotation_version_id;
+            $version = $versionId === null
+                ? $payment->quotation?->versions()->with('acceptance')->whereHas('acceptance')->orderByDesc('version_number')->lockForUpdate()->first()
+                : QuotationVersion::query()->with('acceptance')->lockForUpdate()->findOrFail($versionId);
             if ($version === null && $payment->quotation_id === null && $payment->source === 'administrator_exception') {
                 $payment->forceFill(['status' => PaymentStatus::Verified, 'amount_minor' => $amount, 'paid_at' => $payment->paid_at ?? now(), 'verified_by' => $actor->id, 'verified_at' => now(), 'customer_message' => $customerMessage])->save();
                 $this->audit->record('payment.verified_early_exception', $actor, $payment, ['status' => 'pending_verification'], ['amount_minor' => (string) $amount]);
@@ -39,6 +46,9 @@ class ReviewPayment
             if ($version->quotation_id !== $payment->quotation_id) {
                 throw ValidationException::withMessages(['quotation_version_id' => 'A payment can only be allocated to its own quotation case.']);
             }
+            if ($version->status !== QuotationVersionStatus::Accepted || $version->acceptance === null) {
+                throw ValidationException::withMessages(['quotation_version_id' => 'Select an accepted quotation version before verifying this payment.']);
+            }
             $payment->forceFill(['status' => PaymentStatus::Verified, 'amount_minor' => $amount, 'paid_at' => $payment->paid_at ?? now(), 'verified_by' => $actor->id, 'verified_at' => now(), 'customer_message' => $customerMessage])->save();
             PaymentAllocation::create(['payment_id' => $payment->id, 'quotation_version_id' => $version->id, 'amount_minor' => $amount, 'allocated_by' => $actor->id, 'reason' => 'Verified payment allocation']);
             $this->audit->record('payment.verified', $actor, $payment, ['status' => 'pending_verification'], ['quotation_version_id' => $version->id, 'amount_minor' => (string) $amount]);
@@ -49,6 +59,8 @@ class ReviewPayment
 
     public function reject(User $actor, Payment $payment, string $reason): Payment
     {
+        $this->assertAdministrator($actor);
+
         return DB::transaction(function () use ($actor, $payment, $reason): Payment {
             $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
             if ($payment->status !== PaymentStatus::PendingVerification) {
@@ -63,6 +75,8 @@ class ReviewPayment
 
     public function reverse(User $actor, Payment $payment, string $reason): Payment
     {
+        $this->assertAdministrator($actor);
+
         return DB::transaction(function () use ($actor, $payment, $reason): Payment {
             $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
             if ($payment->status !== PaymentStatus::Verified) {
@@ -73,5 +87,12 @@ class ReviewPayment
 
             return $payment;
         });
+    }
+
+    private function assertAdministrator(User $actor): void
+    {
+        if (! $actor->active || ! $actor->isAdmin()) {
+            throw new AuthorizationException;
+        }
     }
 }

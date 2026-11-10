@@ -50,7 +50,7 @@ export default function ReservationCapacity({
                         />
                     </Field>
                     <Field
-                        label="Confirmed events allowed"
+                        label="Events allowed each day"
                         error={form.errors.maximum_confirmed_events}
                     >
                         <input

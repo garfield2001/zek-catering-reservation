@@ -10,6 +10,7 @@ use App\Actions\Reservations\DeleteReservationCapacityOverride;
 use App\Actions\Reservations\RecordReservationConfirmationOutcome;
 use App\Actions\Reservations\ReviewReservationChangeRequest;
 use App\Actions\Reservations\SaveReservationCapacityOverride;
+use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Reservations\ApplyReservationChangeRequest as ApplyReservationChangeRequestForm;
 use App\Http\Requests\Reservations\CompleteReservationRequest;
@@ -75,7 +76,9 @@ class ReservationController extends Controller
         $eventDate = $quotation->event_date?->toDateString();
         $override = $eventDate ? ReservationCapacityOverride::query()->whereDate('event_date', $eventDate)->first() : null;
         $policy = BusinessPolicy::query()->where('key', 'current')->sole();
-        $usage = $eventDate ? Reservation::query()->where('status', 'confirmed')->whereDate('event_date', $eventDate) : null;
+        $usage = $eventDate ? Reservation::query()
+            ->whereIn('status', [ReservationStatus::Confirmed->value, ReservationStatus::Completed->value])
+            ->whereDate('event_date', $eventDate) : null;
         $canViewPayments = request()->user()->can('viewAny', Payment::class);
         $balance = $latest ? $balances->forVersion($latest) : null;
 
@@ -238,7 +241,7 @@ class ReservationController extends Controller
     {
         $action->handle($request->user(), $request->validated());
 
-        return back()->with('status', 'Date-specific capacity override saved. Existing confirmed reservations keep their recorded capacity snapshot.');
+        return back()->with('status', 'Date-specific capacity override saved. Existing confirmed and completed reservations keep their recorded capacity snapshot.');
     }
 
     public function removeCapacityOverride(Request $request, ReservationCapacityOverride $reservationCapacityOverride, DeleteReservationCapacityOverride $action): RedirectResponse

@@ -3,11 +3,13 @@
 namespace App\Actions\Payments;
 
 use App\Enums\PaymentStatus;
+use App\Enums\QuotationVersionStatus;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
 use App\Models\QuotationVersion;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -17,10 +19,14 @@ class ReallocatePayment
 
     public function handle(User $actor, Payment $payment, QuotationVersion $target, string $reason): PaymentAllocation
     {
+        if (! $actor->active || ! $actor->isAdmin()) {
+            throw new AuthorizationException;
+        }
+
         return DB::transaction(function () use ($actor, $payment, $target, $reason): PaymentAllocation {
             $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
             $target = QuotationVersion::query()->with('acceptance')->lockForUpdate()->findOrFail($target->id);
-            if ($payment->status !== PaymentStatus::Verified || $target->acceptance === null) {
+            if ($payment->status !== PaymentStatus::Verified || $target->status !== QuotationVersionStatus::Accepted || $target->acceptance === null) {
                 throw ValidationException::withMessages(['payment' => 'Only a verified payment can be allocated to an accepted Version of its own quotation.']);
             }
             if ($payment->quotation_id !== null && $payment->quotation_id !== $target->quotation_id) {

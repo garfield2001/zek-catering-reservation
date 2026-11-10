@@ -154,13 +154,13 @@ export default function BusinessPoliciesShow({
                 <section className="rounded-2xl border bg-white p-5">
                     <h2 className="font-semibold">Reservation availability</h2>
                     <p className="mt-2 text-sm text-slate-600">
-                        Only Administrator-confirmed reservations consume this
+                        Confirmed and completed reservations consume this
                         capacity. Inquiries, quotations, accepted quotations,
                         and verified payments do not hold a date.
                     </p>
                     <div className="mt-4 grid gap-4 sm:grid-cols-2">
                         <PolicyNumber
-                            label="Confirmed events allowed each day"
+                            label="Events allowed each day"
                             value={form.data.daily_confirmed_event_capacity}
                             disabled={!canManage}
                             onChange={(value) =>

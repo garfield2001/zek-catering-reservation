@@ -10,6 +10,7 @@ use App\Actions\Quotation\CreateManualQuotation;
 use App\Actions\Quotation\CreateQuotationRevision;
 use App\Actions\Quotation\IssueQuotation;
 use App\Actions\Quotation\RecordQuotationAcceptance;
+use App\Actions\Quotation\WithdrawQuotation;
 use App\Models\PaymentMethod;
 use App\Models\Permission;
 use App\Models\Quotation;
@@ -241,6 +242,79 @@ class PaymentTest extends TestCase
         } catch (ValidationException) {
             $this->assertSame($quote->currentVersion->id, $payment->fresh()->allocation?->quotation_version_id);
             $this->assertSame(1, $payment->fresh()->allocationHistory()->count());
+        }
+    }
+
+    public function test_payment_verification_rejects_draft_issued_and_withdrawn_versions(): void
+    {
+        $method = PaymentMethod::query()->where('code', 'gcash')->firstOrFail();
+        $method->update(['is_active' => true]);
+
+        $quote = $this->acceptedQuote();
+        $draft = app(CreateQuotationRevision::class)->handle($this->admin, $quote);
+        $payment = app(RecordPayment::class)->handle(null, $quote, $this->data($method, '100.00'), 'customer_submission', UploadedFile::fake()->createWithContent('draft.pdf', 'draft-version-proof'));
+        $this->assertVerificationTargetIsRejected($payment, $draft->fresh());
+
+        $issued = app(IssueQuotation::class)->handle($this->admin, $draft)['version'];
+        $payment = app(RecordPayment::class)->handle(null, $quote, $this->data($method, '101.00'), 'customer_submission', UploadedFile::fake()->createWithContent('issued.pdf', 'issued-version-proof'));
+        $this->assertVerificationTargetIsRejected($payment, $issued);
+
+        $withdrawn = app(WithdrawQuotation::class)->handle($this->admin, $issued, 'Customer requested a revised offer.');
+        $payment = app(RecordPayment::class)->handle(null, $quote, $this->data($method, '102.00'), 'customer_submission', UploadedFile::fake()->createWithContent('withdrawn.pdf', 'withdrawn-version-proof'));
+        $this->assertVerificationTargetIsRejected($payment, $withdrawn);
+    }
+
+    public function test_postgresql_rejects_a_direct_allocation_to_a_non_accepted_version(): void
+    {
+        $quote = $this->acceptedQuote();
+        $draft = app(CreateQuotationRevision::class)->handle($this->admin, $quote);
+        $method = PaymentMethod::query()->where('code', 'gcash')->firstOrFail();
+        $method->update(['is_active' => true]);
+        $payment = app(RecordPayment::class)->handle(null, $quote, $this->data($method, '100.00'), 'customer_submission', UploadedFile::fake()->createWithContent('database-guard.pdf', 'database-guard-proof'));
+
+        try {
+            DB::transaction(fn () => DB::table('payment_allocations')->insert([
+                'payment_id' => $payment->id,
+                'quotation_version_id' => $draft->id,
+                'amount_minor' => 10000,
+                'allocated_by' => $this->admin->id,
+                'reason' => 'Attempted direct invalid allocation.',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]));
+            $this->fail('PostgreSQL must reject allocations to a draft quotation version.');
+        } catch (QueryException $exception) {
+            $this->assertStringContainsString('accepted quotation version', strtolower($exception->getMessage()));
+            $this->assertSame(0, $payment->allocationHistory()->count());
+        }
+    }
+
+    public function test_payment_verification_rejects_a_version_from_another_quotation_case(): void
+    {
+        $quote = $this->acceptedQuote();
+        $other = $this->acceptedQuote();
+        $method = PaymentMethod::query()->where('code', 'gcash')->firstOrFail();
+        $method->update(['is_active' => true]);
+        $payment = app(RecordPayment::class)->handle(null, $quote, $this->data($method, '100.00'), 'customer_submission', UploadedFile::fake()->createWithContent('cross-case.pdf', 'cross-case-proof'));
+
+        try {
+            app(ReviewPayment::class)->verify($this->admin, $payment, $other->currentVersion);
+            $this->fail('A payment must not be allocated to another quotation case.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('quotation_version_id', $exception->errors());
+            $this->assertSame('pending_verification', $payment->fresh()->status->value);
+        }
+    }
+
+    private function assertVerificationTargetIsRejected($payment, $version): void
+    {
+        try {
+            app(ReviewPayment::class)->verify($this->admin, $payment, $version);
+            $this->fail('Only an accepted quotation version may receive a verified allocation.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('quotation_version_id', $exception->errors());
+            $this->assertSame('pending_verification', $payment->fresh()->status->value);
+            $this->assertSame(0, $payment->fresh()->allocationHistory()->count());
         }
     }
 

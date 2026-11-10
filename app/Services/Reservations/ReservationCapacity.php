@@ -2,6 +2,7 @@
 
 namespace App\Services\Reservations;
 
+use App\Enums\ReservationStatus;
 use App\Models\BusinessPolicy;
 use App\Models\Reservation;
 use App\Models\ReservationCapacityOverride;
@@ -39,7 +40,7 @@ class ReservationCapacity
         }
 
         $usage = Reservation::query()
-            ->where('status', 'confirmed')
+            ->whereIn('status', [ReservationStatus::Confirmed->value, ReservationStatus::Completed->value])
             ->whereDate('event_date', $date)
             ->when($excludingReservationId !== null, fn ($query) => $query->whereKeyNot($excludingReservationId));
         $eventsUsed = $usage->count();
