@@ -119,6 +119,7 @@ export function PackageConfigurator({
     const foodItems = offering.menu?.food_items ?? [];
     const fixedFoods = foodItems.filter((food) => food.is_fixed);
     const selectableFoods = foodItems.filter((food) => !food.is_fixed);
+    const remainingFoodChoices = Math.max(0, foodLimit - foodIds.length);
     const categories = Array.from(
         new Map(
             selectableFoods.map((food) => [
@@ -284,6 +285,14 @@ export function PackageConfigurator({
         });
     }
 
+    function errorLabel(field: string): string {
+        if (field === "quantity") return "Quantity";
+        if (field === "main_package") return "Main Catering package";
+        if (field === "package") return "Package selection";
+        if (field.startsWith("groups")) return "Food or serving selection";
+        return "Package selection";
+    }
+
     return (
         <section
             className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm sm:p-7"
@@ -326,16 +335,29 @@ export function PackageConfigurator({
                     onChange={(event) =>
                         setQuantity(Number(event.target.value))
                     }
+                    aria-invalid={Boolean(errors.quantity)}
+                    aria-describedby={
+                        errors.quantity ? "quantity-error" : "quantity-help"
+                    }
                     className="mt-2 max-w-xs"
                 />
             </label>
-            <p className="mt-1 text-xs text-stone-500">
+            <p id="quantity-help" className="mt-1 text-xs text-stone-500">
                 Minimum {offering.terms.minimum_quantity}; increase by{" "}
                 {offering.terms.quantity_step}.
                 {offering.terms.maximum_quantity
                     ? ` Maximum ${offering.terms.maximum_quantity}.`
                     : ""}
             </p>
+            {errors.quantity && (
+                <p
+                    id="quantity-error"
+                    role="alert"
+                    className="mt-1 text-sm text-red-700"
+                >
+                    {errors.quantity}
+                </p>
+            )}
             {offering.menu && (
                 <fieldset className="mt-7">
                     <legend className="text-lg font-bold text-emerald-950">
@@ -347,6 +369,15 @@ export function PackageConfigurator({
                     <p className="mt-1 text-sm text-stone-600">
                         Included Items are already part of your menu. Choose the
                         remaining Customer Choices by Food Category.
+                    </p>
+                    <p
+                        className="mt-3 rounded-lg bg-stone-100 px-3 py-2 text-sm text-stone-700"
+                        role="status"
+                        aria-live="polite"
+                    >
+                        {remainingFoodChoices === 0
+                            ? `Your ${foodLimit} Food Items are ready. You can replace an allowed choice before saving.`
+                            : `${foodIds.length} of ${foodLimit} Food Items selected. Choose ${remainingFoodChoices} more.`}
                     </p>
                     {fixedFoods.length > 0 && (
                         <section
@@ -575,7 +606,16 @@ export function PackageConfigurator({
                     role="alert"
                     className="mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-800"
                 >
-                    {Object.values(errors)[0]}
+                    <p className="font-semibold">
+                        We could not save this selection. Review the following:
+                    </p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5">
+                        {Object.entries(errors).map(([field, message]) => (
+                            <li key={field}>
+                                <strong>{errorLabel(field)}:</strong> {message}
+                            </li>
+                        ))}
+                    </ul>
                 </div>
             )}
             {preview && (

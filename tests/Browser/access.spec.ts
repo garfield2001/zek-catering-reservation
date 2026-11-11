@@ -36,11 +36,10 @@ test("Admin can grant Staff audit access through the interface", async ({
         .getByRole("alertdialog")
         .getByRole("button", { name: "Apply changes" })
         .click();
-    await expect(
-        page
-            .locator("[data-sonner-toast]")
-            .filter({ hasText: "Permissions updated" }),
-    ).toHaveCount(1);
+    await expect(page.getByRole("alertdialog")).not.toBeVisible();
+    // The durable behavior is asserted below: the Staff account receives the
+    // capability and can see the audited permission change. Do not make this
+    // access-control regression depend on the short-lived toast animation.
     await page.getByRole("button", { name: "Account menu" }).click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
     await expect(page).toHaveURL("/login");

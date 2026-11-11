@@ -1,5 +1,9 @@
 import { router, usePage } from "@inertiajs/react";
 import { formatPesos } from "../../../features/packages/money";
+import {
+    formatManilaEvent,
+    formatManilaTimestamp,
+} from "../../../lib/date-time";
 import StorefrontLayout from "../../../layouts/storefront-layout";
 
 type Quote = {
@@ -149,8 +153,10 @@ export default function PublicQuotationShow({
                     <h2 className="font-semibold">Event details</h2>
                     <p className="mt-3 text-sm">
                         {quotation.customer_name} ·{" "}
-                        {quotation.event_date ?? "Event date to be confirmed"}{" "}
-                        {quotation.event_start_time ?? ""}
+                        {formatManilaEvent(
+                            quotation.event_date ?? null,
+                            quotation.event_start_time ?? null,
+                        )}
                     </p>
                     <p className="mt-1 text-sm text-stone-600">
                         {quotation.venue_information ?? "Venue to be confirmed"}
@@ -214,10 +220,14 @@ export default function PublicQuotationShow({
                         <p className="mt-2 text-sm">
                             Accepted by {quotation.acceptance.accepted_by_name}.
                             Payment is due by{" "}
-                            {quotation.acceptance.payment_due_at}; menu
-                            finalization is due by{" "}
-                            {quotation.acceptance.menu_finalization_due_at}.
-                            Payment verification and reservation confirmation
+                            {formatManilaTimestamp(
+                                quotation.acceptance.payment_due_at,
+                            )}
+                            ; menu finalization is due by{" "}
+                            {formatManilaTimestamp(
+                                quotation.acceptance.menu_finalization_due_at,
+                            )}
+                            . Payment verification and reservation confirmation
                             remain separate steps.
                         </p>
                     </section>

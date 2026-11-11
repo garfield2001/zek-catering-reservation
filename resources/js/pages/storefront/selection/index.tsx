@@ -43,9 +43,9 @@ export default function SelectionIndex({
                     Review your inquiry
                 </h1>
                 <p className="mt-4 max-w-2xl leading-7 text-stone-600">
-                    Step 4 of 6: review your Main Catering package, optional
-                    services, and Laravel-calculated planning estimate before
-                    entering event details.
+                    Review your Main Catering package, optional services, and
+                    Laravel-calculated planning estimate before entering event
+                    details.
                 </p>
                 {items.length === 0 ? (
                     <div className="mt-8 rounded-2xl border border-dashed border-stone-300 bg-white p-8">

@@ -8,6 +8,7 @@ import {
     type MenuSelection,
 } from "../../../features/reservations/components/commercial-change-configurator";
 import { formatPesos } from "../../../features/packages/money";
+import { CustomerProgressTimeline } from "../../../features/customer-progress/components/customer-progress-timeline";
 import {
     formatManilaEvent,
     formatManilaTime,
@@ -134,13 +135,6 @@ export default function CustomerProgressShow({
     changeAddonOfferings: ChangeAddonOffering[];
 }) {
     const quote = request.quotation;
-    const stage = quote?.acceptance
-        ? 4
-        : quote?.status === "issued"
-          ? 3
-          : request.status === "under_review"
-            ? 2
-            : 1;
     return (
         <StorefrontLayout title="My Catering Request">
             <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
@@ -150,21 +144,27 @@ export default function CustomerProgressShow({
                 <h1 className="mt-3 font-serif text-4xl font-bold text-emerald-950">
                     {request.reference}
                 </h1>
-                <ol className="mt-7 grid gap-2 sm:grid-cols-4">
-                    {[
-                        "Inquiry received",
-                        "Under review",
-                        "Quotation available",
-                        "Payment receipt submitted",
-                    ].map((label, index) => (
-                        <li
-                            key={label}
-                            className={`rounded-lg p-3 text-sm ${index < stage ? "bg-emerald-800 text-white" : "bg-stone-100 text-stone-500"}`}
-                        >
-                            {index + 1}. {label}
-                        </li>
-                    ))}
-                </ol>
+                <CustomerProgressTimeline
+                    requestStatus={request.status}
+                    reservationStatus={request.reservation?.status ?? null}
+                    quotation={
+                        quote
+                            ? {
+                                  status: quote.status,
+                                  accepted: quote.acceptance !== null,
+                                  paymentSummary: quote.payment_summary,
+                                  paymentStatuses: quote.payments.map(
+                                      (payment) => payment.status,
+                                  ),
+                              }
+                            : null
+                    }
+                    cancellationStatuses={
+                        request.cancellation?.requests.map(
+                            (cancellation) => cancellation.status,
+                        ) ?? []
+                    }
+                />
                 <section className="mt-7 rounded-2xl border bg-white p-5">
                     <h2 className="font-semibold">Your event</h2>
                     <p className="mt-3 text-sm">

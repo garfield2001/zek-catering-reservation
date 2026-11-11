@@ -22,6 +22,7 @@ The [Reservation Request Intake](docs/34-reservation-request-intake.md) record d
 The [Quotations and Acceptance](docs/35-quotations-and-acceptance.md) record defines the versioned quotation lifecycle, structured Business Policies, immutable issuance snapshots, receipt-driven portal acceptance and manual payment verification.
 The [Reservation Changes and Rescheduling](docs/37-reservation-changes-and-rescheduling.md) record defines the request/review/revision/agreement/re-confirmation workflow, frozen policy facts, explicit payment allocation and capacity-safe date moves.
 The [Cancellation and Refund Management](docs/38-cancellation-and-refund-management.md) record defines reviewed customer withdrawals and reservation cancellations, manual Administrator refund recording, immutable financial history, and customer-safe progress updates.
+The [Priority 4B customer-facing refinement](docs/41-priority-4b-customer-ui-refinement.md) records the current public selection, inquiry, Track Your Request, quotation, receipt, and reservation-progress presentation boundaries.
 
 The [Phase 2 maintainability review](docs/22-maintainability-review.md) records the current reliability follow-up's code-quality changes, intentional size exceptions, verification and owner-testing scope. Its phase numbering belongs to the Application Reliability milestone, not the original catalog implementation phases below.
 

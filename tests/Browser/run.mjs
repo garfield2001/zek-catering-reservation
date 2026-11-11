@@ -37,12 +37,25 @@ const waitForTestingServer = () =>
     new Promise((resolveReady, rejectReady) => {
         const deadline = Date.now() + 60_000;
         const poll = () => {
+            // Do not accept another process already serving the port. On
+            // Windows a failed `php -S` bind can otherwise leave the wrapper
+            // probing a stale guarded server with a different fixture state.
+            if (server.exitCode !== null || server.signalCode !== null) {
+                rejectReady(
+                    new Error(
+                        "The guarded Playwright test server exited before it became ready.",
+                    ),
+                );
+                return;
+            }
             const probe = request(`${baseUrl}/login`, (response) => {
                 response.resume();
                 if (
                     response.statusCode === 200 &&
                     response.headers["x-catering-test-database"] ===
-                        "zek_catering_test:5432"
+                        "zek_catering_test:5432" &&
+                    server.exitCode === null &&
+                    server.signalCode === null
                 ) {
                     resolveReady();
                     return;

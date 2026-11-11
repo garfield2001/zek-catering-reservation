@@ -47,8 +47,9 @@ export default function CreateReservationRequest({
                     Request Staff review
                 </h1>
                 <p className="mt-4 leading-7 text-stone-600">
-                    Send your tentative event details to our team. This is not a
-                    confirmed reservation, quotation, or date hold.
+                    Add your tentative event details, then send the completed
+                    inquiry to our team. This is not a confirmed reservation,
+                    quotation, or date hold.
                 </p>
                 <form
                     onSubmit={submit}

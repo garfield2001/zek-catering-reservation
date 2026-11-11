@@ -48,6 +48,14 @@ test("public storefront keeps internal authentication separate and submits an in
     await expect(
         page.getByRole("tab", { name: /Browser Rice: 0\/2/ }),
     ).toBeVisible();
+    await expect(page.getByRole("status")).toContainText(
+        /Food Items selected/i,
+    );
+    expect(
+        await page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+    ).toBe(true);
     await page
         .getByRole("button", { name: "View Browser Fried Rice image" })
         .click();
@@ -85,6 +93,11 @@ test("public storefront keeps internal authentication separate and submits an in
             hasText: "Main Catering package is saved",
         }),
     ).toBeVisible();
+    await expect(
+        page.getByRole("link", {
+            name: "Review inquiry selection, 1 item",
+        }),
+    ).toBeVisible();
     await page.getByRole("link", { name: "Continue to event details" }).click();
     await page.waitForURL(/\/my-selection$/);
     await expect(page.getByText("Browser Celebration Package")).toBeVisible();
@@ -116,7 +129,7 @@ test("public storefront keeps internal authentication separate and submits an in
     const accessCode = await page.locator("output").nth(1).innerText();
     expect(accessCode).toMatch(/^[A-Z0-9]+$/);
     await context.grantPermissions(["clipboard-read", "clipboard-write"], {
-        origin: "http://127.0.0.1:8011",
+        origin: new URL(page.url()).origin,
     });
     await page.getByRole("button", { name: "Copy Reference Code" }).click();
     await expect(page.getByRole("button", { name: "Copied!" })).toBeVisible();
@@ -186,6 +199,12 @@ test("public storefront keeps internal authentication separate and submits an in
     await expect(page).toHaveURL(new RegExp(`/track-request/${reference}$`));
     await expect(page.getByText("Browser Celebration Package")).toBeVisible();
     await expect(
+        page.getByText("Quotation available", { exact: true }),
+    ).toBeVisible();
+    await expect(
+        page.getByText("Reservation confirmation", { exact: true }),
+    ).toBeVisible();
+    await expect(
         page.getByRole("button", { name: "Print or save as PDF" }),
     ).toBeVisible();
     await page.getByLabel("Receipt image (JPEG, PNG, or WebP)").setInputFiles({
@@ -204,6 +223,9 @@ test("public storefront keeps internal authentication separate and submits an in
     ).toBeVisible();
     await expect(
         page.getByText("Quotation accepted through receipt submission"),
+    ).toBeVisible();
+    await expect(
+        page.getByText("Receipt submitted", { exact: true }),
     ).toBeVisible();
 
     await page.goto("/admin/quotations");
@@ -276,6 +298,12 @@ test("public storefront keeps internal authentication separate and submits an in
     await page.getByLabel("Customer access code").fill(accessCode);
     await page.getByRole("button", { name: "View my request" }).click();
     await expect(page.getByText(/Verified:\s*₱2,000\.00/)).toBeVisible();
+    await expect(
+        page.getByText("Partial payment verified", { exact: true }),
+    ).toBeVisible();
+    await expect(
+        page.getByText("Reservation confirmation", { exact: true }),
+    ).toBeVisible();
     const paymentHistory = page
         .getByRole("heading", { name: "Payments" })
         .locator("..")
