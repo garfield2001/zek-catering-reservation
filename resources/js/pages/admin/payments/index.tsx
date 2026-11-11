@@ -2,6 +2,7 @@ import { Head, Link, router, useForm } from "@inertiajs/react";
 import { useState } from "react";
 import AdminLayout from "../../../layouts/admin-layout";
 import { formatPesos } from "../../../features/packages/money";
+import { formatManilaTimestamp } from "../../../lib/date-time";
 import { VerifyPayment } from "./verify-payment";
 
 export default function PaymentsIndex({
@@ -12,6 +13,7 @@ export default function PaymentsIndex({
     canRecord,
     canVerify,
     canRecordEarlyException,
+    canViewQuotations,
 }: {
     payments: {
         data: Array<{
@@ -48,6 +50,7 @@ export default function PaymentsIndex({
     canRecord: boolean;
     canVerify: boolean;
     canRecordEarlyException: boolean;
+    canViewQuotations: boolean;
 }) {
     const [recordEarlyException, setRecordEarlyException] = useState(false);
     const form = useForm({
@@ -315,19 +318,25 @@ export default function PaymentsIndex({
                                     <br />
                                     <span className="text-stone-500">
                                         {payment.paid_at
-                                            ? new Date(
+                                            ? formatManilaTimestamp(
                                                   payment.paid_at,
-                                              ).toLocaleString("en-PH", {
-                                                  timeZone: "Asia/Manila",
-                                              })
+                                              )
                                             : "Submitted receipt"}
                                     </span>
                                 </td>
                                 <td>
-                                    {payment.quotation?.reference ??
-                                        payment.reservation_request
+                                    {payment.quotation && canViewQuotations ? (
+                                        <Link
+                                            href={`/admin/quotations/${payment.quotation_id}`}
+                                            className="font-semibold text-emerald-800 underline"
+                                        >
+                                            {payment.quotation.reference}
+                                        </Link>
+                                    ) : (
+                                        (payment.reservation_request
                                             ?.reference ??
-                                        "Exceptional / unallocated"}
+                                        "Exceptional / unallocated")
+                                    )}
                                     <br />
                                     {payment.transaction_reference ??
                                         "No reference"}
@@ -351,9 +360,7 @@ export default function PaymentsIndex({
                                         : "Awaiting verification"}
                                 </td>
                                 <td>
-                                    <span className="rounded-full bg-stone-100 px-2 py-1 text-xs font-semibold">
-                                        {payment.status.replaceAll("_", " ")}
-                                    </span>
+                                    <PaymentStatus status={payment.status} />
                                 </td>
                                 <td className="p-3">
                                     {payment.evidence_versions.length > 0 && (
@@ -479,7 +486,8 @@ export default function PaymentsIndex({
                 </table>
                 {payments.data.length === 0 && (
                     <p className="p-6 text-sm text-stone-600">
-                        No payment records yet.
+                        No payment submissions or offline payment records have
+                        been recorded.
                     </p>
                 )}
             </div>
@@ -554,4 +562,22 @@ function FormError({ error }: { error?: string }) {
             {error}
         </span>
     ) : null;
+}
+
+function PaymentStatus({ status }: { status: string }) {
+    const tone =
+        {
+            verified: "bg-emerald-100 text-emerald-950",
+            pending_verification: "bg-amber-100 text-amber-950",
+            rejected: "bg-rose-100 text-rose-950",
+            reversed: "bg-slate-200 text-slate-800",
+        }[status] ?? "bg-stone-100 text-stone-800";
+
+    return (
+        <span
+            className={`rounded-full px-2 py-1 text-xs font-semibold ${tone}`}
+        >
+            {status.replaceAll("_", " ")}
+        </span>
+    );
 }

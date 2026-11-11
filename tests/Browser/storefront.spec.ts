@@ -156,6 +156,9 @@ test("public storefront keeps internal authentication separate and submits an in
     await page.getByRole("button", { name: "Save quotation draft" }).click();
     await page.waitForURL(/\/admin\/quotations\/\d+$/);
     await expect(page.getByText("Current commercial version")).toBeVisible();
+    await expect(
+        page.getByRole("navigation", { name: "Reservation case progress" }),
+    ).toContainText("Available after the customer accepts this quotation.");
     const quotationUrl = page.url();
     await page.goto(requestUrl);
     await expect(
@@ -210,8 +213,18 @@ test("public storefront keeps internal authentication separate and submits an in
     await page.getByLabel("Amount received (PHP)").fill("1000.00");
     await page.getByRole("button", { name: "Verify" }).click();
     await expect(page.getByText("verified")).toBeVisible();
+    await page.goto(quotationUrl);
+    const quotationProgress = page.getByRole("navigation", {
+        name: "Reservation case progress",
+    });
+    await expect(quotationProgress).toContainText(
+        "Verified reservation payment still required.",
+    );
+    await expect(quotationProgress).toContainText(
+        "Confirmation remains uncommitted until payment and capacity checks pass.",
+    );
     await expect(
-        page.getByRole("link", { name: "Preview v1" }),
+        page.getByRole("link", { name: "Preview receipt v1" }),
     ).toHaveAttribute(
         "href",
         /\/admin\/payments\/\d+\/evidence\/\d+\/preview$/,

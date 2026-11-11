@@ -30,7 +30,26 @@ class PaymentController extends Controller
 
         $payments->getCollection()->load(['allocationHistory.quotationVersion:id,quotation_id,version_number']);
 
-        return Inertia::render('admin/payments/index', ['payments' => $payments, 'methods' => PaymentMethod::query()->where('is_active', true)->orderBy('display_order')->get(['id', 'name', 'is_offline']), 'quotations' => Quotation::query()->whereHas('versions', fn ($query) => $query->whereHas('acceptance'))->latest('id')->get(['id', 'reference']), 'acceptedVersions' => QuotationVersion::query()->whereHas('acceptance')->with('quotation:id,reference')->orderByDesc('id')->get(['id', 'quotation_id', 'version_number']), 'canRecord' => $request->user()->can('record', Payment::class), 'canVerify' => $request->user()->isAdmin(), 'canRecordEarlyException' => $request->user()->isAdmin()]);
+        return Inertia::render('admin/payments/index', [
+            'payments' => $payments,
+            'methods' => PaymentMethod::query()
+                ->where('is_active', true)
+                ->orderBy('display_order')
+                ->get(['id', 'name', 'is_offline']),
+            'quotations' => Quotation::query()
+                ->whereHas('versions', fn ($query) => $query->whereHas('acceptance'))
+                ->latest('id')
+                ->get(['id', 'reference']),
+            'acceptedVersions' => QuotationVersion::query()
+                ->whereHas('acceptance')
+                ->with('quotation:id,reference')
+                ->orderByDesc('id')
+                ->get(['id', 'quotation_id', 'version_number']),
+            'canRecord' => $request->user()->can('record', Payment::class),
+            'canVerify' => $request->user()->isAdmin(),
+            'canRecordEarlyException' => $request->user()->isAdmin(),
+            'canViewQuotations' => $request->user()->can('viewAny', Quotation::class),
+        ]);
     }
 
     public function store(StorePaymentRequest $request, RecordPayment $action, MinorMoney $money): RedirectResponse

@@ -138,6 +138,24 @@ class PaymentTest extends TestCase
         $this->assertSame('rejected', $payment->fresh()->status->value);
     }
 
+    public function test_payment_only_staff_are_not_given_quotation_navigation(): void
+    {
+        $staff = User::factory()->create();
+        $staff->roles()->attach(Role::where('code', 'staff')->sole());
+        $staff->permissionOverrides()->attach(
+            Permission::where('code', 'payment.view')->sole(),
+            ['effect' => 'allow'],
+        );
+
+        $this->actingAs($staff)
+            ->withSession(['access_version' => $staff->access_version])
+            ->get(route('payments.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('admin/payments/index')
+                ->where('canViewQuotations', false));
+    }
+
     public function test_reallocation_preserves_history_and_prevents_double_counting(): void
     {
         $quote = $this->acceptedQuote();

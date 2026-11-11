@@ -37,12 +37,31 @@ test("Administrator can open an accepted quotation's reservation confirmation re
     await expect(
         page.getByRole("heading", { name: /Review QT-/ }),
     ).toBeVisible();
+    const progress = page.getByRole("navigation", {
+        name: "Reservation case progress",
+    });
+    await expect(progress).toContainText("Accepted version");
+    await expect(progress).toContainText(
+        "Reservation payment requirement satisfied.",
+    );
+    await expect(progress).toContainText(
+        "Ready for Administrator confirmation.",
+    );
+    await expect(
+        progress.getByRole("link", { name: "Quotation", exact: true }),
+    ).toHaveAttribute("href", /\/admin\/quotations\/\d+$/);
     await expect(
         page.getByText("Verified reservation-payment requirement satisfied."),
     ).toBeVisible();
     await expect(
         page.getByRole("button", { name: "Confirm reservation", exact: true }),
     ).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(
+        await page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+    ).toBe(true);
 });
 
 test("Administrator confirms then reviews and applies a non-commercial reservation change", async ({
@@ -59,6 +78,9 @@ test("Administrator confirms then reviews and applies a non-commercial reservati
     await expect(
         page.getByRole("heading", { name: "Reservation changes", exact: true }),
     ).toBeVisible();
+    await expect(
+        page.getByRole("navigation", { name: "Reservation case progress" }),
+    ).toContainText("confirmed");
 
     await page
         .getByLabel("Proposed venue", { exact: true })

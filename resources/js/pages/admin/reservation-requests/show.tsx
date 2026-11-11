@@ -1,5 +1,6 @@
 import { Link, router, usePage } from "@inertiajs/react";
 import { formatPesos } from "../../../features/packages/money";
+import { CaseWorkflow } from "../../../features/reservations/components/case-workflow";
 import {
     formatManilaEvent,
     formatManilaTime,
@@ -69,6 +70,7 @@ export default function ReservationRequestShow({
     const quotationLink = request.quotation
         ? `/admin/quotations/${request.quotation.id}`
         : null;
+    const quotationAccepted = request.quotation?.status === "accepted";
 
     return (
         <AdminLayout
@@ -76,6 +78,44 @@ export default function ReservationRequestShow({
             description="Submitted inquiry only. It does not reserve an event date or confirm availability."
             section="requests"
         >
+            <CaseWorkflow
+                steps={[
+                    {
+                        label: "Inquiry",
+                        detail: request.status.replaceAll("_", " "),
+                        state:
+                            request.status === "closed"
+                                ? "complete"
+                                : "current",
+                    },
+                    {
+                        label: "Quotation",
+                        detail: request.quotation
+                            ? `${request.quotation.status} version ${request.quotation.current_version?.version_number ?? ""}`
+                            : "Create a quotation when the inquiry is ready.",
+                        state: !request.quotation
+                            ? "upcoming"
+                            : quotationAccepted
+                              ? "complete"
+                              : "current",
+                        href: quotationLink ?? undefined,
+                    },
+                    {
+                        label: "Payment",
+                        detail: quotationAccepted
+                            ? "Review submitted or verified payments in the quotation case."
+                            : "Available after a quotation is accepted.",
+                        state: quotationAccepted ? "current" : "upcoming",
+                    },
+                    {
+                        label: "Reservation",
+                        detail: quotationAccepted
+                            ? "Capacity remains uncommitted until an Administrator confirms the event."
+                            : "Confirmation requires acceptance, payment readiness, and capacity.",
+                        state: "upcoming",
+                    },
+                ]}
+            />
             <div className="grid gap-6 lg:grid-cols-2">
                 <section className="rounded-2xl border bg-white p-5">
                     <h2 className="font-semibold">Customer and event</h2>
