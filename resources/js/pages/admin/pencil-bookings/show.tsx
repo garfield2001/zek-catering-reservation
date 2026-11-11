@@ -1,4 +1,4 @@
-import { Link, useForm } from "@inertiajs/react";
+import { Link, router, useForm } from "@inertiajs/react";
 import { InternalRequestForm } from "../../../features/reservation-requests/components/internal-request-form";
 import type {
     PublicListing,
@@ -114,12 +114,24 @@ export default function PencilBookingShow({
             <form
                 onSubmit={(event) => {
                     event.preventDefault();
-                    form.put(`/admin/pencil-bookings/${booking.id}`);
+                    form.put(`/admin/pencil-bookings/${booking.id}`, {
+                        preserveScroll: true,
+                        onSuccess: () => {
+                            router.get(
+                                `/admin/pencil-bookings/${booking.id}`,
+                                {},
+                                {
+                                    preserveScroll: true,
+                                    preserveState: false,
+                                },
+                            );
+                        },
+                    });
                 }}
                 className="grid gap-3 rounded-2xl border bg-white p-5 sm:grid-cols-2"
             >
                 <label>
-                    Customer name
+                    Lead customer name
                     <input
                         value={form.data.customer_name}
                         onChange={(event) =>
@@ -129,7 +141,7 @@ export default function PencilBookingShow({
                     />
                 </label>
                 <label>
-                    Mobile
+                    Lead mobile number
                     <input
                         value={form.data.customer_mobile ?? ""}
                         onChange={(event) =>
@@ -139,7 +151,7 @@ export default function PencilBookingShow({
                     />
                 </label>
                 <label>
-                    Email
+                    Lead email address
                     <input
                         value={form.data.customer_email ?? ""}
                         onChange={(event) =>
@@ -149,7 +161,7 @@ export default function PencilBookingShow({
                     />
                 </label>
                 <label>
-                    Event date
+                    Lead event date
                     <input
                         type="date"
                         value={form.data.event_date}
@@ -160,7 +172,7 @@ export default function PencilBookingShow({
                     />
                 </label>
                 <label>
-                    Event start time
+                    Lead event start time
                     <input
                         type="time"
                         value={form.data.event_start_time}
@@ -171,7 +183,7 @@ export default function PencilBookingShow({
                     />
                 </label>
                 <label>
-                    Venue
+                    Lead venue
                     <input
                         value={form.data.venue_information}
                         onChange={(event) =>
@@ -184,7 +196,7 @@ export default function PencilBookingShow({
                     />
                 </label>
                 <label>
-                    Estimated guests
+                    Lead estimated guests
                     <input
                         type="number"
                         min="1"
@@ -196,7 +208,7 @@ export default function PencilBookingShow({
                     />
                 </label>
                 <label>
-                    Follow up
+                    Follow-up date
                     <input
                         type="date"
                         value={form.data.follow_up_on ?? ""}
@@ -207,7 +219,7 @@ export default function PencilBookingShow({
                     />
                 </label>
                 <label className="sm:col-span-2">
-                    Notes
+                    Lead notes
                     <textarea
                         value={form.data.notes}
                         onChange={(event) =>
@@ -218,7 +230,7 @@ export default function PencilBookingShow({
                 </label>
                 {canManage && active && (
                     <button className="w-fit rounded-lg bg-emerald-800 px-4 py-2 text-white">
-                        Save changes
+                        Save lead changes
                     </button>
                 )}
             </form>

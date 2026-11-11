@@ -90,6 +90,18 @@ These scenarios are the approved acceptance target; some Phase 1-3 cases have au
 ## Test data policy
 ALL prices and serving claims in these scenarios, including 280/300/320/340 main catering, hypothetical 5000 Lechon, +20 Coke and 4500 Pica-Pica, are deterministic test examples until explicitly approved in the production configuration matrix. The Main Catering minimum of 150 is the approved default, not a test-only assumption. Use factories and clearly labeled demo fixtures; do not silently seed example prices as production publications. Mock storage and prohibit external network calls in automated tests. Run DB constraints/triggers/concurrency tests against PostgreSQL, not SQLite. Concurrency tests use independent connections and synchronized transactions.
 
+## Full-system owner UAT preparation (2026-11-11)
+
+The owner-led [full-system UAT guide](42-full-system-uat-preparation.md)
+turns the implemented workflows into fictional-data acceptance scenarios. It
+does not replace automated acceptance coverage or authorize destructive work
+against `zek_reservation`. It requires explicit checks for public inquiry,
+quotation/revision and receipt acceptance, manual verification/allocation,
+Administrator confirmation/capacity, changes, cancellation/refund review,
+Pencil Bookings/manual requests, and least-privilege access. It also records
+the remaining owner presentation decision about the persistent **My
+selection** link.
+
 ## Phase 3 acceptance scope and clarifications
 
 Phase 3 implements **draft-only administrator configuration and price previews**. Tests exercise fixed rice, required drinks, distinct dish choices, category quotas, static/dynamic lechon, tray choices, Food Pack uniform/split allocations, Pica-Pica fixed inclusions, current availability, permission denial, centavo overflow and PostgreSQL integrity. The Food Pack family default is 10 packs under the later explicit Phase 3 instruction; examples may use variant overrides. Tests requiring publication, immutable historical snapshots, public availability, direct tray listings, customer selections or reservations remain Phase 4 or later and must not be counted as Phase 3 passes. The actual implementation coverage is recorded in 09-phase-3-package-drafts.md and `tests/Feature/PackageDraftTest.php`.
@@ -136,7 +148,7 @@ Phase 3 implements **draft-only administrator configuration and price previews**
 - A normal Add-on Package inherits the service presentation and saves without a package-wide food portion. **Advanced Package Settings** is collapsed until a Default Food Portion is intentionally configured; a saved configuration remains discoverable and survives reopening.
 - Food Options remains one collapsed configuration surface per Food Item. Fixed portions, size choices, surcharges and presentation exceptions retain their established mutually compatible validation and never convert packaging into food weight.
 - A Measurement Unit created or changed through either quick creation or Manage Measurement Units persists, updates relevant active selectors without a full reload, and preserves unsaved Service/Package input. Referenced-unit and inactive-unit safeguards remain server-enforced.
-- On an isolated local/test schema with the explicit test flag, the normal `DatabaseSeeder` creates roles, permissions, the primary service, `Admin Tester`, 11 categories, 42 Food Items and four incomplete Draft packages in order. Reruns do not duplicate fixtures or overwrite the known account password or ordinary fixture edits. Normal non-local/test seeding does not create known credentials or commercial fixtures.
+- On an isolated local/test schema with the explicit test flag, the normal `DatabaseSeeder` creates roles, permissions, the primary service, `Admin Tester`, 11 categories, 42 Food Items and four published Main Catering packages in order. Reruns do not duplicate fixtures or overwrite the known account password or ordinary fixture edits. Normal non-local/test seeding does not create known credentials or commercial fixtures.
 
 ### Phase 5.1 catalog experience acceptance (2026-10-21)
 
@@ -252,7 +264,11 @@ Phase 3 implements **draft-only administrator configuration and price previews**
   finalize cancellation, approve/refuse a refund, record completion, inspect
   private refund evidence, or forge an Administrator-only route.
 
-### Historical Quotations and Acceptance acceptance (2026-11-03, superseded by the 2026-11-04 correction)
+### Historical quotation-terms record (2026-11-03, superseded by the 2026-11-04 correction)
+
+This retained record is historical only. Current quotation issuance and
+receipt-driven acceptance behavior is defined in
+[Quotations and Acceptance](35-quotations-and-acceptance.md).
 
 - Issuance uses the current Administrator-managed Business Policies without the removed terms-approval or owner-evidence gate. The issued Version freezes its policy and payment-instruction snapshots.
 - Approved terms cannot be edited or deleted. A new approval supersedes the prior one and cannot alter an issued quotation’s frozen terms snapshot.

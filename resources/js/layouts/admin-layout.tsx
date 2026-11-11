@@ -28,78 +28,91 @@ const navigation = [
         href: "/admin",
         permissions: ["dashboard.view"],
         icon: LayoutDashboard,
+        group: "Operations",
     },
     {
         label: "Food Catalog",
         href: "/admin/food-catalog",
         permissions: ["catalog.view", "catalog.manage"],
         icon: ChefHat,
+        group: "Catalog & sales",
     },
     {
         label: "Catering Packages",
         href: "/admin/catering-packages",
         permissions: ["package.view", "package.manage"],
         icon: ClipboardList,
+        group: "Catalog & sales",
     },
     {
         label: "Add-on Services",
         href: "/admin/add-on-services",
         permissions: ["family.view", "family.manage"],
         icon: Boxes,
+        group: "Catalog & sales",
     },
     {
         label: "Reservation Requests",
         href: "/admin/reservation-requests",
         permissions: ["reservation_request.view", "reservation_request.manage"],
         icon: CalendarClock,
+        group: "Operations",
     },
     {
         label: "Pencil Bookings",
         href: "/admin/pencil-bookings",
         permissions: ["pencil_booking.view", "pencil_booking.manage"],
         icon: CalendarClock,
+        group: "Operations",
     },
     {
         label: "Quotations",
         href: "/admin/quotations",
         permissions: ["quotation.view", "quotation.manage"],
         icon: FileText,
+        group: "Operations",
     },
     {
         label: "Reservations",
         href: "/admin/reservations",
         permissions: ["reservation.view"],
         icon: CalendarCheck2,
+        group: "Operations",
     },
     {
         label: "Cancellations & Refunds",
         href: "/admin/cancellations",
         permissions: ["cancellation.manage"],
         icon: CircleDollarSign,
+        group: "Operations",
     },
     {
         label: "Business Policies",
         href: "/admin/business-policies",
         permissions: ["quotation.view", "quotation.manage"],
         icon: FileText,
+        group: "Administration",
     },
     {
         label: "Payments",
         href: "/admin/payments",
         permissions: ["payment.view", "payment.record"],
         icon: CreditCard,
+        group: "Operations",
     },
     {
         label: "Team & Access",
         href: "/admin/staff",
         permissions: ["staff.view"],
         icon: Users,
+        group: "Administration",
     },
     {
         label: "Activity History",
         href: "/admin/audit",
         permissions: ["audit.view"],
         icon: History,
+        group: "Administration",
     },
 ];
 
@@ -169,30 +182,38 @@ export default function AdminLayout({
     const parent = navigation.find(
         (item) => item.href !== "/admin" && sectionPath.startsWith(item.href),
     );
-    const navItems = navigation
-        .filter((item) =>
-            item.permissions.some((permission) =>
-                auth?.permissions.includes(permission),
-            ),
-        )
-        .map((item) => {
-            const active =
-                item.href === "/admin"
-                    ? path === "/admin"
-                    : sectionPath.startsWith(item.href);
-            return (
-                <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobile(false)}
-                    aria-current={active ? "page" : undefined}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium ${active ? "bg-emerald-50 text-emerald-900 ring-1 ring-inset ring-emerald-100" : "text-slate-600 hover:bg-slate-50"}`}
-                >
-                    <item.icon size={19} aria-hidden="true" />
-                    {item.label}
-                </Link>
-            );
-        });
+    const visibleNavigation = navigation.filter((item) =>
+        item.permissions.some((permission) =>
+            auth?.permissions.includes(permission),
+        ),
+    );
+    const navigationGroups = [
+        "Operations",
+        "Catalog & sales",
+        "Administration",
+    ];
+    const navigationLinks = (group: string, mobile = false) =>
+        visibleNavigation
+            .filter((item) => item.group === group)
+            .map((item) => {
+                const active =
+                    item.href === "/admin"
+                        ? path === "/admin"
+                        : sectionPath.startsWith(item.href);
+
+                return (
+                    <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMobile(false)}
+                        aria-current={active ? "page" : undefined}
+                        className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium ${active ? "bg-emerald-50 text-emerald-900 ring-1 ring-inset ring-emerald-100" : "text-slate-600 hover:bg-slate-50"} ${mobile ? "py-3" : ""}`}
+                    >
+                        <item.icon size={19} aria-hidden="true" />
+                        {item.label}
+                    </Link>
+                );
+            });
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900">
             <Head title={title} />
@@ -210,7 +231,7 @@ export default function AdminLayout({
                 />
             )}
             <div className="mx-auto min-h-screen max-w-[1600px] lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
-                <aside className="hidden border-r border-slate-200 bg-white lg:sticky lg:top-0 lg:block lg:h-screen">
+                <aside className="hidden border-r border-slate-200 bg-white lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto">
                     <Link
                         href="/admin/home"
                         className="flex items-center gap-3 px-6 py-7 text-emerald-950"
@@ -223,11 +244,20 @@ export default function AdminLayout({
                             </small>
                         </span>
                     </Link>
-                    <p className="px-6 pb-3 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
-                        Workspace
-                    </p>
-                    <nav aria-label="Administration" className="space-y-1 px-3">
-                        {navItems}
+                    <nav aria-label="Administration" className="space-y-5 px-3">
+                        {navigationGroups.map((group) => {
+                            const links = navigationLinks(group);
+                            if (!links.length) return null;
+
+                            return (
+                                <section key={group} aria-label={group}>
+                                    <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+                                        {group}
+                                    </p>
+                                    <div className="space-y-1">{links}</div>
+                                </section>
+                            );
+                        })}
                     </nav>
                 </aside>
                 <div className="min-w-0">
@@ -350,8 +380,20 @@ export default function AdminLayout({
                 title="Zek Catering"
                 sheet
             >
-                <nav aria-label="Mobile administration" className="space-y-1">
-                    {navItems}
+                <nav aria-label="Mobile administration" className="space-y-5">
+                    {navigationGroups.map((group) => {
+                        const links = navigationLinks(group, true);
+                        if (!links.length) return null;
+
+                        return (
+                            <section key={group} aria-label={group}>
+                                <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+                                    {group}
+                                </p>
+                                <div className="space-y-1">{links}</div>
+                            </section>
+                        );
+                    })}
                 </nav>
             </Modal>
         </div>

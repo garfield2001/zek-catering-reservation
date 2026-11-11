@@ -1,5 +1,6 @@
 import { router, useForm } from "@inertiajs/react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { ConfirmDialog } from "../../../components/ui/confirm-dialog";
 import { formatManilaEvent } from "../../../lib/date-time";
 import AdminLayout from "../../../layouts/admin-layout";
 
@@ -22,6 +23,7 @@ export default function ReservationCapacity({
         maximum_confirmed_events: "3",
         maximum_guests: "",
     });
+    const [removing, setRemoving] = useState<Override | null>(null);
     return (
         <AdminLayout
             title="Date capacity overrides"
@@ -115,14 +117,8 @@ export default function ReservationCapacity({
                                 </p>
                             </div>
                             <button
-                                onClick={() =>
-                                    window.confirm(
-                                        "Remove this date override? Future checks will use the Business Policies default.",
-                                    ) &&
-                                    router.delete(
-                                        `/admin/reservations/capacity/${override.id}`,
-                                    )
-                                }
+                                type="button"
+                                onClick={() => setRemoving(override)}
                                 className="text-sm font-semibold text-rose-700 underline"
                             >
                                 Remove override
@@ -136,6 +132,25 @@ export default function ReservationCapacity({
                     )}
                 </ul>
             </section>
+            <ConfirmDialog
+                open={removing !== null}
+                onClose={() => setRemoving(null)}
+                title="Remove date capacity override?"
+                description={
+                    removing
+                        ? `${formatManilaEvent(removing.event_date, null)} will use the current Business Policies default for future confirmation checks. Existing reservations keep their capacity snapshot.`
+                        : ""
+                }
+                confirmLabel="Remove override"
+                destructive
+                onConfirm={() => {
+                    if (!removing) return;
+                    router.delete(
+                        `/admin/reservations/capacity/${removing.id}`,
+                        { onFinish: () => setRemoving(null) },
+                    );
+                }}
+            />
         </AdminLayout>
     );
 }

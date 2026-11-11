@@ -1,5 +1,5 @@
 import { Head, Link, usePage } from "@inertiajs/react";
-import { Menu, ShoppingBag, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useFlashToast } from "../components/ui/notifications";
 import type { SharedProps } from "../types";
@@ -14,7 +14,6 @@ const links = [
 export default function StorefrontLayout({
     title,
     children,
-    selectionCount = 0,
 }: {
     title: string;
     children: ReactNode;
@@ -63,24 +62,6 @@ export default function StorefrontLayout({
                         ))}
                     </nav>
                     <div className="flex items-center gap-2">
-                        <Link
-                            href="/my-selection"
-                            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50"
-                            aria-label={`Review inquiry selection${selectionCount === 1 ? ", 1 item" : `, ${selectionCount} items`}`}
-                        >
-                            <ShoppingBag size={18} aria-hidden="true" />
-                            <span className="hidden sm:inline">
-                                My selection
-                            </span>
-                            {selectionCount > 0 && (
-                                <span
-                                    className="rounded-full bg-emerald-800 px-2 py-0.5 text-xs text-white"
-                                    aria-hidden="true"
-                                >
-                                    {selectionCount}
-                                </span>
-                            )}
-                        </Link>
                         <button
                             className="rounded-lg p-2 md:hidden"
                             type="button"
@@ -108,14 +89,6 @@ export default function StorefrontLayout({
                                 {link.label}
                             </Link>
                         ))}
-                        <Link
-                            href="/my-selection"
-                            onClick={() => setOpen(false)}
-                            className="block rounded-lg px-3 py-3 text-sm font-medium text-stone-700 hover:bg-stone-100"
-                        >
-                            Review my selection
-                            {selectionCount > 0 ? ` (${selectionCount})` : ""}
-                        </Link>
                     </nav>
                 )}
             </header>

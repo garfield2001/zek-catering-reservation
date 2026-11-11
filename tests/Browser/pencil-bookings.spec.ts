@@ -93,12 +93,34 @@ test("Administrator creates an internal request and converts a pencil booking wi
     await page
         .getByRole("link", { name: "Pencil Browser Customer", exact: true })
         .click();
-    await page.getByLabel("Event start time").first().fill("11:00");
-    await page.getByLabel("Venue").first().fill("Pencil browser venue");
-    await page.getByRole("button", { name: "Save changes" }).click();
+    await page.getByLabel("Lead event start time").fill("11:00");
+    await page.getByLabel("Lead venue").fill("Pencil browser venue");
+    await expect(page.getByLabel("Lead event start time")).toHaveValue("11:00");
+    await expect(page.getByLabel("Lead venue")).toHaveValue(
+        "Pencil browser venue",
+    );
+    const bookingUpdate = page.waitForRequest(
+        (request) =>
+            request.method() === "PUT" &&
+            /\/admin\/pencil-bookings\/\d+$/.test(
+                new URL(request.url()).pathname,
+            ),
+    );
+    await page.getByRole("button", { name: "Save lead changes" }).click();
+    const updateRequest = await bookingUpdate;
+    expect(updateRequest.postData()).toContain('"event_start_time":"11:00"');
+    expect(updateRequest.postData()).toContain(
+        '"venue_information":"Pencil browser venue"',
+    );
     await expect(
         page.getByRole("heading", { name: "Convert to reservation request" }),
     ).toBeVisible();
+    await expect(page.getByLabel("Event start time").last()).toHaveValue(
+        "11:00",
+    );
+    await expect(page.getByLabel("Venue").last()).toHaveValue(
+        "Pencil browser venue",
+    );
     await configureMainPackage(page);
     await page
         .getByRole("button", { name: "Create reservation request" })

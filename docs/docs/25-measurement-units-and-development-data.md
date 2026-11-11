@@ -23,7 +23,7 @@ php artisan migrate:fresh
 php artisan db:seed
 ```
 
-It creates the known local development Administrator `Admin Tester` (`admin@gmail.com` / `adminpass123`), followed by the approved 11 demo Food Categories and 42 active Food Items, plus four published Main Catering packages:
+It creates the known local-only development Administrator `Admin Tester`, followed by the approved 11 demo Food Categories and 42 active Food Items, plus four published Main Catering packages:
 
 | Package   |  Per guest | Food choices | Minimum guests | Increment | Maximum |
 | --------- | ---------: | -----------: | -------------: | --------: | ------- |

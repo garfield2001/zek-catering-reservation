@@ -297,38 +297,22 @@ test.beforeAll(() => {
     });
 });
 
-test("operations preview is clearly demo data with local filters and responsive charts", async ({
+test("dashboard presents permission-scoped live workspaces without fabricated operations data", async ({
     page,
 }) => {
     await login(page, run, password);
     await expect(
-        page.getByText("DEMO DATA / PREVIEW", { exact: true }),
-    ).toBeVisible();
-    const requests: string[] = [];
-    page.on("request", (request) => {
-        if (request.isNavigationRequest()) requests.push(request.url());
-    });
-    const indicators = page.getByRole("region", {
-        name: "Demo performance indicators",
-    });
-    await expect(indicators).toContainText("₱3,440,000");
-    await page.getByLabel("Demo reporting period").selectOption("6");
-    await expect(indicators).toContainText("₱5,660,000");
-    await page.getByRole("button", { name: "payments", exact: true }).click();
-    await expect(
-        page.getByRole("button", { name: "payments", exact: true }),
-    ).toHaveAttribute("aria-pressed", "true");
-    await page.getByLabel("Demo status").selectOption("Tentative");
-    await expect(
-        page.getByRole("heading", { name: "Anniversary · Sample Couple D" }),
+        page.getByRole("heading", { name: "Current work queues" }),
     ).toBeVisible();
     await expect(
-        page.getByRole("heading", { name: "Wedding · Sample Couple A" }),
-    ).not.toBeVisible();
-    expect(requests).toHaveLength(0);
+        page.getByText(/DEMO DATA|Illustrative operational timeline/i),
+    ).toHaveCount(0);
     await expect(
-        page.getByRole("button", { name: "New reservation", exact: true }),
-    ).toBeDisabled();
+        page.getByRole("link", { name: /Requests to review/i }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: /Requests to review/i }).click();
+    await expect(page).toHaveURL(/\/admin\/reservation-requests$/);
+    await page.goBack();
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({
         path: "test-results/refinement-dashboard-desktop.png",

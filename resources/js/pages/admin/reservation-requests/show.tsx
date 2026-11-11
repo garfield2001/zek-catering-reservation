@@ -1,4 +1,6 @@
 import { Link, router, usePage } from "@inertiajs/react";
+import { useState } from "react";
+import { ConfirmDialog } from "../../../components/ui/confirm-dialog";
 import { formatPesos } from "../../../features/packages/money";
 import { CaseWorkflow } from "../../../features/reservations/components/case-workflow";
 import {
@@ -71,6 +73,7 @@ export default function ReservationRequestShow({
         ? `/admin/quotations/${request.quotation.id}`
         : null;
     const quotationAccepted = request.quotation?.status === "accepted";
+    const [confirmAccessCodeReset, setConfirmAccessCodeReset] = useState(false);
 
     return (
         <AdminLayout
@@ -259,23 +262,27 @@ export default function ReservationRequestShow({
                     )}
                     <button
                         type="button"
-                        onClick={() => {
-                            if (
-                                window.confirm(
-                                    "Generate a replacement access code? The previous code will stop working.",
-                                )
-                            ) {
-                                router.post(
-                                    `/admin/reservation-requests/${request.id}/customer-access-code`,
-                                );
-                            }
-                        }}
+                        onClick={() => setConfirmAccessCodeReset(true)}
                         className="mt-4 rounded-lg border border-emerald-800 px-4 py-2 text-sm font-semibold text-emerald-900"
                     >
                         Generate replacement code
                     </button>
                 </section>
             )}
+            <ConfirmDialog
+                open={confirmAccessCodeReset}
+                onClose={() => setConfirmAccessCodeReset(false)}
+                title="Generate a replacement customer access code?"
+                description="The prior code will stop working immediately. The replacement is shown only once to this authorized browser, so communicate it privately."
+                confirmLabel="Generate replacement code"
+                onConfirm={() =>
+                    router.post(
+                        `/admin/reservation-requests/${request.id}/customer-access-code`,
+                        {},
+                        { onFinish: () => setConfirmAccessCodeReset(false) },
+                    )
+                }
+            />
 
             <section className="mt-6 rounded-2xl border bg-white p-5">
                 <h2 className="font-semibold">Request status</h2>

@@ -1,4 +1,5 @@
 import { useForm } from "@inertiajs/react";
+import type { AcceptedQuotationVersion } from "../payment-types";
 
 export function VerifyPayment({
     paymentId,
@@ -7,11 +8,7 @@ export function VerifyPayment({
 }: {
     paymentId: number;
     quotationId: number | null;
-    acceptedVersions: Array<{
-        id: number;
-        quotation_id: number;
-        version_number: number;
-    }>;
+    acceptedVersions: AcceptedQuotationVersion[];
 }) {
     const form = useForm({
         action: "verify",
@@ -47,7 +44,7 @@ export function VerifyPayment({
             </label>
             {versions.length > 0 && (
                 <label className="text-xs font-medium">
-                    Allocate to version
+                    Allocate to Version
                     <select
                         value={form.data.quotation_version_id}
                         onChange={(event) => {
@@ -60,7 +57,7 @@ export function VerifyPayment({
                         aria-invalid={Boolean(form.errors.quotation_version_id)}
                         className="mt-1 block rounded border px-2 py-1 text-sm"
                     >
-                        <option value="">Current accepted version</option>
+                        <option value="">Current accepted Version</option>
                         {versions.map((version) => (
                             <option key={version.id} value={version.id}>
                                 Version {version.version_number}
@@ -82,25 +79,13 @@ export function VerifyPayment({
             </label>
             <button
                 disabled={form.processing}
-                className="rounded bg-emerald-800 px-2 py-1 text-xs text-white"
+                className="rounded bg-emerald-800 px-2 py-1 text-xs text-white disabled:opacity-60"
             >
-                Verify
+                {form.processing ? "Verifying..." : "Verify"}
             </button>
-            {form.errors.verified_amount && (
-                <span role="alert" className="w-full text-xs text-rose-700">
-                    {form.errors.verified_amount}
-                </span>
-            )}
-            {form.errors.quotation_version_id && (
-                <span role="alert" className="w-full text-xs text-rose-700">
-                    {form.errors.quotation_version_id}
-                </span>
-            )}
-            {form.errors.customer_message && (
-                <span role="alert" className="w-full text-xs text-rose-700">
-                    {form.errors.customer_message}
-                </span>
-            )}
+            <FormError error={form.errors.verified_amount} />
+            <FormError error={form.errors.quotation_version_id} />
+            <FormError error={form.errors.customer_message} />
             {Object.entries(form.errors)
                 .filter(
                     ([field]) =>
@@ -111,14 +96,16 @@ export function VerifyPayment({
                         ].includes(field),
                 )
                 .map(([field, error]) => (
-                    <span
-                        key={field}
-                        role="alert"
-                        className="w-full text-xs text-rose-700"
-                    >
-                        {error}
-                    </span>
+                    <FormError key={field} error={error} />
                 ))}
         </form>
     );
+}
+
+function FormError({ error }: { error?: string }) {
+    return error ? (
+        <span role="alert" className="w-full text-xs text-rose-700">
+            {error}
+        </span>
+    ) : null;
 }

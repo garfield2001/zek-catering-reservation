@@ -32,7 +32,7 @@ php artisan migrate:fresh
 php artisan db:seed
 ```
 
-The regular `DatabaseSeeder` creates roles, permissions, Staff's initial dashboard grant, the primary service and the untouched-policy 20% reservation-payment default first. It then invokes `LocalDevelopmentAdministratorSeeder` and `DevelopmentDemoSeeder` only for `APP_ENV=local`. This supplies the active `Admin Tester` development account (`admin@gmail.com` / `adminpass123`), 11 Food Categories, 42 Food Items and four published Main Catering packages (A-D at PHP 380/450/480/520 per guest, 4/5/6/7 total choices, minimum 150, increment 50, no maximum). Each package has all active demo Beef, Chicken, Pork, Dessert, Rice and Drink items; Rice and Drinks each require exactly one customer choice.
+The regular `DatabaseSeeder` creates roles, permissions, Staff's initial dashboard grant, the primary service and the untouched-policy 20% reservation-payment default first. It then invokes `LocalDevelopmentAdministratorSeeder` and `DevelopmentDemoSeeder` only for `APP_ENV=local`. This supplies an active local-only `Admin Tester` development account, 11 Food Categories, 42 Food Items and four published Main Catering packages (A-D at PHP 380/450/480/520 per guest, 4/5/6/7 total choices, minimum 150, increment 50, no maximum). Each package has all active demo Beef, Chicken, Pork, Dessert, Rice and Drink items; Rice and Drinks each require exactly one customer choice.
 
 The local account and fixtures are idempotent. Existing password, access and ordinary commercial edits are not overwritten; identity conflicts fail clearly. Production and staging do not receive known credentials or demo commercial records. Their first Administrator remains the secure, interactive `app:create-admin` workflow.
 

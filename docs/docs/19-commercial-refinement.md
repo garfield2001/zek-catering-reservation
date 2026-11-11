@@ -1,6 +1,13 @@
 # Commercial workflow and Admin UX refinement — implementation record
 
-Status: implementation and current-source browser verification complete; final backend closure results are recorded below. The owner's 2026-10-15 request supersedes prior eligibility assignments, separate-page package creation, and Dashboard-only-real-data restrictions. The 2026-10-18 decision explicitly defers dark mode. Customer transaction modules remain deferred. Earlier checkpoint limitations below are chronological records, superseded by the final closure section.
+Status: historical implementation record. Its catalog work remains relevant, but
+its static demonstration Dashboard was superseded by the live, permission-scoped
+operations Dashboard in [Priority 5 UI/UX audit and refinement](43-priority-5-ui-ux-audit.md).
+The owner's 2026-10-15 request supersedes prior eligibility assignments,
+separate-page package creation, and Dashboard-only-real-data restrictions. The
+2026-10-18 decision explicitly defers dark mode. Earlier checkpoint
+limitations below are chronological records, superseded by later workflow and
+UI milestones.
 
 ## Checkpoint and inspection
 
@@ -16,7 +23,9 @@ Started from clean commit `7047d26`. Read-only development inspection confirmed 
 - Add-on food size choices belong to the package version and food, share one configurable Measurement Unit, and have one zero-extra default. Sizes never increase food counts. Surcharges multiply by purchased package quantity.
 - Individual selling uses absolute option prices, not upgrade surcharges.
 - Save Draft and explicit Save & Publish remain distinct; publication is immutable and permission-checked.
-- Dashboard operational information is static TypeScript demonstration data, visibly labelled. No fake operational database rows/endpoints.
+- At this historical checkpoint, Dashboard operational information was static
+  TypeScript demonstration data. It has since been replaced; do not restore
+  fake operational figures or non-actionable workflow claims.
 
 ## Dependency findings and implementation order
 

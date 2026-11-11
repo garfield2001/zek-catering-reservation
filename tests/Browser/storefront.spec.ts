@@ -95,9 +95,9 @@ test("public storefront keeps internal authentication separate and submits an in
     ).toBeVisible();
     await expect(
         page.getByRole("link", {
-            name: "Review inquiry selection, 1 item",
+            name: /Review inquiry selection/i,
         }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await page.getByRole("link", { name: "Continue to event details" }).click();
     await page.waitForURL(/\/my-selection$/);
     await expect(page.getByText("Browser Celebration Package")).toBeVisible();

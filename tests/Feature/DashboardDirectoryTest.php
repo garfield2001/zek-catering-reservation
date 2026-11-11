@@ -18,7 +18,13 @@ class DashboardDirectoryTest extends TestCase
         $staff = User::factory()->create();
         $staff->roles()->attach(Role::where('code', 'staff')->sole());
         $this->actingAs($staff)->withSession(['access_version' => $staff->access_version])->get('/admin')
-            ->assertInertia(fn ($page) => $page->where('setup.categories', null)->where('setup.items', null)->where('setup.products', null));
+            ->assertInertia(fn ($page) => $page
+                ->where('setup.categories', null)
+                ->where('setup.items', null)
+                ->where('setup.products', null)
+                ->where('operations.cards', [])
+                ->where('operations.upcomingReservations', [])
+                ->where('quickActions', []));
     }
 
     public function test_directory_filters_orders_and_rejects_unsupported_sort_columns(): void

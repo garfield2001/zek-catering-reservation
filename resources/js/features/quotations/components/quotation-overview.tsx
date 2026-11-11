@@ -5,6 +5,7 @@ import {
     formatManilaEvent,
     formatManilaTimestamp,
 } from "../../../lib/date-time";
+import { PaymentReallocationDialog } from "../../payments/components/payment-reallocation-dialog";
 
 export type QuotationVersion = {
     id: number;
@@ -277,6 +278,9 @@ export function QuotationPaymentHistory({
 }) {
     const reservationPaymentSatisfied =
         balance.reservation_remaining_minor <= 0;
+    const latestAcceptedVersion = versions
+        .filter((version) => version.acceptance)
+        .at(-1);
 
     return (
         <section className="mt-6 rounded-2xl border bg-white p-5">
@@ -360,32 +364,16 @@ export function QuotationPaymentHistory({
                                 payment={payment}
                                 canViewEvidence={canViewEvidence}
                             />
-                            {canVerify && payment.status === "verified" && (
-                                <button
-                                    className="ml-3 rounded border px-2 py-1 text-xs"
-                                    onClick={() => {
-                                        const target = versions
-                                            .filter(
-                                                (version) => version.acceptance,
-                                            )
-                                            .at(-1)?.id;
-                                        const reason = window.prompt(
-                                            "Reason for reallocation",
-                                        );
-                                        if (target && reason)
-                                            router.post(
-                                                `/admin/payments/${payment.id}/reallocate`,
-                                                {
-                                                    quotation_version_id:
-                                                        target,
-                                                    reason,
-                                                },
-                                            );
-                                    }}
-                                >
-                                    Allocate to latest accepted Version
-                                </button>
-                            )}
+                            {canVerify &&
+                                payment.status === "verified" &&
+                                latestAcceptedVersion && (
+                                    <PaymentReallocationDialog
+                                        paymentId={payment.id}
+                                        quotationVersionId={
+                                            latestAcceptedVersion.id
+                                        }
+                                    />
+                                )}
                         </li>
                     ))}
                 </ul>

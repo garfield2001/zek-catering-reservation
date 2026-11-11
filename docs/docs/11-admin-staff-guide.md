@@ -39,7 +39,7 @@ Use **Add Measurement Unit** to create and select a new active unit in the curre
 
 ## Local development initialization
 
-For a disposable local database only, run `php artisan migrate:fresh`, then `php artisan db:seed`. The local-only bootstrap creates roles, permissions, the primary service, `Admin Tester` (`admin@gmail.com` / `adminpass123`), 11 Food Categories, 42 Food Items and four published Main Catering packages. Packages A–D require 4–7 distinct customer choices, including exactly one Rice and one Drink; they can be used immediately in the normal public inquiry flow. The untouched initial policy requires a 20% reservation payment. Rerunning the seed does not duplicate fixtures or overwrite the known Administrator password, an edited fixture, or an Administrator-managed Business Policy. Outside the local environment, provision the first Administrator with `php artisan app:create-admin`.
+For a disposable local database only, run `php artisan migrate:fresh`, then `php artisan db:seed`. The local-only bootstrap creates roles, permissions, the primary service, a local-only `Admin Tester` account, 11 Food Categories, 42 Food Items and four published Main Catering packages. Packages A–D require 4–7 distinct customer choices, including exactly one Rice and one Drink; they can be used immediately in the normal public inquiry flow. The untouched initial policy requires a 20% reservation payment. Rerunning the seed does not duplicate fixtures or overwrite the known Administrator password, an edited fixture, or an Administrator-managed Business Policy. Outside the local environment, provision the first Administrator with `php artisan app:create-admin`.
 
 ## Cancellation and refunds
 

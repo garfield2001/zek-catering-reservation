@@ -1,6 +1,6 @@
 # Priority 4B — Customer-facing UI/UX refinement
 
-Status: implementation in progress. This document records a presentation and accessibility refinement of established public workflows. It does not add customer accounts, payment collection, availability holds, capacity allocation, notification delivery, or new commercial policy.
+Status: implementation and verification complete; ready for owner milestone testing. This document records a presentation and accessibility refinement of established public workflows. It does not add customer accounts, payment collection, availability holds, capacity allocation, notification delivery, or new commercial policy.
 
 ## Customer journey presentation
 
